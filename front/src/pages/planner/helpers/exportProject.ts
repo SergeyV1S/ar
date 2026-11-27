@@ -1,13 +1,14 @@
 import { decimal } from "../../../shared/helpers/index.ts";
 import {
   checkLabel,
+  lineTotal,
   modes,
   procurementFields,
   purchaseIssues,
   purchaseTotal,
   sourceLabel,
   visibleItems
-} from "../data/index.ts";
+} from "../mock/index.ts";
 import { variants } from "../planning/index.ts";
 import type { Item, Positions, Project } from "../types/index.ts";
 
@@ -20,7 +21,9 @@ export const makeCsv = (project: Project, bought: Item[], positions: Positions) 
     "Глубина, м",
     "Высота, м",
     "Материал",
-    "Цена, ₽",
+    "Цена за единицу, ₽",
+    "Количество",
+    "Сумма, ₽",
     "Лимит позиции, ₽",
     "Поставщик",
     "Артикул",
@@ -34,11 +37,13 @@ export const makeCsv = (project: Project, bought: Item[], positions: Positions) 
   const rows = items.map((item) => [
     item.name,
     item.owned ? "Есть у пользователя" : "К покупке",
-    decimal(item.w, 2),
-    decimal(item.d, 2),
-    decimal(item.h, 2),
-    item.material,
+    item.kind === "service" ? "" : decimal(item.w, 2),
+    item.kind === "service" ? "" : decimal(item.d, 2),
+    item.kind === "service" ? "" : decimal(item.h, 2),
+    item.kind === "service" ? "Услуга" : item.material,
     item.owned ? 0 : item.price,
+    item.quantity ?? 1,
+    item.owned ? 0 : lineTotal(item),
     item.cap || "",
     item.seller ?? "",
     item.sku ?? "",
@@ -49,7 +54,9 @@ export const makeCsv = (project: Project, bought: Item[], positions: Positions) 
     checkLabel[item.verified],
     [
       ...(item.owned ? [] : purchaseIssues(project, item)),
-      ...(positions[item.id] ? [] : ["Не размещено"])
+      ...(item.demo ? ["Демонстрационное предложение"] : []),
+      ...(item.offerReason ? [item.offerReason] : []),
+      ...(item.kind === "service" || positions[item.id] ? [] : ["Не размещено"])
     ].join(", ")
   ]);
   const total = purchaseTotal(bought);

@@ -29,6 +29,9 @@ export type Item = {
   verified: string;
   mode?: string;
   price?: number;
+  quantity?: number;
+  offerReason?: string;
+  demo?: boolean;
   cap?: number;
   access?: number;
   material: string;

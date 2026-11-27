@@ -1,7 +1,7 @@
 import { Button, Field, Icon, IconButton, Select } from "../../../shared/components/index.ts";
 import { decimal } from "../../../shared/helpers/index.ts";
-import { itemSize, materials, modes } from "../data/index.ts";
 import { useSettings } from "../hooks/index.ts";
+import { itemSize, materials, modes } from "../mock/index.ts";
 import { PanelTitle } from "./PanelTitle.tsx";
 
 export const Settings = () => {

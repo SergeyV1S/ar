@@ -1,6 +1,6 @@
 import { money, safeUrl } from "../../../shared/helpers/index.ts";
-import { checkLabel, itemSize, procurementFields, sourceLabel } from "../data/index.ts";
 import { useEstimateContent } from "../hooks/index.ts";
+import { checkLabel, itemSize, lineTotal, procurementFields, sourceLabel } from "../mock/index.ts";
 import type { Inspection, Item, Positions, Project } from "../types/index.ts";
 
 export type EstimateContentProps = {
@@ -39,7 +39,9 @@ export const EstimateContent = (props: EstimateContentProps) => {
               <th>Позиция</th>
               <th>Продавец</th>
               <th>Размеры</th>
-              <th>Цена</th>
+              <th>Цена за ед.</th>
+              <th>Количество</th>
+              <th>Сумма</th>
               <th>Проверка</th>
             </tr>
           </thead>
@@ -49,7 +51,8 @@ export const EstimateContent = (props: EstimateContentProps) => {
                 <td>
                   <strong>{item.name}</strong>
                   <small>
-                    {item.material}
+                    {item.demo && "Демонстрационное предложение · "}
+                    {item.kind === "service" ? "Услуга" : item.material}
                     {item.sku && ` · ${item.sku}`}
                   </small>
                 </td>
@@ -61,10 +64,13 @@ export const EstimateContent = (props: EstimateContentProps) => {
                   ) : (
                     item.seller || "—"
                   )}
+                  {item.offerReason && <small>{item.offerReason}</small>}
                   {item.details && <small>{item.details}</small>}
                 </td>
-                <td>{itemSize(item)}</td>
+                <td>{item.kind === "service" ? "—" : itemSize(item)}</td>
                 <td>{money(item.price)}</td>
+                <td>{item.quantity ?? 1}</td>
+                <td>{money(lineTotal(item))}</td>
                 <td>
                   <span className={issues.length ? "form-error" : ""}>
                     {issues.length ? issues.join(", ") : "В пределах лимитов"}
@@ -78,7 +84,7 @@ export const EstimateContent = (props: EstimateContentProps) => {
             ))}
             {!items.length && (
               <tr>
-                <td colSpan={5}>Пока нет позиций к покупке.</td>
+                <td colSpan={7}>Пока нет позиций к покупке.</td>
               </tr>
             )}
           </tbody>

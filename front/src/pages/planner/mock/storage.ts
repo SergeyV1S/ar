@@ -30,21 +30,23 @@ type SavedProject =
   | { kind: "locked"; record: EncryptedRecord }
   | { kind: "unreadable"; project: Project };
 
+export const readEncryptedRecord = (raw: unknown): EncryptedRecord | null => {
+  if (!isRecord(raw) || raw.encrypted !== true) return null;
+  if (typeof raw.salt !== "string" || typeof raw.iv !== "string" || typeof raw.body !== "string")
+    throw new Error("Повреждён зашифрованный проект.");
+  return { encrypted: true, salt: raw.salt, iv: raw.iv, body: raw.body };
+};
+
+export const needsProtection = (project: Project) =>
+  project.mode === "office" ||
+  project.items.some((item) => !item.owned && item.mode === "office") ||
+  Object.values(project.procurement).some((value) => value.trim());
+
 export const readLocal = (): SavedProject => {
   try {
     const raw: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
-    if (isRecord(raw) && raw.encrypted === true) {
-      if (
-        typeof raw.salt !== "string" ||
-        typeof raw.iv !== "string" ||
-        typeof raw.body !== "string"
-      )
-        throw new Error("Повреждён зашифрованный проект.");
-      return {
-        kind: "locked",
-        record: { encrypted: true, salt: raw.salt, iv: raw.iv, body: raw.body }
-      };
-    }
+    const encrypted = readEncryptedRecord(raw);
+    if (encrypted) return { kind: "locked", record: encrypted };
     return { kind: "ready", project: raw === null ? initialProject() : validateImport(raw) };
   } catch {
     return { kind: "unreadable", project: initialProject() };
@@ -70,10 +72,10 @@ export const unlockLocal = async (record: EncryptedRecord, password: string) => 
   };
 };
 
-export const writeLocal = async (project: Project, protection: Protection | null) => {
+export const serializeProject = async (project: Project, protection: Protection | null) => {
   if (!protection) {
-    localStorage.setItem(storageKey, JSON.stringify(project));
-    return;
+    if (needsProtection(project)) throw new Error("Задайте пароль служебного проекта.");
+    return JSON.stringify(project);
   }
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const body = await crypto.subtle.encrypt(
@@ -81,13 +83,14 @@ export const writeLocal = async (project: Project, protection: Protection | null
     protection.key,
     new TextEncoder().encode(JSON.stringify(project))
   );
-  localStorage.setItem(
-    storageKey,
-    JSON.stringify({
-      encrypted: true,
-      salt: to64(protection.salt),
-      iv: to64(iv),
-      body: to64(new Uint8Array(body))
-    })
-  );
+  return JSON.stringify({
+    encrypted: true,
+    salt: to64(protection.salt),
+    iv: to64(iv),
+    body: to64(new Uint8Array(body))
+  });
+};
+
+export const writeLocal = async (project: Project, protection: Protection | null) => {
+  localStorage.setItem(storageKey, await serializeProject(project, protection));
 };

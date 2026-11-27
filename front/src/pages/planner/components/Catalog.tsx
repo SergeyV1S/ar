@@ -1,7 +1,8 @@
-import { Button, Icon } from "../../../shared/components/index.ts";
-import { money } from "../../../shared/helpers/index.ts";
-import { itemSize } from "../data/index.ts";
+import { Button, Icon } from "@/shared/components/index.ts";
+import { money } from "@/shared/helpers/index.ts";
+
 import { useCatalog } from "../hooks/index.ts";
+import { itemSize } from "../mock/index.ts";
 import type { Action, Item, Positions, Project } from "../types/index.ts";
 import { Thumbnail } from "./Thumbnail.tsx";
 
@@ -15,46 +16,23 @@ export type CatalogProps = {
 
 export const Catalog = (props: CatalogProps) => {
   const { project } = props;
-  const { fitOnly, offers, external, addManually, openProcurement, filterOffers } =
+  const { fitOnly, offers, error, retry, loading, addManually, openProcurement, filterOffers } =
     useCatalog(props);
-  if (project.mode !== "retail")
-    return (
-      <>
-        <p className='notice'>
-          {external
-            ? "Откройте поиск объявлений, затем добавьте ссылку, цену и габариты выбранной мебели."
-            : "Добавьте предложения поставщиков и заполните поля закупки. Для автоматического получения КП и проверки поставщиков требуется интеграция."}
-        </p>
-        <div className='inline-actions'>
-          {external && (
-            <a
-              className='btn'
-              href='https://www.avito.ru/rossiya/mebel_i_interer'
-              target='_blank'
-              rel='noreferrer'
-            >
-              <Icon name='external' />
-              Поиск на Авито
-            </a>
-          )}
-          <Button icon='plus' className='primary' onClick={addManually}>
-            {external ? "Добавить объявление" : "Добавить предложение"}
-          </Button>
-          {!external && (
-            <Button icon='receipt' onClick={openProcurement}>
-              Поля закупки
-            </Button>
-          )}
-        </div>
-      </>
-    );
   return (
     <>
+      <p className='notice'>
+        {project.mode === "retail"
+          ? "Демонстрационный каталог Hoff. Цены и наличие тестовые."
+          : "Демонстрационные предложения. Для фактического подбора требуется подключение источника."}
+      </p>
+      {error && (
+        <div role='alert'>
+          Каталог недоступен. {error} <Button onClick={retry}>Повторить загрузку</Button>
+        </div>
+      )}
+      {loading && <p role='status'>Загружаем предложения…</p>}
       <div className='catalog-tools'>
-        <p className='support-text'>
-          Подбор по материалу, габаритам и остаткам бюджета. Цена и доставка зависят от региона и
-          даты проверки.
-        </p>
+        <p className='support-text'>Подбор по материалу, габаритам и остатку бюджета.</p>
         <label className='check-field'>
           <input type='checkbox' checked={fitOnly} onChange={filterOffers} />
           Показывать подходящие и уже добавленные
@@ -69,7 +47,9 @@ export const Catalog = (props: CatalogProps) => {
               <p>
                 {item.seller} · {itemSize(item)} · {item.material}
               </p>
-              <p>{item.availability}</p>
+              <p>Демонстрационное предложение · {item.availability}</p>
+              {item.details && <p>{item.details}</p>}
+              {item.offerReason && <p>{item.offerReason}</p>}
               <strong>{money(item.price)}</strong>
               {problems.length > 0 && <p className='form-error'>{problems.join(" · ")}</p>}
               <div className='inline-actions'>
@@ -80,26 +60,40 @@ export const Catalog = (props: CatalogProps) => {
                 >
                   {included ? "На плане" : "Добавить"}
                 </Button>
-                <a
-                  className='icon-btn'
-                  aria-label={`Открыть ${item.name} у продавца`}
-                  href={item.url}
-                  target='_blank'
-                  rel='noreferrer'
-                >
-                  <Icon name='external' />
-                </a>
+                {item.url && (
+                  <a
+                    className='icon-btn'
+                    aria-label={`Открыть ${item.name} у продавца`}
+                    href={item.url}
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    <Icon name='external' />
+                    {project.mode === "office" && "КП"}
+                  </a>
+                )}
               </div>
             </div>
           </article>
         ))}
       </div>
-      {!offers.length && (
+      {!loading && !error && !offers.length && (
         <p className='text-[12.5px] text-muted py-2.25 px-0 font-[650]'>
           Подходящих товаров в наборе нет. Отключите фильтр или внесите товар вручную.
         </p>
       )}
       <div className='form-actions'>
+        {project.mode === "used" && (
+          <a
+            className='btn'
+            href='https://www.avito.ru/rossiya/mebel_i_interer'
+            target='_blank'
+            rel='noreferrer'
+          >
+            Поиск на Авито
+          </a>
+        )}
+        {project.mode === "office" && <Button onClick={openProcurement}>Поля закупки</Button>}
         <Button icon='plus' onClick={addManually}>
           Внести товар вручную
         </Button>

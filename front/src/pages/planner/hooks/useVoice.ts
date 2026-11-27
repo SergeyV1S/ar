@@ -2,7 +2,7 @@ import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type { VoiceProps } from "../components/index.ts";
-import { parseVoice } from "../data/index.ts";
+import { parseVoice } from "../mock/index.ts";
 
 export const useVoice = ({ project, apply }: VoiceProps) => {
   const [phrase, setPhrase] = useState(""),

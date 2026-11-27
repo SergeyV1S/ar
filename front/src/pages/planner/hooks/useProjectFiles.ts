@@ -1,12 +1,19 @@
-import type { ChangeEvent, SetStateAction } from "react";
+import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { download } from "../../../shared/helpers/index.ts";
-import { procurementMissing, validateImport } from "../data/index.ts";
 import { getImportError, makeCsv } from "../helpers/index.ts";
+import { procurementMissing, readEncryptedRecord, validateImport } from "../mock/index.ts";
 import { drawPlan } from "../planning/index.ts";
-import type { ExportFormat, Inspection, Item, Positions, Project } from "../types/index.ts";
+import type {
+  EncryptedRecord,
+  ExportFormat,
+  Inspection,
+  Item,
+  Positions,
+  Project
+} from "../types/index.ts";
 
 type Options = {
   project: Project;
@@ -15,7 +22,9 @@ type Options = {
   bought: Item[];
   positions: Positions;
   inspection: Inspection;
-  change: (updater: SetStateAction<Project>) => void;
+  importPlain: (project: Project) => void;
+  importEncrypted: (record: EncryptedRecord) => void;
+  backup: () => Promise<string>;
   clearSelection: () => void;
   close: () => void;
   openExport: () => void;
@@ -29,7 +38,9 @@ export const useProjectFiles = ({
   bought,
   positions,
   inspection,
-  change,
+  importPlain,
+  importEncrypted,
+  backup,
   clearSelection,
   close,
   openExport,
@@ -50,12 +61,18 @@ export const useProjectFiles = ({
     const attempt = new AbortController();
     importAttempt.current = attempt;
     try {
-      if (file.size > 12 * 1024 * 1024) throw new Error("Файл проекта превышает 12 МБ.");
+      if (file.size > 24 * 1024 * 1024) throw new Error("Файл проекта превышает 24 МБ.");
       const text = await file.text();
       if (attempt.signal.aborted) return;
       const input: unknown = JSON.parse(text);
-      const parsed = validateImport(input);
-      change(() => parsed);
+      const record = readEncryptedRecord(input);
+      if (record) {
+        clearSelection();
+        close();
+        importEncrypted(record);
+        return;
+      }
+      importPlain(validateImport(input));
       clearSelection();
       close();
       notify("Проект загружен из файла.");
@@ -64,7 +81,7 @@ export const useProjectFiles = ({
     }
   };
 
-  const exportData = (format: ExportFormat) => {
+  const exportData = async (format: ExportFormat) => {
     if (format !== "json" && project.mode === "office" && procurementMissing(project).length) {
       openExport();
       return;
@@ -79,11 +96,14 @@ export const useProjectFiles = ({
       close();
       notify("Смета выгружена в CSV.");
     } else if (format === "json") {
-      download(
-        `Метрика — ${filename}.json`,
-        JSON.stringify(project, null, 2),
-        "application/json;charset=utf-8"
-      );
+      let contents: string;
+      try {
+        contents = await backup();
+      } catch {
+        notify("Не удалось подготовить защищённую копию проекта.");
+        return;
+      }
+      download(`Метрика — ${filename}.json`, contents, "application/json;charset=utf-8");
       close();
       notify("Файл проекта выгружен.");
     } else {

@@ -1,5 +1,5 @@
 import type { EstimateContentProps } from "../components/index.ts";
-import { purchaseIssues, purchaseTotal } from "../data/index.ts";
+import { lineTotal, purchaseIssues, purchaseTotal } from "../mock/index.ts";
 
 export const useEstimateContent = ({ project, items, positions }: EstimateContentProps) => {
   const total = purchaseTotal(items),
@@ -9,9 +9,9 @@ export const useEstimateContent = ({ project, items, positions }: EstimateConten
   let balance = project.budget;
   const rows = items.map((item) => {
     const issues = purchaseIssues(project, item);
-    if (!positions[item.id]) issues.push("Не размещено");
-    if ((item.price ?? 0) > balance) issues.push("За пределами бюджета");
-    else if (!issues.length) balance -= item.price ?? 0;
+    if (item.kind !== "service" && !positions[item.id]) issues.push("Не размещено");
+    if (lineTotal(item) > balance) issues.push("За пределами бюджета");
+    balance -= lineTotal(item);
     return { item, issues };
   });
 

@@ -15,8 +15,8 @@ export const Privacy = (props: PrivacyProps) => {
   return (
     <form onSubmit={submit}>
       <p className='support-text'>
-        Проект хранится в этом браузере. Для служебных помещений можно зашифровать локальную копию
-        паролем.
+        Проект хранится в этом браузере. Для служебной закупки пароль обязателен. Он также защищает
+        резервную копию JSON.
       </p>
       {isProtected ? (
         <div className='notice'>

@@ -1,5 +1,6 @@
 export { EstimateContent } from "./EstimateContent.tsx";
 export { Header } from "./Header.tsx";
+export { Privacy } from "./Privacy.tsx";
 export { Locked } from "./Locked.tsx";
 export { Planner } from "./Planner.tsx";
 export { PlannerDialog } from "./PlannerDialog.tsx";

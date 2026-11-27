@@ -56,18 +56,23 @@ export const initialProject = (): Project => {
 
 export const visibleItems = (project: Pick<Project, "items" | "mode">) =>
   project.items.filter((item) => item.owned || item.mode === project.mode);
+export const planItems = (project: Pick<Project, "items" | "mode">) =>
+  visibleItems(project).filter((item) => item.kind !== "service");
+export const lineTotal = (item: Item) => (item.price ?? 0) * (item.quantity ?? 1);
 export const positionsFor = (
-  project: Pick<Project, "items" | "mode" | "room" | "layouts" | "variant">,
+  project: Pick<Project, "items" | "mode" | "room" | "layouts" | "variant" | "passage">,
   variant = project.variant
 ) =>
-  project.layouts[project.mode]?.[variant] ?? arrange(project.room, visibleItems(project), variant);
+  project.layouts[project.mode]?.[variant] ??
+  arrange(project.room, planItems(project), variant, project.passage);
 export const itemSize = (item: Pick<Item, "w" | "d">) =>
   `${centimeters(item.w)} × ${centimeters(item.d)} см`;
 export const purchaseIssues = (project: Project, item: Item) => {
   const problems = [];
-  if ((item.cap ?? 0) > 0 && (item.price ?? 0) > (item.cap ?? 0))
+  if ((item.cap ?? 0) > 0 && lineTotal(item) > (item.cap ?? 0))
     problems.push("Выше лимита позиции");
   if (
+    item.kind !== "service" &&
     project.material !== materials[0] &&
     !(item.materials ?? [item.material]).includes(project.material)
   )
@@ -98,4 +103,4 @@ export const resizeRoom = (room: Room, width: number, depth: number) => {
 };
 
 export const purchaseTotal = (items: Item[]) =>
-  items.reduce((sum, item) => sum + (item.price ?? 0), 0);
+  items.reduce((sum, item) => sum + lineTotal(item), 0);

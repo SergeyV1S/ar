@@ -1,6 +1,6 @@
 import { Field } from "../../../shared/components/index.ts";
-import { procurementFields } from "../data/index.ts";
 import { useProcurement } from "../hooks/index.ts";
+import { procurementFields } from "../mock/index.ts";
 import type { Project } from "../types/index.ts";
 import { Submit } from "./Submit.tsx";
 
@@ -19,7 +19,6 @@ export const Procurement = (props: ProcurementProps) => {
         <Field key={key} label={label}>
           {key === "reason" ? (
             <textarea
-              required
               name={key}
               rows={3}
               maxLength={1500}
@@ -27,10 +26,8 @@ export const Procurement = (props: ProcurementProps) => {
             />
           ) : (
             <input
-              required
               name={key}
-              type={key === "offer" ? "url" : "text"}
-              pattern={key === "offer" ? "https?://.+" : undefined}
+              type='text'
               maxLength={1500}
               defaultValue={project.procurement[key]}
             />

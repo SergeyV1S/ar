@@ -1,18 +1,20 @@
-import { Icon } from "../../shared/components/index.ts";
-import { decimal } from "../../shared/helpers/index.ts";
+import { Icon } from "@/shared/components/index.ts";
+import { decimal } from "@/shared/helpers/index.ts";
+
 import {
   EstimateContent,
   Header,
   Locked,
   Planner,
   PlannerDialog,
+  Privacy,
   ProjectHeader,
   Settings,
   Shopping,
   XRControls
 } from "./components/index.ts";
-import { checkLabel, modes, sourceLabel } from "./data/index.ts";
 import { usePlannerContext } from "./hooks/index.ts";
+import { checkLabel, modes, sourceLabel } from "./mock/index.ts";
 import { variants } from "./planning/index.ts";
 
 export const PlannerPage = () => {
@@ -34,11 +36,36 @@ export const PlannerPage = () => {
     controlAR,
     printImage,
     unlock,
+    protect,
+    lock,
+    pendingProtection,
+    canCancelProtection,
+    cancelPending,
     privacyError,
     unlocking,
     roomArea
   } = usePlannerContext();
-  if (locked) return <Locked unlock={unlock} error={privacyError} busy={unlocking} />;
+  if (locked)
+    return (
+      <Locked
+        unlock={unlock}
+        error={privacyError}
+        busy={unlocking}
+        cancel={canCancelProtection ? cancelPending : undefined}
+      />
+    );
+  if (pendingProtection)
+    return (
+      <main className='w-[min(420px,_calc(100%_-_32px))] my-16.25 mx-auto panel locked-card'>
+        <h1>Задайте пароль служебного проекта</h1>
+        <Privacy isProtected={false} protect={protect} lock={lock} error={privacyError} />
+        {canCancelProtection && (
+          <button className='btn' onClick={cancelPending}>
+            Отмена
+          </button>
+        )}
+      </main>
+    );
   return (
     <>
       <Header action={action} status={status} />

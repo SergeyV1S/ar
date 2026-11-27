@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 
 import { readText } from "../../../shared/helpers/index.ts";
 import type { ProcurementProps } from "../components/index.ts";
-import { procurementFields } from "../data/index.ts";
+import { procurementFields } from "../mock/index.ts";
 
 export const useProcurement = ({ save }: ProcurementProps) => {
   const submit = (event: FormEvent<HTMLFormElement>) => {

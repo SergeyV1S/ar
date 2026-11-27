@@ -3,8 +3,8 @@ import { useState } from "react";
 
 import { newId, readNumber, readText } from "../../../shared/helpers/index.ts";
 import type { RoomEditorProps } from "../components/index.ts";
-import { resizeRoom } from "../data/index.ts";
 import { getOpeningWidth } from "../helpers/index.ts";
+import { resizeRoom } from "../mock/index.ts";
 import { dimensions, distance, validPolygon } from "../planning/index.ts";
 import type { Opening } from "../types/index.ts";
 

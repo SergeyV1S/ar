@@ -1,3 +1,3 @@
-import { readLocal } from "./data/index.ts";
+import { readLocal } from "./mock/index.ts";
 
 export const plannerLoader = () => readLocal();

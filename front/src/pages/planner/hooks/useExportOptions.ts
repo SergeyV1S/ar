@@ -1,5 +1,5 @@
 import type { ExportOptionsProps } from "../components/index.ts";
-import { procurementMissing } from "../data/index.ts";
+import { procurementMissing } from "../mock/index.ts";
 
 export const useExportOptions = ({ project, action, run }: ExportOptionsProps) => {
   const missing = project.mode === "office" ? procurementMissing(project) : [];

@@ -2,15 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeAR } from "../src/pages/planner/ar/index.ts";
+import { plannerLoader } from "../src/pages/planner/loader.ts";
 import {
   initialProject,
+  newProtection,
   parseVoice,
   positionsFor,
   procurementMissing,
+  purchaseTotal,
+  readEncryptedRecord,
+  serializeProject,
+  unlockLocal,
   validateImport,
   visibleItems
-} from "../src/pages/planner/data/index.ts";
-import { plannerLoader } from "../src/pages/planner/loader.ts";
+} from "../src/pages/planner/mock/index.ts";
 import {
   area,
   dimensions,
@@ -180,4 +185,62 @@ test("the planner loader reads existing browser projects and reports damaged dat
   const invalid = plannerLoader();
   assert.equal(invalid.kind, "unreadable");
   assert.equal(invalid.project.room.name, initialProject().room.name);
+});
+
+test("audit room keeps a passable layout and identifies the blocking table when moved", () => {
+  const project = initialProject();
+  const door = { id: "door", type: "door", wall: 0, offset: 0.2, width: 0.9, hinge: "start" };
+  project.room = { ...project.room, points: rect(2.8, 2), openings: [door] };
+  const table = { ...project.items[0], id: "table", name: "Стол", kind: "table", w: 1.2, d: 1.5 };
+  project.items = [table];
+  for (const variant of [0, 1, 2]) {
+    const positions = positionsFor(project, variant);
+    assert.deepEqual(inspect(project.room, [table], positions).warnings, []);
+  }
+  const blocked = inspect(project.room, [table], { table: { x: 1.05, y: 0.3, r: 0 } });
+  assert.equal(blocked.state, "blocked");
+  assert(
+    blocked.warnings.some((warning) => warning.id === "table" && warning.message.includes("Стол"))
+  );
+  for (const width of [0.799, 0.8, 0.801]) {
+    const room = { ...project.room, points: rect(4, 3), openings: [{ ...door, width }] };
+    assert.equal(inspect(room, [], {}).state, width < 0.8 ? "blocked" : "ok");
+  }
+});
+
+test("estimate quantities and services round-trip without adding plan objects", () => {
+  const project = initialProject();
+  const table = {
+    ...project.items[0],
+    id: "table",
+    owned: false,
+    mode: "retail",
+    price: 10000,
+    quantity: 2
+  };
+  project.items = [table, { ...table, id: "chair", quantity: 1, price: 4000 }];
+  assert.equal(purchaseTotal(project.items), 24000);
+  const service = { ...table, kind: "service", w: 0, d: 0, h: 0, quantity: 1 };
+  project.items.push(
+    { ...service, id: "delivery", price: 1500 },
+    { ...service, id: "assembly", price: 2000 }
+  );
+  const restored = validateImport(project);
+  assert.equal(purchaseTotal(restored.items), 27500);
+  assert.deepEqual(Object.keys(positionsFor(restored)).sort(), ["chair", "table"]);
+  assert.throws(() => validateImport({ ...project, items: [{ ...table, quantity: 0 }] }));
+});
+
+test("office backups require the original password and retain partial procurement fields", async () => {
+  const project = { ...initialProject(), mode: "office", procurement: { purpose: "Архив" } };
+  await assert.rejects(serializeProject(project, null));
+  const password = "test-password";
+  const encoded = await serializeProject(project, await newProtection(password));
+  assert(!encoded.includes("Архив"));
+  const record = readEncryptedRecord(JSON.parse(encoded));
+  assert(record);
+  await assert.rejects(unlockLocal(record, "incorrect"));
+  const restored = await unlockLocal(record, password);
+  assert.equal(restored.project.procurement.purpose, "Архив");
+  assert(procurementMissing(restored.project).length);
 });

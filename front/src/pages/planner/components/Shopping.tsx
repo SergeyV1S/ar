@@ -1,7 +1,7 @@
 import { Button, Icon } from "../../../shared/components/index.ts";
 import { money } from "../../../shared/helpers/index.ts";
-import { itemSize, sourceLabel } from "../data/index.ts";
 import { useShopping } from "../hooks/index.ts";
+import { itemSize, sourceLabel } from "../mock/index.ts";
 import { PanelTitle } from "./PanelTitle.tsx";
 import { Thumbnail } from "./Thumbnail.tsx";
 
@@ -62,9 +62,12 @@ export const Shopping = () => {
                 <span className='product-meta'>
                   <strong>{item.name}</strong>
                   <small>
-                    {item.seller || sourceLabel[item.source]} <b>·</b> {itemSize(item)}
+                    {item.demo && "Демо · "}
+                    {item.seller || sourceLabel[item.source]} <b>·</b>{" "}
+                    {item.kind === "service" ? "Услуга" : itemSize(item)}
                   </small>
                   <span className='text-[#332742] text-[13px] font-[830] flex gap-1.25 items-center'>
+                    {item.quantity && item.quantity > 1 ? `${item.quantity} × ` : ""}
                     {money(item.price)}
                     {issues.length > 0 && (
                       <span className='text-[#ae6153]' title={issues.join(", ")}>

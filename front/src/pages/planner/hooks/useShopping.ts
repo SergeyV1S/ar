@@ -1,4 +1,4 @@
-import { purchaseIssues, purchaseTotal } from "../data/index.ts";
+import { purchaseIssues, purchaseTotal } from "../mock/index.ts";
 import { usePlannerContext } from "./usePlannerContext.ts";
 
 export const useShopping = () => {

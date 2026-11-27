@@ -53,3 +53,11 @@ export const getARAvailabilityMessage = (support: boolean | null) => {
   if (support === null) return "Проверяем поддержку дополненной реальности…";
   return arHelp;
 };
+
+export const getCatalogError = (cause: unknown) => {
+  if (cause instanceof TypeError)
+    return "Не удалось получить файл предложений. Проверьте подключение.";
+  if (cause instanceof SyntaxError) return "Не удалось прочитать данные каталога.";
+  if (cause instanceof Error) return cause.message;
+  return "Ошибка чтения файла.";
+};

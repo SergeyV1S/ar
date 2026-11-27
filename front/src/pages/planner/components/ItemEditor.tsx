@@ -1,6 +1,6 @@
 import { Button, Field, Select } from "../../../shared/components/index.ts";
-import { checkLabel, materials, sourceLabel, types } from "../data/index.ts";
 import { useItemEditor } from "../hooks/index.ts";
+import { checkLabel, materials, sourceLabel, types } from "../mock/index.ts";
 import type { Item, Project } from "../types/index.ts";
 import { ImagePicker } from "./ImagePicker.tsx";
 import { Submit } from "./Submit.tsx";
@@ -56,7 +56,9 @@ export const ItemEditor = (props: ItemEditorProps) => {
           </Button>
         </div>
       )}
-      <ImagePicker label={photo ? "Заменить фото" : "Прикрепить фото"} onPhoto={setImage} />
+      {kind !== "service" && (
+        <ImagePicker label={photo ? "Заменить фото" : "Прикрепить фото"} onPhoto={setImage} />
+      )}
       {owned && photo && (
         <section className='mb-2.75'>
           <Button
@@ -114,8 +116,9 @@ export const ItemEditor = (props: ItemEditorProps) => {
         <input name='name' value={name} onChange={changeName} maxLength={100} required />
       </Field>
       <div className='form-grid'>
-        <Field label='Тип мебели'>
+        <Field label='Тип позиции'>
           <Select name='kind' value={kind} onChange={changeKind}>
+            {!owned && <option value='service'>Услуга</option>}
             {Object.entries(types).map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
@@ -123,52 +126,69 @@ export const ItemEditor = (props: ItemEditorProps) => {
             ))}
           </Select>
         </Field>
-        <Field label='Материал'>
-          <Select name='material' defaultValue={item?.material ?? "Другое"} onChange={markEdited}>
-            {materials.slice(1).map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </Select>
-        </Field>
+        {kind !== "service" && (
+          <Field label='Материал'>
+            <Select name='material' defaultValue={item?.material ?? "Другое"} onChange={markEdited}>
+              {materials.slice(1).map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </div>
-      <div className='form-grid three'>
-        {[
-          ["w", "Ширина, см"] as const,
-          ["d", "Глубина, см"] as const,
-          ["h", "Высота, см"] as const
-        ].map(([key, label]) => (
-          <Field label={label} key={key}>
+      {kind !== "service" && (
+        <>
+          <div className='form-grid three'>
+            {[
+              ["w", "Ширина, см"] as const,
+              ["d", "Глубина, см"] as const,
+              ["h", "Высота, см"] as const
+            ].map(([key, label]) => (
+              <Field label={label} key={key}>
+                <input
+                  name={key}
+                  type='number'
+                  inputMode='decimal'
+                  min='5'
+                  max='2000'
+                  step='.1'
+                  defaultValue={item ? Math.round(item[key] * 1000) / 10 : ""}
+                  onChange={markEdited}
+                  required
+                />
+              </Field>
+            ))}
+          </div>
+          <Field
+            label='Запас перед фасадом, см'
+            hint='Место для выдвижения ящиков и открывания дверец. Оставьте 0, если запас не нужен.'
+          >
             <input
-              name={key}
+              name='access'
               type='number'
-              inputMode='decimal'
-              min='5'
-              max='2000'
-              step='.1'
-              defaultValue={item ? Math.round(item[key] * 1000) / 10 : ""}
+              min='0'
+              max='400'
+              defaultValue={Math.round((item?.access ?? 0) * 100)}
               onChange={markEdited}
-              required
             />
           </Field>
-        ))}
-      </div>
-      <Field
-        label='Запас перед фасадом, см'
-        hint='Место для выдвижения ящиков и открывания дверец. Оставьте 0, если запас не нужен.'
-      >
-        <input
-          name='access'
-          type='number'
-          min='0'
-          max='400'
-          defaultValue={Math.round((item?.access ?? 0) * 100)}
-          onChange={markEdited}
-        />
-      </Field>
+        </>
+      )}
       {!owned && (
         <>
           <div className='form-grid'>
-            <Field label='Цена, ₽'>
+            <Field label='Количество в смете'>
+              <input
+                name='quantity'
+                type='number'
+                min='1'
+                max={Number.MAX_SAFE_INTEGER}
+                step='1'
+                defaultValue={item?.quantity ?? 1}
+                required
+              />
+            </Field>
+            <Field label='Цена за единицу, ₽'>
               <input
                 name='price'
                 type='number'
@@ -192,12 +212,7 @@ export const ItemEditor = (props: ItemEditorProps) => {
           </div>
           <div className='form-grid'>
             <Field label={project.mode === "office" ? "Поставщик" : "Магазин или продавец"}>
-              <input
-                name='seller'
-                defaultValue={item?.seller}
-                maxLength={120}
-                required={project.mode === "office"}
-              />
+              <input name='seller' defaultValue={item?.seller} maxLength={120} />
             </Field>
             <Field label='Артикул'>
               <input name='sku' defaultValue={item?.sku} maxLength={120} />
@@ -219,7 +234,7 @@ export const ItemEditor = (props: ItemEditorProps) => {
               label='Реквизиты поставщика'
               hint='Наименование юрлица, ИНН и другие данные для вашей сметы.'
             >
-              <textarea name='details' defaultValue={item?.details} maxLength={500} required />
+              <textarea name='details' defaultValue={item?.details} maxLength={500} />
             </Field>
           )}
         </>

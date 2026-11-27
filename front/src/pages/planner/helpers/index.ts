@@ -3,6 +3,7 @@ export {
   getARAvailabilityMessage,
   getARCollectLabel,
   getOpeningWidth,
+  getCatalogError,
   getPassageMessage,
   getPlanStatus,
   getThumbnailClass

@@ -1,4 +1,4 @@
-import { resizeRoom } from "../data/index.ts";
+import { resizeRoom } from "../mock/index.ts";
 import { distance } from "../planning/index.ts";
 import type { Item, Project, Room, VoicePatch } from "../types/index.ts";
 

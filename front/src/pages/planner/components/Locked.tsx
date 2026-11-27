@@ -6,10 +6,11 @@ export type LockedProps = {
   unlock: (password: FormDataEntryValue | null) => void;
   error: string;
   busy: boolean;
+  cancel?: () => void;
 };
 
 export const Locked = (props: LockedProps) => {
-  const { error, busy } = props;
+  const { error, busy, cancel } = props;
   const { ignoreBrand, submit } = useLocked(props);
   return (
     <main className='w-[min(420px,_calc(100%_-_32px))] my-16.25 mx-auto'>
@@ -40,6 +41,11 @@ export const Locked = (props: LockedProps) => {
             {busy ? "Открываем…" : "Открыть проект"}
           </button>
         </form>
+        {cancel && (
+          <button className='btn' onClick={cancel} disabled={busy}>
+            Отмена импорта
+          </button>
+        )}
       </section>
     </main>
   );

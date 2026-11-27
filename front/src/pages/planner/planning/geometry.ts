@@ -182,10 +182,10 @@ const doorPolygons = (room: Room) => {
     .map((f) => [f.hinge, ...f.arc]);
 };
 
-const passage = (room: Room, boxes: Box[], minimum: number) => {
+const passage = (room: Room, boxes: Box[], minimum: number, checkOnly = false) => {
   const door = room.openings.find((o) => o.type === "door");
   if (!door) return { path: [], state: "no-door" };
-  if (door.width + 0.001 < minimum) return { path: [], state: "blocked" };
+  if (door.width < minimum) return { path: [], state: "blocked", location: "в дверном проёме" };
   const f = wallFeature(room.points, door);
   if (!f) return { path: [], state: "no-door" };
   const { w, d } = dimensions(room.points);
@@ -203,11 +203,11 @@ const passage = (room: Room, boxes: Box[], minimum: number) => {
     pointIn([x, y], room.points) &&
     room.points.every(
       (a, i) =>
-        segmentDistance([x, y], a, room.points[(i + 1) % room.points.length]) + 0.005 >= radius
+        segmentDistance([x, y], a, room.points[(i + 1) % room.points.length]) + 1e-12 >= radius
     ) &&
     boxes.every(
       ({ x: bx, y: by, w: bw, d: bd }) =>
-        Math.hypot(x - clamp(x, bx, bx + bw), y - clamp(y, by, by + bd)) + 0.005 >= radius
+        Math.hypot(x - clamp(x, bx, bx + bw), y - clamp(y, by, by + bd)) + 1e-12 >= radius
     );
   const cell = start.map((v) => Math.round(v / step));
   const candidateStarts = [
@@ -220,7 +220,7 @@ const passage = (room: Room, boxes: Box[], minimum: number) => {
   const first =
     free(start) &&
     candidateStarts.find(([x, y]) => grid[y]?.[x] === 0 && free([x * step, y * step]));
-  if (!first) return { path: [], state: "blocked" };
+  if (!first) return { path: [], state: "blocked", location: "у входа в комнату" };
   const queue: { x: number; y: number; parent: (typeof queue)[number] | null }[] = [
     { x: first[0], y: first[1], parent: null }
   ];
@@ -231,6 +231,7 @@ const passage = (room: Room, boxes: Box[], minimum: number) => {
     const current = queue[cursor];
     const point = [current.x * step, current.y * step];
     const score = distance(point, [w * 0.52, d * 0.52]);
+    if (checkOnly && score <= Math.max(0.55, minimum * 0.78)) return { path: [], state: "ok" };
     if (score < bestScore) {
       best = current;
       bestScore = score;
@@ -248,7 +249,12 @@ const passage = (room: Room, boxes: Box[], minimum: number) => {
       if (free([x * step, y * step])) queue.push({ x, y, parent: current });
     });
   }
-  if (bestScore > Math.max(0.55, minimum * 0.78)) return { path: [], state: "blocked" };
+  if (bestScore > Math.max(0.55, minimum * 0.78))
+    return {
+      path: [],
+      state: "blocked",
+      location: `у границы доступной зоны (x = ${round(best.x * step)} м, y = ${round(best.y * step)} м)`
+    };
   const path = [];
   for (let p: (typeof queue)[number] | null = best; p; p = p.parent)
     path.push([p.x * step, p.y * step]);
@@ -305,10 +311,22 @@ export const inspect = (
     placed.map((entry) => entry.box),
     minimum
   );
-  if (route.state === "blocked")
+  if (route.state === "blocked") {
+    const blocker = placed.find(
+      (entry) =>
+        passage(
+          room,
+          placed.filter((other) => other !== entry).map((other) => other.box),
+          minimum,
+          true
+        ).state === "ok"
+    );
+    const reason = blocker ? `мешает «${blocker.item.name}»` : route.location;
     warnings.push({
-      message: `Проход от двери к центру комнаты шириной ${Math.round(minimum * 100)} см не найден.`
+      id: blocker?.item.id,
+      message: `Проход шириной ${Math.round(minimum * 100)} см от двери к центру прерван: ${reason}.`
     });
+  }
   return { warnings, ...route };
 };
 
@@ -339,7 +357,7 @@ const preferred: Record<string, number[]>[] = [
   }
 ];
 
-export const arrange = (room: Room, items: Item[], variant: number) => {
+export const arrange = (room: Room, items: Item[], variant: number, minimum = 0.8) => {
   const { w, d } = dimensions(room.points);
   const doors = doorPolygons(room),
     positions: Positions = {};
@@ -349,8 +367,7 @@ export const arrange = (room: Room, items: Item[], variant: number) => {
   );
   ordered.forEach((item) => {
     const [fx, fy, rotation] = preferred[variant][item.kind] ?? preferred[variant].other;
-    let best: (typeof occupied)[number] | null = null,
-      bestScore = Infinity;
+    const candidates: ((typeof occupied)[number] & { score: number })[] = [];
     for (const r of [
       rotation,
       (rotation + 180) % 360,
@@ -364,7 +381,6 @@ export const arrange = (room: Room, items: Item[], variant: number) => {
       const step = Math.max(0.15, w / 36, d / 36);
       const test = (x: number, y: number) => {
         const score = Math.hypot(x - px, y - py) + (r === rotation ? 0 : 0.2);
-        if (score >= bestScore) return;
         const pos = { x: round(x), y: round(y), r };
         const box = bounds(item, pos);
         const access = clearance(item, pos, box);
@@ -383,17 +399,28 @@ export const arrange = (room: Room, items: Item[], variant: number) => {
             occupied.some((other) => overlap(access, other.box)))
         )
           return;
-        best = { pos, box, access };
-        bestScore = score;
+        candidates.push({ pos, box, access, score });
       };
       test(px, py);
+      test(w - size.w, py);
+      test(w - size.w, d - size.d);
+      for (let y = 0; y <= d - size.d; y += step) test(w - size.w, y);
+      test(px, d - size.d);
       for (let x = 0; x <= w - size.w + 0.001; x += step) {
+        test(x, d - size.d);
         for (let y = 0; y <= d - size.d + 0.001; y += step) test(x, y);
       }
     }
-    if (best) {
-      // The placement callback above sets best when it finds a fit.
-      const placement = best as (typeof occupied)[number];
+    candidates.sort((a, b) => a.score - b.score);
+    const boxes = occupied.map((entry) => entry.box);
+    const existingRoute = passage(room, boxes, minimum, true);
+    const placement =
+      existingRoute.state === "ok"
+        ? (candidates.find(
+            ({ box }) => passage(room, [...boxes, box], minimum, true).state === "ok"
+          ) ?? candidates[0])
+        : candidates[0];
+    if (placement) {
       positions[item.id] = placement.pos;
       occupied.push(placement);
     }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { readLocal } from "../data/index.ts";
-import { initialProject, positionsFor, visibleItems } from "../data/index.ts";
 import { applyVoicePatch, getItemLayoutUpdate, upsertItem } from "../helpers/index.ts";
+import type { readLocal } from "../mock/index.ts";
+import { initialProject, planItems, positionsFor, visibleItems } from "../mock/index.ts";
 import { area, arrange, clamp, dimensions, inspect, rect, variants } from "../planning/index.ts";
 import type {
   ARMode,
@@ -42,14 +42,23 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     protect,
     lock,
     unlock,
+    pendingProtection,
+    canCancelProtection,
+    cancelPending,
+    importPlain,
+    importEncrypted,
+    backup,
     resetPrivacyError
   } = useProjectStorage(initial, close, notify);
   const { items, mode, room, layouts, variant, passage } = project;
-  const allItems = useMemo(() => visibleItems({ items, mode }), [items, mode]);
-  const bought = useMemo(() => allItems.filter((item) => !item.owned), [allItems]);
+  const allItems = useMemo(() => planItems({ items, mode }), [items, mode]);
+  const bought = useMemo(
+    () => visibleItems({ items, mode }).filter((item) => !item.owned),
+    [items, mode]
+  );
   const positions = useMemo(
-    () => positionsFor({ items, mode, room, layouts, variant }),
-    [items, mode, room, layouts, variant]
+    () => positionsFor({ items, mode, room, layouts, variant, passage }),
+    [items, mode, room, layouts, variant, passage]
   );
   const inspection = useMemo(
     () => inspect(room, allItems, positions, passage),
@@ -68,7 +77,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       return;
     }
     if (name === "replan") {
-      const options = variants.map((_, i) => arrange(project.room, allItems, i));
+      const options = variants.map((_, i) => arrange(project.room, allItems, i, passage));
       const ranks = options.map(
         (option) => inspect(project.room, allItems, option, project.passage).warnings.length
       );
@@ -114,7 +123,11 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       ) ||
       room.points.length !== project.room.points.length ||
       JSON.stringify(room.openings) !== JSON.stringify(project.room.openings);
-    update({ room, passage, ...(geometryChanged ? { layouts: {} } : {}) });
+    update({
+      room,
+      passage,
+      ...(geometryChanged || passage !== project.passage ? { layouts: {} } : {})
+    });
     close();
     notify("Параметры комнаты сохранены.");
   };
@@ -133,7 +146,20 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       !old || (["w", "d", "access", "kind"] as const).some((key) => old[key] !== item[key]);
     update({
       items: upsertItem(project.items, item),
-      ...getItemLayoutUpdate(project, item, redraw)
+      ...(fromCatalog && item.mode === "office"
+        ? {
+            procurement: {
+              ...project.procurement,
+              reason: project.procurement.reason || item.offerReason || "",
+              offer: project.procurement.offer || item.url || ""
+            }
+          }
+        : {}),
+      ...getItemLayoutUpdate(
+        project,
+        item,
+        redraw && (item.kind !== "service" || Boolean(old && old.kind !== "service"))
+      )
     });
     if (!fromCatalog) close();
     notify(old ? "Изменения сохранены." : "Мебель добавлена в проект.");
@@ -180,12 +206,14 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   const { printImage, fileInput, importProject, exportData, chooseImportFile, exportCopy } =
     useProjectFiles({
       project,
-      readOnly: Boolean(locked),
+      readOnly: Boolean(locked) || pendingProtection,
       allItems,
       bought,
       positions,
       inspection,
-      change,
+      importPlain,
+      importEncrypted,
+      backup,
       clearSelection,
       close,
       openExport,
@@ -231,6 +259,9 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   return {
     project,
     locked,
+    pendingProtection,
+    canCancelProtection,
+    cancelPending,
     isProtected,
     privacyError,
     unlocking,

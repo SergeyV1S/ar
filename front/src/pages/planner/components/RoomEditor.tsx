@@ -1,6 +1,6 @@
 import { Button, Field, IconButton, Select } from "../../../shared/components/index.ts";
-import { checkLabel, sourceLabel } from "../data/index.ts";
 import { useRoomEditor } from "../hooks/index.ts";
+import { checkLabel, sourceLabel } from "../mock/index.ts";
 import type { RoomProps } from "../types/index.ts";
 import type { Action } from "../types/index.ts";
 import { Submit } from "./Submit.tsx";
@@ -136,7 +136,7 @@ export const RoomEditor = (props: RoomEditorProps) => {
                     type='number'
                     min='.2'
                     max='10'
-                    step='.01'
+                    step='.001'
                     value={opening.width}
                     onChange={changeWidth}
                     required

@@ -15,11 +15,82 @@ const isImportItem = (item: unknown): item is ImportItem =>
   isRecord(item) &&
   typeof item.id === "string" &&
   typeof item.name === "string" &&
-  hasLabel(types, item.kind) &&
-  numeric(item.w, 0.05, 20) &&
-  numeric(item.d, 0.05, 20) &&
-  numeric(item.h, 0.05, 20) &&
+  ((item.kind === "service" &&
+    item.owned === false &&
+    item.w === 0 &&
+    item.d === 0 &&
+    item.h === 0) ||
+    (hasLabel(types, item.kind) &&
+      numeric(item.w, 0.05, 20) &&
+      numeric(item.d, 0.05, 20) &&
+      numeric(item.h, 0.05, 20))) &&
+  (item.quantity === undefined ||
+    (Number.isSafeInteger(item.quantity) && numeric(item.quantity, 1, Number.MAX_SAFE_INTEGER))) &&
   (item.owned === true || (hasLabel(modes, item.mode) && numeric(item.price, 0, 1e9)));
+
+const normalizeItem = (item: ImportItem): Item => ({
+  id: item.id,
+  name: item.name.trim().slice(0, 100) || "Мебель",
+  kind: item.kind,
+  owned: item.owned === true,
+  mode: typeof item.mode === "string" ? item.mode : undefined,
+  w: item.w,
+  d: item.d,
+  h: item.h,
+  quantity: typeof item.quantity === "number" ? item.quantity : 1,
+  demo: item.demo === true,
+  offerReason: String(item.offerReason ?? "").slice(0, 1500),
+  price: numeric(item.price, 0, 1e9) ? item.price : 0,
+  cap: numeric(item.cap, 0, 1e9) ? item.cap : 0,
+  access: numeric(item.access, 0, 4) ? item.access : 0,
+  url: safeUrl(item.url),
+  material:
+    typeof item.material === "string" && materials.includes(item.material)
+      ? item.material
+      : "Другое",
+  seller: String(item.seller ?? "").slice(0, 120),
+  sku: String(item.sku ?? "").slice(0, 120),
+  details: String(item.details ?? "").slice(0, 500),
+  materials: Array.isArray(item.materials)
+    ? item.materials.filter(
+        (value: unknown): value is string => typeof value === "string" && materials.includes(value)
+      )
+    : undefined,
+  availability: String(item.availability ?? "").slice(0, 200),
+  source: hasLabel(sourceLabel, item.source) ? item.source : "import",
+  verified: item.verified === "checked" ? "checked" : "review",
+  illustration:
+    typeof item.illustration === "string" &&
+    ["table", "cabinet", "pouf"].includes(item.illustration)
+      ? item.illustration
+      : undefined,
+  photo:
+    typeof item.photo === "string" &&
+    /^data:image\/(png|jpeg|webp);base64,/i.test(item.photo) &&
+    item.photo.length <= 260000
+      ? item.photo
+      : undefined
+});
+
+export const parseOffers = (raw: unknown) => {
+  if (
+    !Array.isArray(raw) ||
+    !raw.every(isImportItem) ||
+    new Set(raw.map((item) => item.id)).size !== raw.length ||
+    !raw.every(
+      (item) =>
+        item.owned === false &&
+        item.demo === true &&
+        typeof item.seller === "string" &&
+        typeof item.availability === "string" &&
+        (item.mode !== "retail" ||
+          (item.seller === "Hoff" &&
+            new URL(safeUrl(item.url) || "about:blank").hostname === "hoff.ru"))
+    )
+  )
+    throw new Error("Файл демонстрационных предложений повреждён.");
+  return raw.map(normalizeItem);
+};
 
 export const validateImport = (input: unknown): Project => {
   const raw = record(input);
@@ -118,47 +189,7 @@ export const validateImport = (input: unknown): Project => {
         : materials[0],
     mode: hasLabel(modes, raw.mode) ? raw.mode : "retail",
     variant: typeof raw.variant === "number" && [0, 1, 2].includes(raw.variant) ? raw.variant : 0,
-    items: items.map((item) => ({
-      id: item.id,
-      name: item.name.trim().slice(0, 100) || "Мебель",
-      kind: item.kind,
-      owned: item.owned === true,
-      mode: typeof item.mode === "string" ? item.mode : undefined,
-      w: item.w,
-      d: item.d,
-      h: item.h,
-      price: numeric(item.price, 0, 1e9) ? item.price : 0,
-      cap: numeric(item.cap, 0, 1e9) ? item.cap : 0,
-      access: numeric(item.access, 0, 4) ? item.access : 0,
-      url: safeUrl(item.url),
-      material:
-        typeof item.material === "string" && materials.includes(item.material)
-          ? item.material
-          : "Другое",
-      seller: String(item.seller ?? "").slice(0, 120),
-      sku: String(item.sku ?? "").slice(0, 120),
-      details: String(item.details ?? "").slice(0, 500),
-      materials: Array.isArray(item.materials)
-        ? item.materials.filter(
-            (value: unknown): value is string =>
-              typeof value === "string" && materials.includes(value)
-          )
-        : undefined,
-      availability: String(item.availability ?? "").slice(0, 200),
-      source: hasLabel(sourceLabel, item.source) ? item.source : "import",
-      verified: item.verified === "checked" ? "checked" : "review",
-      illustration:
-        typeof item.illustration === "string" &&
-        ["table", "cabinet", "pouf"].includes(item.illustration)
-          ? item.illustration
-          : undefined,
-      photo:
-        typeof item.photo === "string" &&
-        /^data:image\/(png|jpeg|webp);base64,/i.test(item.photo) &&
-        item.photo.length <= 260000
-          ? item.photo
-          : undefined
-    })),
+    items: items.map(normalizeItem),
     layouts,
     procurement: Object.fromEntries(
       Object.keys(procurementFields).map((key) => [

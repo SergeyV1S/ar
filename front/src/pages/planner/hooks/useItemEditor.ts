@@ -67,6 +67,7 @@ export const useItemEditor = ({ item, project, owned, save, remove }: ItemEditor
       material,
       materials: material === item?.material ? item?.materials : undefined,
       access: readNumber(data, "access") / 100,
+      quantity: owned ? undefined : readNumber(data, "quantity"),
       price: readNumber(data, "price"),
       cap: readNumber(data, "cap"),
       seller: readText(data, "seller"),
