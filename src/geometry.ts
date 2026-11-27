@@ -1,20 +1,23 @@
+import type { Box, Inspection, Item, Opening, Point, Position, Positions, Room } from "./types.ts";
+
 export const variants = [
   { title: "Уютная гостиная", note: "Центр отдыха", style: "lounge" },
   { title: "Свободный центр", note: "Больше пространства", style: "space" },
   { title: "Зоны у стен", note: "Мебель по периметру", style: "walls" }
 ];
 
-export const rect = (w, d) => [
+export const rect = (w: number, d: number) => [
   [0, 0],
   [w, 0],
   [w, d],
   [0, d]
 ];
-export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-export const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-export const round = (value) => Math.round(value * 100) / 100;
+export const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+export const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+export const round = (value: number) => Math.round(value * 100) / 100;
 
-export function area(points) {
+export const area = (points: Point[]) => {
   return (
     Math.abs(
       points.reduce((sum, [x, y], i) => {
@@ -23,33 +26,34 @@ export function area(points) {
       }, 0)
     ) / 2
   );
-}
+};
 
-export function dimensions(points) {
+export const dimensions = (points: Point[]) => {
   const xs = points.map((p) => p[0]),
     ys = points.map((p) => p[1]);
   return { w: Math.max(...xs) - Math.min(...xs), d: Math.max(...ys) - Math.min(...ys) };
-}
+};
 
-export function normalize(points) {
+export const normalize = (points: Point[]) => {
   const left = Math.min(...points.map((p) => p[0]));
   const top = Math.min(...points.map((p) => p[1]));
   return points.map(([x, y]) => [round(x - left), round(y - top)]);
-}
+};
 
-function segmentDistance(p, a, b) {
+const segmentDistance = (p: Point, a: Point, b: Point) => {
   const dx = b[0] - a[0],
     dy = b[1] - a[1];
   const t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);
   return distance(p, [a[0] + dx * t, a[1] + dy * t]);
-}
+};
 
-function crosses(a, b, c, d) {
-  const turn = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+const crosses = (a: Point, b: Point, c: Point, d: Point) => {
+  const turn = (p: Point, q: Point, r: Point) =>
+    (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
   return turn(a, b, c) * turn(a, b, d) < -1e-10 && turn(c, d, a) * turn(c, d, b) < -1e-10;
-}
+};
 
-export function validPolygon(points) {
+export const validPolygon = (points: Point[]) => {
   if (points.length < 3 || points.length > 32 || area(points) < 0.45) return false;
   return points.every((a, i) => {
     const b = points[(i + 1) % points.length];
@@ -62,9 +66,9 @@ export function validPolygon(points) {
       })
     );
   });
-}
+};
 
-export function pointIn(p, poly) {
+export const pointIn = (p: Point, poly: Point[]) => {
   let inside = false;
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i],
@@ -77,40 +81,40 @@ export function pointIn(p, poly) {
       inside = !inside;
   }
   return inside;
-}
+};
 
-export function bounds(item, pos) {
+export const bounds = (item: Pick<Item, "w" | "d">, pos: Position) => {
   const swap = pos.r % 180 !== 0;
   return { x: pos.x, y: pos.y, w: swap ? item.d : item.w, d: swap ? item.w : item.d };
-}
+};
 
-export function corners({ x, y, w, d }) {
+export const corners = ({ x, y, w, d }: Box) => {
   return [
     [x, y],
     [x + w, y],
     [x + w, y + d],
     [x, y + d]
   ];
-}
+};
 
-function fits(box, room) {
+const fits = (box: Box, room: Point[]) => {
   const footprint = corners(box);
   if (!footprint.every((point) => pointIn(point, room))) return false;
   return footprint.every((a, i) =>
     room.every((b, j) => !crosses(a, footprint[(i + 1) % 4], b, room[(j + 1) % room.length]))
   );
-}
+};
 
-function overlap(a, b) {
+const overlap = (a: Box, b: Box) => {
   return (
     a.x < b.x + b.w - 0.005 &&
     a.x + a.w > b.x + 0.005 &&
     a.y < b.y + b.d - 0.005 &&
     a.y + a.d > b.y + 0.005
   );
-}
+};
 
-export function wallFeature(room, opening) {
+export const wallFeature = (room: Point[], opening: Opening) => {
   const a = room[opening.wall],
     b = room[(opening.wall + 1) % room.length];
   if (!a || !b) return null;
@@ -134,11 +138,11 @@ export function wallFeature(room, opening) {
     ];
   });
   return { start, end, hinge, inward, middle, arc };
-}
+};
 
-function rectVsPolygon(box, poly) {
+const rectVsPolygon = (box: Box, poly: Point[]) => {
   const footprint = corners(box);
-  const inBox = ([x, y]) =>
+  const inBox = ([x, y]: Point) =>
     x > box.x + 0.006 &&
     x < box.x + box.w - 0.006 &&
     y > box.y + 0.006 &&
@@ -150,26 +154,26 @@ function rectVsPolygon(box, poly) {
       poly.some((b, j) => crosses(a, footprint[(i + 1) % 4], b, poly[(j + 1) % poly.length]))
     )
   );
-}
+};
 
-function clearance(item, pos, box) {
+const clearance = (item: Item, pos: Position, box: Box) => {
   const depth = item.access || 0;
   if (!depth) return null;
   if (pos.r === 90) return { x: box.x - depth, y: box.y, w: depth, d: box.d };
   if (pos.r === 180) return { x: box.x, y: box.y - depth, w: box.w, d: depth };
   if (pos.r === 270) return { x: box.x + box.w, y: box.y, w: depth, d: box.d };
   return { x: box.x, y: box.y + box.d, w: box.w, d: depth };
-}
+};
 
-function doorPolygons(room) {
+const doorPolygons = (room: Room) => {
   return room.openings
     .filter((o) => o.type === "door")
     .map((o) => wallFeature(room.points, o))
-    .filter(Boolean)
+    .filter((feature) => feature !== null)
     .map((f) => [f.hinge, ...f.arc]);
-}
+};
 
-function passage(room, boxes, minimum) {
+const passage = (room: Room, boxes: Box[], minimum: number) => {
   const door = room.openings.find((o) => o.type === "door");
   if (!door) return { path: [], state: "no-door" };
   if (door.width + 0.001 < minimum) return { path: [], state: "blocked" };
@@ -186,7 +190,7 @@ function passage(room, boxes, minimum) {
     { length: Math.floor(d / step) + 1 },
     () => new Int8Array(Math.floor(w / step) + 1)
   );
-  const free = ([x, y]) =>
+  const free = ([x, y]: Point) =>
     pointIn([x, y], room.points) &&
     room.points.every(
       (a, i) =>
@@ -208,7 +212,9 @@ function passage(room, boxes, minimum) {
     free(start) &&
     candidateStarts.find(([x, y]) => grid[y]?.[x] === 0 && free([x * step, y * step]));
   if (!first) return { path: [], state: "blocked" };
-  const queue = [{ x: first[0], y: first[1], parent: null }];
+  const queue: { x: number; y: number; parent: (typeof queue)[number] | null }[] = [
+    { x: first[0], y: first[1], parent: null }
+  ];
   grid[first[1]][first[0]] = 1;
   let best = queue[0],
     bestScore = Infinity;
@@ -235,13 +241,19 @@ function passage(room, boxes, minimum) {
   }
   if (bestScore > Math.max(0.55, minimum * 0.78)) return { path: [], state: "blocked" };
   const path = [];
-  for (let p = best; p; p = p.parent) path.push([p.x * step, p.y * step]);
+  for (let p: (typeof queue)[number] | null = best; p; p = p.parent)
+    path.push([p.x * step, p.y * step]);
   path.push(start, f.middle);
   return { path: path.reverse(), state: "ok" };
-}
+};
 
-export function inspect(room, items, positions, minimum = 0.8) {
-  const warnings = [];
+export const inspect = (
+  room: Room,
+  items: Item[],
+  positions: Positions,
+  minimum = 0.8
+): Inspection => {
+  const warnings: Inspection["warnings"] = [];
   const doors = doorPolygons(room);
   const placed = items.flatMap((item) =>
     positions[item.id]
@@ -275,7 +287,7 @@ export function inspect(room, items, positions, minimum = 0.8) {
     ) {
       warnings.push({
         id: item.id,
-        message: `Для открывания «${item.name}» нужно ещё ${Math.round(item.access * 100)} см свободного пространства перед фасадом.`
+        message: `Для открывания «${item.name}» нужно ещё ${Math.round((item.access ?? 0) * 100)} см свободного пространства перед фасадом.`
       });
     }
   });
@@ -289,9 +301,9 @@ export function inspect(room, items, positions, minimum = 0.8) {
       message: `Проход от двери к центру комнаты шириной ${Math.round(minimum * 100)} см не найден.`
     });
   return { warnings, ...route };
-}
+};
 
-const preferred = [
+const preferred: Record<string, number[]>[] = [
   {
     sofa: [0.09, 0.56, 270],
     chair: [0.74, 0.16, 0],
@@ -318,17 +330,17 @@ const preferred = [
   }
 ];
 
-export function arrange(room, items, variant) {
+export const arrange = (room: Room, items: Item[], variant: number) => {
   const { w, d } = dimensions(room.points);
   const doors = doorPolygons(room),
-    positions = {};
-  const occupied = [];
+    positions: Positions = {};
+  const occupied: { pos: Position; box: Box; access: Box | null }[] = [];
   const ordered = [...items].sort(
     (a, b) => Number(b.owned) - Number(a.owned) || b.w * b.d - a.w * a.d
   );
   ordered.forEach((item) => {
     const [fx, fy, rotation] = preferred[variant][item.kind] ?? preferred[variant].other;
-    let best = null,
+    let best: (typeof occupied)[number] | null = null,
       bestScore = Infinity;
     for (const r of [
       rotation,
@@ -341,7 +353,7 @@ export function arrange(room, items, variant) {
       const px = clamp(fx * w - size.w / 2, 0.055, Math.max(0, w - size.w - 0.055));
       const py = clamp(fy * d - size.d / 2, 0.055, Math.max(0, d - size.d - 0.055));
       const step = Math.max(0.15, w / 36, d / 36);
-      const test = (x, y) => {
+      const test = (x: number, y: number) => {
         const score = Math.hypot(x - px, y - py) + (r === rotation ? 0 : 0.2);
         if (score >= bestScore) return;
         const pos = { x: round(x), y: round(y), r };
@@ -371,9 +383,11 @@ export function arrange(room, items, variant) {
       }
     }
     if (best) {
-      positions[item.id] = best.pos;
-      occupied.push(best);
+      // The placement callback above sets best when it finds a fit.
+      const placement = best as (typeof occupied)[number];
+      positions[item.id] = placement.pos;
+      occupied.push(placement);
     }
   });
   return positions;
-}
+};

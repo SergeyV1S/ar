@@ -1,4 +1,5 @@
-import { arrange, dimensions, normalize, rect, round, validPolygon } from "./geometry.js";
+import { arrange, dimensions, normalize, rect, round, validPolygon } from "./geometry.ts";
+import type { EncryptedRecord, Item, Project, Protection, Room, VoicePatch } from "./types.ts";
 
 export const materials = [
   "Любой материал",
@@ -11,12 +12,12 @@ export const materials = [
   "Стекло",
   "Другое"
 ];
-export const modes = {
+export const modes: Record<string, string> = {
   retail: "Новая покупка",
   used: "Б/у объявления",
   office: "Служебная закупка"
 };
-export const types = {
+export const types: Record<string, string> = {
   sofa: "Диван",
   chair: "Кресло",
   table: "Стол",
@@ -24,7 +25,7 @@ export const types = {
   pouf: "Пуф",
   other: "Другая мебель"
 };
-export const sourceLabel = {
+export const sourceLabel: Record<string, string> = {
   manual: "Ручной ввод",
   xr: "AR-обмер",
   photo: "Разметка по фото",
@@ -32,8 +33,11 @@ export const sourceLabel = {
   catalog: "Каталог магазина",
   import: "Импорт"
 };
-export const checkLabel = { checked: "Проверено", review: "Требует проверки" };
-export const procurementFields = {
+export const checkLabel: Record<string, string> = {
+  checked: "Проверено",
+  review: "Требует проверки"
+};
+export const procurementFields: Record<string, string> = {
   purpose: "Назначение помещения",
   person: "Ответственный",
   article: "Статья бюджета",
@@ -41,7 +45,7 @@ export const procurementFields = {
   offer: "Ссылка на коммерческое предложение"
 };
 
-export const catalog = [
+export const catalog: Item[] = [
   {
     id: "table",
     name: "Журнальный стол Дуэт",
@@ -96,7 +100,7 @@ export const catalog = [
   illustration: item.kind
 }));
 
-export function initialProject() {
+export const initialProject = (): Project => {
   return {
     version: 1,
     room: {
@@ -145,45 +149,48 @@ export function initialProject() {
     layouts: {},
     procurement: {}
   };
-}
+};
 
-export const visibleItems = (project) =>
+export const visibleItems = (project: Project) =>
   project.items.filter((item) => item.owned || item.mode === project.mode);
-export const positionsFor = (project, variant = project.variant) =>
+export const positionsFor = (project: Project, variant = project.variant) =>
   project.layouts[project.mode]?.[variant] ?? arrange(project.room, visibleItems(project), variant);
 export const newId = () =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-export const money = (value) => `${Number(value).toLocaleString("ru-RU")} ₽`;
-export const decimal = (value, digits = 1) =>
+export const money = (value: number | string | undefined) =>
+  `${Number(value).toLocaleString("ru-RU")} ₽`;
+export const decimal = (value: number | string, digits = 1) =>
   Number(value).toLocaleString("ru-RU", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits
   });
-export const meters = (value, digits = 2) => `${decimal(value, digits)} м`;
-export const centimeters = (value) => Math.round(value * 100);
-export const itemSize = (item) => `${centimeters(item.w)} × ${centimeters(item.d)} см`;
+export const meters = (value: number | string, digits = 2) => `${decimal(value, digits)} м`;
+export const centimeters = (value: number) => Math.round(value * 100);
+export const itemSize = (item: Pick<Item, "w" | "d">) =>
+  `${centimeters(item.w)} × ${centimeters(item.d)} см`;
 
-export function safeUrl(value) {
+export const safeUrl = (value: unknown) => {
   try {
-    const parsed = new URL(value);
+    const parsed = new URL(String(value));
     return ["https:", "http:"].includes(parsed.protocol) ? parsed.href : "";
   } catch {
     return "";
   }
-}
+};
 
-export function purchaseIssues(project, item) {
+export const purchaseIssues = (project: Project, item: Item) => {
   const problems = [];
-  if (item.cap > 0 && item.price > item.cap) problems.push("Выше лимита позиции");
+  if ((item.cap ?? 0) > 0 && (item.price ?? 0) > (item.cap ?? 0))
+    problems.push("Выше лимита позиции");
   if (
     project.material !== materials[0] &&
     !(item.materials ?? [item.material]).includes(project.material)
   )
     problems.push("Другой материал");
   return problems;
-}
+};
 
-export function procurementMissing(project) {
+export const procurementMissing = (project: Project) => {
   const projectFields = Object.entries(procurementFields)
     .filter(
       ([key]) =>
@@ -195,62 +202,70 @@ export function procurementMissing(project) {
     .filter((item) => !item.owned && (!item.seller || !item.details))
     .map((item) => `${item.name} — поставщик и реквизиты`);
   return [...projectFields, ...supplierFields];
-}
+};
 
-export function validateImport(raw) {
-  const fail = () => {
-    throw new Error("Это не похоже на файл проекта Метрики.");
-  };
-  const numeric = (value, min, max) =>
-    typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+const record = (value: unknown) => (isRecord(value) ? value : {});
+const numeric = (value: unknown, min: number, max: number): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
+const hasLabel = (labels: Record<string, string>, value: unknown): value is string =>
+  typeof value === "string" && Object.hasOwn(labels, value);
+const isPoint = (value: unknown): value is number[] =>
+  Array.isArray(value) && value.length === 2 && value.every((v: unknown) => numeric(v, -35, 35));
+type ImportItem = Record<string, unknown> & Pick<Item, "id" | "name" | "kind" | "w" | "d" | "h">;
+const isImportItem = (item: unknown): item is ImportItem =>
+  isRecord(item) &&
+  typeof item.id === "string" &&
+  typeof item.name === "string" &&
+  hasLabel(types, item.kind) &&
+  numeric(item.w, 0.05, 20) &&
+  numeric(item.d, 0.05, 20) &&
+  numeric(item.h, 0.05, 20) &&
+  (item.owned === true || (hasLabel(modes, item.mode) && numeric(item.price, 0, 1e9)));
+
+export const validateImport = (input: unknown): Project => {
+  const raw = record(input);
+  const room = record(raw.room);
+  const items: unknown[] = Array.isArray(raw.items) ? raw.items : [];
+  const rawPoints: unknown[] = Array.isArray(room.points) ? room.points : [];
   if (
-    !raw ||
     raw.version !== 1 ||
-    typeof raw.room?.name !== "string" ||
-    !Array.isArray(raw.room.points) ||
-    raw.room.points.length > 32 ||
-    !raw.room.points.every(
-      (p) => Array.isArray(p) && p.length === 2 && p.every((v) => numeric(v, -35, 35))
-    ) ||
-    !validPolygon(raw.room.points) ||
+    typeof room.name !== "string" ||
+    !Array.isArray(room.points) ||
+    rawPoints.length > 32 ||
+    !rawPoints.every(isPoint) ||
+    !validPolygon(rawPoints) ||
     !Array.isArray(raw.items) ||
-    raw.items.length > 60 ||
-    !raw.items.every(
-      (item) =>
-        item &&
-        typeof item.id === "string" &&
-        typeof item.name === "string" &&
-        Object.hasOwn(types, item.kind) &&
-        [item.w, item.d, item.h].every((v) => numeric(v, 0.05, 20)) &&
-        (item.owned === true || (Object.hasOwn(modes, item.mode) && numeric(item.price, 0, 1e9)))
-    )
+    items.length > 60 ||
+    !items.every(isImportItem)
   )
-    fail();
-  const points = normalize(raw.room.points),
+    throw new Error("Это не похоже на файл проекта Метрики.");
+  const points = normalize(rawPoints),
     extent = dimensions(points);
   if (
     extent.w > 35 ||
     extent.d > 35 ||
     !validPolygon(points) ||
-    new Set(raw.items.map((item) => item.id)).size !== raw.items.length
+    new Set(items.map((item) => item.id)).size !== items.length
   )
-    fail();
+    throw new Error("Это не похоже на файл проекта Метрики.");
   const layouts = Object.fromEntries(
     Object.keys(modes).map((mode) => [
       mode,
       Object.fromEntries(
         [0, 1, 2].flatMap((index) => {
-          const layout = raw.layouts?.[mode]?.[index];
-          if (!layout || typeof layout !== "object") return [];
+          const layout = record(record(raw.layouts)[mode])[index];
+          if (!isRecord(layout)) return [];
           return [
             [
               index,
               Object.fromEntries(
-                raw.items.flatMap(({ id }) => {
-                  const position = layout[id];
-                  return position &&
-                    numeric(position.x, -35, 35) &&
+                items.flatMap(({ id }) => {
+                  const position = record(layout[id]);
+                  return numeric(position.x, -35, 35) &&
                     numeric(position.y, -35, 35) &&
+                    typeof position.r === "number" &&
                     [0, 90, 180, 270].includes(position.r)
                     ? [[id, { x: position.x, y: position.y, r: position.r }]]
                     : [];
@@ -262,46 +277,56 @@ export function validateImport(raw) {
       )
     ])
   );
+  const openings: unknown[] = Array.isArray(room.openings) ? room.openings : [];
   return {
     version: 1,
     room: {
-      name: raw.room.name.trim().slice(0, 80) || "Комната",
+      name: room.name.trim().slice(0, 80) || "Комната",
       points,
-      source: Object.hasOwn(sourceLabel, raw.room.source) ? raw.room.source : "import",
-      verified: raw.room.verified === "checked" ? "checked" : "review",
-      openings: Array.isArray(raw.room.openings)
-        ? raw.room.openings
-            .filter(
-              (o) =>
-                o &&
-                ["door", "window", "socket"].includes(o.type) &&
-                Number.isInteger(o.wall) &&
-                numeric(o.wall, 0, points.length - 1) &&
-                numeric(o.offset, 0, 35) &&
-                numeric(o.width, 0.01, 35)
-            )
-            .slice(0, 40)
-            .map((o) => ({
-              id: newId(),
-              wall: o.wall,
-              offset: o.offset,
-              width: o.width,
-              type: o.type,
-              hinge: o.hinge === "end" ? "end" : "start"
-            }))
-        : []
+      source: hasLabel(sourceLabel, room.source) ? room.source : "import",
+      verified: room.verified === "checked" ? "checked" : "review",
+      openings: openings
+        .filter(
+          (
+            o
+          ): o is Record<string, unknown> & {
+            type: string;
+            wall: number;
+            offset: number;
+            width: number;
+          } =>
+            isRecord(o) &&
+            typeof o.type === "string" &&
+            ["door", "window", "socket"].includes(o.type) &&
+            Number.isInteger(o.wall) &&
+            numeric(o.wall, 0, points.length - 1) &&
+            numeric(o.offset, 0, 35) &&
+            numeric(o.width, 0.01, 35)
+        )
+        .slice(0, 40)
+        .map((o) => ({
+          id: newId(),
+          wall: o.wall,
+          offset: o.offset,
+          width: o.width,
+          type: o.type,
+          hinge: o.hinge === "end" ? "end" : "start"
+        }))
     },
     budget: numeric(raw.budget, 0, 1e9) ? raw.budget : 80000,
     passage: numeric(raw.passage, 0.45, 2) ? raw.passage : 0.8,
-    material: materials.includes(raw.material) ? raw.material : materials[0],
-    mode: Object.hasOwn(modes, raw.mode) ? raw.mode : "retail",
-    variant: [0, 1, 2].includes(raw.variant) ? raw.variant : 0,
-    items: raw.items.map((item) => ({
+    material:
+      typeof raw.material === "string" && materials.includes(raw.material)
+        ? raw.material
+        : materials[0],
+    mode: hasLabel(modes, raw.mode) ? raw.mode : "retail",
+    variant: typeof raw.variant === "number" && [0, 1, 2].includes(raw.variant) ? raw.variant : 0,
+    items: items.map((item) => ({
       id: item.id,
       name: item.name.trim().slice(0, 100) || "Мебель",
       kind: item.kind,
       owned: item.owned === true,
-      mode: item.mode,
+      mode: typeof item.mode === "string" ? item.mode : undefined,
       w: item.w,
       d: item.d,
       h: item.h,
@@ -309,19 +334,27 @@ export function validateImport(raw) {
       cap: numeric(item.cap, 0, 1e9) ? item.cap : 0,
       access: numeric(item.access, 0, 4) ? item.access : 0,
       url: safeUrl(item.url),
-      material: materials.includes(item.material) ? item.material : "Другое",
+      material:
+        typeof item.material === "string" && materials.includes(item.material)
+          ? item.material
+          : "Другое",
       seller: String(item.seller ?? "").slice(0, 120),
       sku: String(item.sku ?? "").slice(0, 120),
       details: String(item.details ?? "").slice(0, 500),
       materials: Array.isArray(item.materials)
-        ? item.materials.filter((value) => materials.includes(value))
+        ? item.materials.filter(
+            (value: unknown): value is string =>
+              typeof value === "string" && materials.includes(value)
+          )
         : undefined,
       availability: String(item.availability ?? "").slice(0, 200),
-      source: Object.hasOwn(sourceLabel, item.source) ? item.source : "import",
+      source: hasLabel(sourceLabel, item.source) ? item.source : "import",
       verified: item.verified === "checked" ? "checked" : "review",
-      illustration: ["table", "cabinet", "pouf"].includes(item.illustration)
-        ? item.illustration
-        : undefined,
+      illustration:
+        typeof item.illustration === "string" &&
+        ["table", "cabinet", "pouf"].includes(item.illustration)
+          ? item.illustration
+          : undefined,
       photo:
         typeof item.photo === "string" &&
         /^data:image\/(png|jpeg|webp);base64,/i.test(item.photo) &&
@@ -333,14 +366,14 @@ export function validateImport(raw) {
     procurement: Object.fromEntries(
       Object.keys(procurementFields).map((key) => [
         key,
-        String(raw.procurement?.[key] ?? "").slice(0, 1500)
+        String(record(raw.procurement)[key] ?? "").slice(0, 1500)
       ])
     )
   };
-}
+};
 
-export function parseVoice(phrase, project) {
-  const words = {
+export const parseVoice = (phrase: string, project: Project) => {
+  const words: Record<string, number> = {
     ноль: 0,
     один: 1,
     одна: 1,
@@ -366,11 +399,11 @@ export function parseVoice(phrase, project) {
   };
   const input = phrase
     .toLowerCase()
-    .replace(/[а-яё]+/g, (word) => (Object.hasOwn(words, word) ? words[word] : word))
+    .replace(/[а-яё]+/g, (word) => (Object.hasOwn(words, word) ? String(words[word]) : word))
     .replace(/,/g, (mark, i, str) =>
       /\d/.test(str[i - 1] ?? "") && /\d/.test(str[i + 1] ?? "") ? "." : mark
     );
-  const patch = {},
+  const patch: VoicePatch = {},
     notes = [];
   const size = input.match(
     /(?:комнат[ауы]|габарит[ы]?|размер[ы]?)\s*(\d+(?:\.\d+)?)\s*(?:на|[xх×*])\s*(\d+(?:\.\d+)?)/
@@ -397,7 +430,7 @@ export function parseVoice(phrase, project) {
   );
   if (sofa) {
     const old = project.items.find((item) => item.owned && item.kind === "sofa");
-    const dimension = (value, unit) =>
+    const dimension = (value: string, unit?: string) =>
       Number(value) / (unit?.startsWith("с") || Number(value) > 20 ? 100 : 1);
     const w = dimension(sofa[1], sofa[2]),
       d = sofa[3] ? dimension(sofa[3], sofa[4]) : (old?.d ?? 0.9);
@@ -427,22 +460,23 @@ export function parseVoice(phrase, project) {
   if (/б\s*\/\s*у|авито|объявлени/.test(input)) patch.mode = "used";
   if (patch.mode) notes.push(modes[patch.mode]);
   return { patch, notes };
-}
+};
 
-export function resizeRoom(room, width, depth) {
+export const resizeRoom = (room: Room, width: number, depth: number) => {
   const old = dimensions(room.points);
   const points = room.points.map(([x, y]) => [
     round((x * width) / old.w),
     round((y * depth) / old.d)
   ]);
   return { ...room, points };
-}
+};
 
 const storageKey = "metrika-project-v1";
-const to64 = (data) => btoa(Array.from(data, (byte) => String.fromCharCode(byte)).join(""));
-const from64 = (input) => Uint8Array.from(atob(input), (char) => char.charCodeAt(0));
+const to64 = (data: Uint8Array<ArrayBuffer>) =>
+  btoa(Array.from(data, (byte) => String.fromCharCode(byte)).join(""));
+const from64 = (input: string) => Uint8Array.from(atob(input), (char) => char.charCodeAt(0));
 
-async function keyFor(password, salt) {
+const keyFor = async (password: string, salt: Uint8Array<ArrayBuffer>) => {
   const base = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -457,24 +491,36 @@ async function keyFor(password, salt) {
     false,
     ["encrypt", "decrypt"]
   );
-}
+};
 
-export function readLocal() {
+export const readLocal = (): {
+  project?: Project;
+  locked?: EncryptedRecord;
+  unreadable?: boolean;
+} => {
   try {
-    const raw = JSON.parse(localStorage.getItem(storageKey) ?? "null");
-    if (raw?.encrypted) return { locked: raw };
+    const raw: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
+    if (isRecord(raw) && raw.encrypted) {
+      if (
+        typeof raw.salt !== "string" ||
+        typeof raw.iv !== "string" ||
+        typeof raw.body !== "string"
+      )
+        throw new Error("Повреждён зашифрованный проект.");
+      return { locked: { encrypted: true, salt: raw.salt, iv: raw.iv, body: raw.body } };
+    }
     return { project: raw ? validateImport(raw) : initialProject() };
   } catch {
     return { project: initialProject(), unreadable: true };
   }
-}
+};
 
-export async function newProtection(password) {
+export const newProtection = async (password: string) => {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return { salt, key: await keyFor(password, salt) };
-}
+};
 
-export async function unlockLocal(record, password) {
+export const unlockLocal = async (record: EncryptedRecord, password: string) => {
   const salt = from64(record.salt),
     key = await keyFor(password, salt);
   const text = await crypto.subtle.decrypt(
@@ -486,9 +532,9 @@ export async function unlockLocal(record, password) {
     protection: { key, salt },
     project: validateImport(JSON.parse(new TextDecoder().decode(text)))
   };
-}
+};
 
-export async function writeLocal(project, protection) {
+export const writeLocal = async (project: Project, protection: Protection | null) => {
   if (!protection) {
     localStorage.setItem(storageKey, JSON.stringify(project));
     return;
@@ -508,4 +554,4 @@ export async function writeLocal(project, protection) {
       body: to64(new Uint8Array(body))
     })
   );
-}
+};

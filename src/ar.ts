@@ -1,9 +1,19 @@
-import { newId } from "./data.js";
-import { bounds, clamp, dimensions, distance, normalize, round, validPolygon } from "./geometry.js";
+import { newId } from "./data.ts";
+import { bounds, clamp, dimensions, distance, normalize, round, validPolygon } from "./geometry.ts";
+import type {
+  ARMode,
+  Item,
+  Opening,
+  Point,
+  Positions,
+  ScanFeature,
+  ScanResult,
+  XRState
+} from "./types.ts";
 
 export const arHelp = "Для AR откройте сайт по HTTPS в Chrome на Android с поддержкой ARCore.";
 
-export async function supportsAR() {
+export const supportsAR = async () => {
   try {
     return Boolean(
       globalThis.isSecureContext &&
@@ -13,9 +23,9 @@ export async function supportsAR() {
   } catch {
     return false;
   }
-}
+};
 
-const colors = {
+const colors: Record<string, string> = {
   sofa: "#d7c6af",
   chair: "#a6b18e",
   table: "#c89567",
@@ -23,19 +33,27 @@ const colors = {
   pouf: "#d5c2e5",
   other: "#b6a5cf"
 };
-const decode = (color) =>
+const decode = (color: string) =>
   [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16) / 255);
 
-function mesh() {
-  const output = [];
-  const tri = (a, b, c, color, shade = 1) => {
+const mesh = () => {
+  const output: number[] = [];
+  const tri = (a: Point, b: Point, c: Point, color: Point, shade = 1) => {
     for (const p of [a, b, c]) output.push(...p, ...color.map((component) => component * shade));
   };
-  const face = (a, b, c, d, color, shade) => {
+  const face = (a: Point, b: Point, c: Point, d: Point, color: Point, shade: number) => {
     tri(a, b, c, color, shade);
     tri(a, c, d, color, shade);
   };
-  const box = (x, y, z, width, height, depth, color) => {
+  const box = (
+    x: number,
+    y: number,
+    z: number,
+    width: number,
+    height: number,
+    depth: number,
+    color: Point
+  ) => {
     const a = [x, y, z],
       b = [x + width, y, z],
       c = [x + width, y, z + depth],
@@ -48,11 +66,24 @@ function mesh() {
     face(d, a, e, h, color, 0.77);
     face(a, d, c, b, color, 0.62);
   };
-  const cylinder = (x, y, z, rx, rz, height, color, steps = 28) => {
+  const cylinder = (
+    x: number,
+    y: number,
+    z: number,
+    rx: number,
+    rz: number,
+    height: number,
+    color: Point,
+    steps = 28
+  ) => {
     for (let i = 0; i < steps; i++) {
       const angle = (i * 2 * Math.PI) / steps,
         next = ((i + 1) * 2 * Math.PI) / steps;
-      const point = (a, lift) => [x + rx * Math.cos(a), y + lift, z + rz * Math.sin(a)];
+      const point = (a: number, lift: number) => [
+        x + rx * Math.cos(a),
+        y + lift,
+        z + rz * Math.sin(a)
+      ];
       tri([x, y + height, z], point(angle, height), point(next, height), color);
       face(
         point(angle, 0),
@@ -65,10 +96,10 @@ function mesh() {
     }
   };
   return { output, tri, box, cylinder };
-}
+};
 
-function furnitureMesh(items, positions) {
-  const output = [];
+const furnitureMesh = (items: Item[], positions: Positions) => {
+  const output: number[] = [];
   for (const item of items) {
     const pos = positions[item.id];
     if (!pos) continue;
@@ -142,11 +173,12 @@ function furnitureMesh(items, positions) {
     }
   }
   return output;
-}
+};
 
-function setupRenderer(gl) {
-  const compile = (kind, source) => {
+const setupRenderer = (gl: WebGLRenderingContext) => {
+  const compile = (kind: number, source: string) => {
     const shader = gl.createShader(kind);
+    if (!shader) throw new Error("Не удалось создать шейдер.");
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
@@ -154,6 +186,7 @@ function setupRenderer(gl) {
     return shader;
   };
   const program = gl.createProgram();
+  if (!program) throw new Error("Не удалось создать 3D-программу.");
   gl.attachShader(
     program,
     compile(
@@ -202,25 +235,25 @@ function setupRenderer(gl) {
     sine = gl.getUniformLocation(program, "sine");
   gl.enable(gl.DEPTH_TEST);
   return {
-    view(view) {
+    view(view: XRView) {
       gl.uniformMatrix4fv(projection, false, view.projectionMatrix);
       gl.uniformMatrix4fv(camera, false, view.transform.inverse.matrix);
     },
-    draw(vertices, origin = [0, 0, 0], orientation = 0) {
+    draw(vertices: number[], origin: Point = [0, 0, 0], orientation = 0) {
       if (!vertices.length) return;
-      gl.uniform4f(frame, ...origin, Math.cos(orientation));
+      gl.uniform4f(frame, origin[0], origin[1], origin[2], Math.cos(orientation));
       gl.uniform1f(sine, Math.sin(orientation));
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
       gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 6);
     }
   };
-}
+};
 
-function mark(m, [x, y, z], color, radius = 0.035) {
+const mark = (m: ReturnType<typeof mesh>, [x, y, z]: Point, color: Point, radius = 0.035) => {
   m.cylinder(x, y + 0.012, z, radius, radius, 0.01, color, 18);
-}
+};
 
-function stroke(m, a, b, color, width = 0.013) {
+const stroke = (m: ReturnType<typeof mesh>, a: Point, b: Point, color: Point, width = 0.013) => {
   const length = Math.hypot(b[0] - a[0], b[2] - a[2]);
   if (length < 0.001) return;
   const dx = ((b[2] - a[2]) * width) / length,
@@ -231,15 +264,15 @@ function stroke(m, a, b, color, width = 0.013) {
     s = [b[0] - dx, b[1] + 0.018, b[2] - dz];
   m.tri(p, q, r, color);
   m.tri(r, q, s, color);
-}
+};
 
-export function analyzeAR(corners, features) {
+export const analyzeAR = (corners: Point[], features: ScanFeature[]) => {
   if (corners.length < 3) return null;
   const [a, b] = corners;
   const angle = Math.atan2(b[2] - a[2], b[0] - a[0]),
     cos = Math.cos(angle),
     sin = Math.sin(angle);
-  const toRoom = ([x, , z]) => [
+  const toRoom = ([x, , z]: Point) => [
     (x - a[0]) * cos + (z - a[2]) * sin,
     -(x - a[0]) * sin + (z - a[2]) * cos
   ];
@@ -248,7 +281,7 @@ export function analyzeAR(corners, features) {
   const extent = dimensions(points);
   if (extent.w < 0.7 || extent.d < 0.7 || extent.w > 35 || extent.d > 35 || !validPolygon(points))
     return null;
-  const nearest = (p, wall) => {
+  const nearest = (p: Point, wall: number) => {
     const q = raw[wall],
       r = raw[(wall + 1) % raw.length],
       length = distance(q, r);
@@ -266,7 +299,7 @@ export function analyzeAR(corners, features) {
       length
     };
   };
-  const openings = [];
+  const openings: Opening[] = [];
   let skipped = 0;
   for (const feature of features) {
     const targets = feature.points.map(toRoom);
@@ -297,16 +330,32 @@ export function analyzeAR(corners, features) {
     });
   }
   return { points, openings, skipped };
-}
+};
 
-export async function startAR({ mode, overlay, items, positions, onState, onScan, onEnd }) {
+export const startAR = async ({
+  mode,
+  overlay,
+  items,
+  positions,
+  onState,
+  onScan,
+  onEnd
+}: {
+  mode: ARMode;
+  overlay: HTMLDivElement;
+  items: Item[];
+  positions: Positions;
+  onState: (state: XRState) => void;
+  onScan: (result: ScanResult) => void;
+  onEnd: () => void;
+}) => {
   if (!globalThis.isSecureContext || !navigator.xr) throw new Error(arHelp);
   const session = await navigator.xr.requestSession("immersive-ar", {
     requiredFeatures: ["hit-test", "dom-overlay"],
     domOverlay: { root: overlay }
   });
   const canvas = document.createElement("canvas");
-  let hitSource;
+  let hitSource: XRHitTestSource | undefined;
   try {
     const gl = canvas.getContext("webgl", { xrCompatible: true, alpha: true, antialias: true });
     if (!gl) throw new Error("WebGL недоступен на этом устройстве.");
@@ -316,17 +365,19 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
       session.requestReferenceSpace("viewer"),
       session.requestReferenceSpace("local")
     ]);
-    hitSource = await session.requestHitTestSource({ space: viewer });
+    const source = await session.requestHitTestSource?.({ space: viewer });
+    if (!source) throw new Error(arHelp);
+    hitSource = source;
     const renderer = setupRenderer(gl);
     const model = furnitureMesh(items, positions);
-    let hit = null,
-      origin = null,
-      orientation = null,
+    let hit: Point | null = null,
+      origin: Point | null = null,
+      orientation: number | null = null,
       ended = false,
       kind = "corner";
-    const corners = [],
-      features = [],
-      pending = [];
+    const corners: Point[] = [],
+      features: ScanFeature[] = [],
+      pending: Point[] = [];
     const firstText = "Наведите телефон на пол и медленно подвигайте им, пока не появится отметка.";
     const accent = decode("#9b67ff"),
       green = decode("#67d6a2"),
@@ -356,7 +407,7 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
       });
     };
 
-    function collect() {
+    const collect = () => {
       if (!hit) {
         help("Поверхность пока не найдена. Медленно перемещайте камеру.");
         return;
@@ -386,9 +437,9 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
           features.push({ type: kind, points: pending.splice(0) });
       }
       help();
-    }
+    };
 
-    const click = (event) => {
+    const click = (event: Event) => {
       event.preventDefault();
     };
     overlay.addEventListener("beforexrselect", click);
@@ -397,7 +448,7 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
       "end",
       () => {
         ended = true;
-        hitSource.cancel();
+        hitSource?.cancel();
         overlay.removeEventListener("beforexrselect", click);
         gl.getExtension("WEBGL_lose_context")?.loseContext();
         onEnd();
@@ -406,13 +457,13 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
     );
     help();
 
-    function frameLoop(time, frame) {
+    const frameLoop = (_time: number, frame: XRFrame) => {
       if (ended) return;
       session.requestAnimationFrame(frameLoop);
       const pose = frame.getViewerPose(space),
         layer = session.renderState.baseLayer;
       const hitPose = frame
-        .getHitTestResults(hitSource)
+        .getHitTestResults(source)
         .map((result) => result.getPose(space))
         .find((candidate) => {
           if (!candidate) return false;
@@ -427,17 +478,18 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
       const p = hitPose?.transform.position;
       hit = p ? [p.x, p.y, p.z] : null;
       if (wasReady !== !!hit) help();
-      if (!pose) return;
+      if (!pose || !layer) return;
       const g = mesh();
       if (hit && orientation === null) mark(g, hit, green, 0.045);
       corners.forEach((point, i) => {
         mark(g, point, accent);
         if (i > 0) stroke(g, corners[i - 1], point, accent);
       });
-      if (corners.length > 2) stroke(g, corners.at(-1), corners[0], decode("#a992df"), 0.007);
+      if (corners.length > 2)
+        stroke(g, corners[corners.length - 1], corners[0], decode("#a992df"), 0.007);
       for (const feature of features) {
         feature.points.forEach((point) => mark(g, point, yellow, 0.034));
-        if (feature.points.length > 1) stroke(g, ...feature.points, yellow);
+        if (feature.points.length > 1) stroke(g, feature.points[0], feature.points[1], yellow);
       }
       pending.forEach((point) => mark(g, point, yellow));
       if (origin) {
@@ -449,18 +501,19 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       for (const view of pose.views) {
         const viewport = layer.getViewport(view);
+        if (!viewport) continue;
         gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
         renderer.view(view);
         renderer.draw(g.output);
-        if (orientation !== null) renderer.draw(model, origin, orientation);
+        if (orientation !== null) renderer.draw(model, origin ?? [0, 0, 0], orientation);
       }
-    }
+    };
     session.requestAnimationFrame(frameLoop);
     return {
       collect,
       exit: () => session.end(),
-      kind(next) {
-        kind = next;
+      kind(next?: string) {
+        kind = next ?? "corner";
         pending.length = 0;
         help();
       },
@@ -492,4 +545,6 @@ export async function startAR({ mode, overlay, items, positions, onState, onScan
     await session.end().catch(() => {});
     throw error;
   }
-}
+};
+
+export type ARController = Awaited<ReturnType<typeof startAR>>;

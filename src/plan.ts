@@ -1,9 +1,25 @@
-import { decimal } from "./data.js";
-import { bounds, corners, dimensions, wallFeature } from "./geometry.js";
+import { decimal } from "./data.ts";
+import { bounds, corners, dimensions, wallFeature } from "./geometry.ts";
+import type { Box, Inspection, Item, Point, Position, Positions, Project, Room } from "./types.ts";
+
+type Paint = string | CanvasGradient | CanvasPattern;
+type Projection = (point: Point, z?: number) => Point;
+type Entry = { item: Item; pos: Position; box: Box };
+export type Target = {
+  item: Item;
+  box: Box;
+  polygon?: Point[];
+  front?: Point[];
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+};
+export type Drawing = { targets: Target[]; scale: number; to: Projection };
 
 const timber = ["#eee5d9", "#f0e8de", "#eae0d4", "#eee4d8", "#f3ebe1"];
 const purple = "#7546e8";
-const palette = {
+const palette: Record<string, string> = {
   sofa: "#e4d7c4",
   chair: "#aeb698",
   table: "#c69a69",
@@ -12,7 +28,11 @@ const palette = {
   other: "#bab0cc"
 };
 
-export function canvasContext(canvas, fixedWidth, fixedHeight) {
+export const canvasContext = (
+  canvas: HTMLCanvasElement,
+  fixedWidth?: number,
+  fixedHeight?: number
+) => {
   const { width, height } =
     fixedWidth && fixedHeight
       ? { width: fixedWidth, height: fixedHeight }
@@ -25,26 +45,26 @@ export function canvasContext(canvas, fixedWidth, fixedHeight) {
     canvas.width = pixelWidth;
     canvas.height = pixelHeight;
   }
-  const context = canvas.getContext("2d");
+  const context = canvas.getContext("2d")!; /* Canvas 2D is required by this renderer. */
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   return { c: context, width, height };
-}
+};
 
-function line(c, points, color, thickness = 1) {
+const line = (c: CanvasRenderingContext2D, points: Point[], color: Paint, thickness = 1) => {
   c.beginPath();
   points.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
   c.strokeStyle = color;
   c.lineWidth = thickness;
   c.stroke();
-}
+};
 
-function path(c, points) {
+const path = (c: CanvasRenderingContext2D, points: Point[]) => {
   c.beginPath();
   points.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
   c.closePath();
-}
+};
 
-function fill(c, points, color, stroke = "") {
+const fill = (c: CanvasRenderingContext2D, points: Point[], color: Paint, stroke: Paint = "") => {
   path(c, points);
   c.fillStyle = color;
   c.fill();
@@ -53,9 +73,18 @@ function fill(c, points, color, stroke = "") {
     c.lineWidth = 1;
     c.stroke();
   }
-}
+};
 
-function shape(c, x, y, w, h, radius, color, stroke = "") {
+const shape = (
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+  color: Paint,
+  stroke: Paint = ""
+) => {
   c.beginPath();
   c.roundRect(x, y, w, h, Math.min(radius, w / 2, h / 2));
   c.fillStyle = color;
@@ -65,9 +94,17 @@ function shape(c, x, y, w, h, radius, color, stroke = "") {
     c.lineWidth = 0.85;
     c.stroke();
   }
-}
+};
 
-function oval(c, x, y, rx, ry, color, stroke = "") {
+const oval = (
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  color: Paint,
+  stroke: Paint = ""
+) => {
   c.beginPath();
   c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   c.fillStyle = color;
@@ -77,9 +114,16 @@ function oval(c, x, y, rx, ry, color, stroke = "") {
     c.lineWidth = 0.8;
     c.stroke();
   }
-}
+};
 
-function woodgrain(c, x, y, w, h, strength) {
+const woodgrain = (
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  strength: number
+) => {
   for (let i = 0; i < 7; i++) {
     const yy = y + (h / 8) * (i + 1);
     c.beginPath();
@@ -89,9 +133,15 @@ function woodgrain(c, x, y, w, h, strength) {
     c.lineWidth = 0.55;
     c.stroke();
   }
-}
+};
 
-function furniture(c, item, pos, to, scale) {
+const furniture = (
+  c: CanvasRenderingContext2D,
+  item: Item,
+  pos: Position,
+  to: Projection,
+  scale: number
+) => {
   const box = bounds(item, pos);
   const [centerX, centerY] = to([box.x + box.w / 2, box.y + box.d / 2]);
   const w = item.w * scale,
@@ -158,21 +208,20 @@ function furniture(c, item, pos, to, scale) {
       couch ? "#d1c3b0" : "#a0ab8e"
     );
     if (couch) {
-      [
-        [w * 0.21, "#bba5ca", -0.24],
-        [w * 0.81, "#a2a98b", 0.34]
-      ].forEach(([x, color, rotation]) => {
-        c.save();
-        c.translate(x, h * 0.43);
-        c.rotate(rotation);
-        c.shadowColor = "#64536938";
-        c.shadowBlur = 3;
-        c.shadowOffsetY = 1;
-        shape(c, -h * 0.2, -h * 0.17, h * 0.39, h * 0.38, h * 0.09, color);
-        c.shadowColor = "transparent";
-        shape(c, -h * 0.16, -h * 0.14, h * 0.32, h * 0.29, h * 0.07, "#ffffff17", "#ffffff38");
-        c.restore();
-      });
+      [[w * 0.21, "#bba5ca", -0.24] as const, [w * 0.81, "#a2a98b", 0.34] as const].forEach(
+        ([x, color, rotation]) => {
+          c.save();
+          c.translate(x, h * 0.43);
+          c.rotate(rotation);
+          c.shadowColor = "#64536938";
+          c.shadowBlur = 3;
+          c.shadowOffsetY = 1;
+          shape(c, -h * 0.2, -h * 0.17, h * 0.39, h * 0.38, h * 0.09, color);
+          c.shadowColor = "transparent";
+          shape(c, -h * 0.16, -h * 0.14, h * 0.32, h * 0.29, h * 0.07, "#ffffff17", "#ffffff38");
+          c.restore();
+        }
+      );
     } else {
       shape(c, w * 0.29, h * 0.29, w * 0.42, h * 0.25, h * 0.09, "#d4d8bf", "#a4ae93");
     }
@@ -237,9 +286,16 @@ function furniture(c, item, pos, to, scale) {
     w: box.w * scale,
     h: box.d * scale
   };
-}
+};
 
-function rug(c, room, to, scale, entries, variant) {
+const rug = (
+  c: CanvasRenderingContext2D,
+  room: Room,
+  to: Projection,
+  scale: number,
+  entries: Entry[],
+  variant: number
+) => {
   if (variant !== 0 || !entries.some(({ item }) => item.kind === "sofa")) return;
   const { w, d } = dimensions(room.points);
   const [x, y] = to([w * 0.16, d * 0.24]);
@@ -269,9 +325,16 @@ function rug(c, room, to, scale, entries, variant) {
         0.8
       );
   }
-}
+};
 
-function guide(c, x, y, w, h, room) {
+const guide = (
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  room: Room
+) => {
   const dim = dimensions(room.points),
     color = "#b3acbf",
     ink = "#686377";
@@ -353,15 +416,23 @@ function guide(c, x, y, w, h, room) {
   c.fillStyle = ink;
   c.fillText(`${decimal(dim.d, 2)} м`, 0, 0);
   c.restore();
-}
+};
 
-function iso(c, width, height, room, entries, zoom, selected) {
+const iso = (
+  c: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  room: Room,
+  entries: Entry[],
+  zoom: number,
+  selected?: string | null
+) => {
   const { w, d } = dimensions(room.points);
   const scale =
     Math.min((width - 39) / ((w + d) * 0.82), (height - 30) / ((w + d) * 0.39 + 2.3)) * zoom;
   const baseX = width / 2 - (w - d) * 0.41 * scale;
   const baseY = height / 2 - (w + d) * 0.195 * scale + 0.48 * scale;
-  const to = ([x, y], z = 0) => [
+  const to = ([x, y]: Point, z = 0) => [
     baseX + (x - y) * 0.82 * scale,
     baseY + (x + y) * 0.39 * scale - z * scale
   ];
@@ -408,7 +479,7 @@ function iso(c, width, height, room, entries, zoom, selected) {
           );
       });
   });
-  const targets = [];
+  const targets: Target[] = [];
   [...entries]
     .sort((a, b) => a.box.x + a.box.y - b.box.x - b.box.y)
     .forEach(({ item, box }) => {
@@ -439,9 +510,22 @@ function iso(c, width, height, room, entries, zoom, selected) {
       targets.push({ item, polygon: [...top], front, box });
     });
   return { targets, scale, to };
-}
+};
 
-export function drawPlan(canvas, project, items, positions, inspection, options = {}) {
+export const drawPlan = (
+  canvas: HTMLCanvasElement,
+  project: Project,
+  items: Item[],
+  positions: Positions,
+  inspection: Inspection,
+  options: {
+    width?: number;
+    height?: number;
+    zoom?: number;
+    view?: string;
+    selected?: string | null;
+  } = {}
+): Drawing | null => {
   const screen = canvasContext(canvas, options.width, options.height);
   if (!screen) return null;
   const { c, width, height } = screen;
@@ -457,9 +541,9 @@ export function drawPlan(canvas, project, items, positions, inspection, options 
   const { w, d } = dimensions(room.points);
   const scale = Math.min((width - (width < 430 ? 81 : 143)) / w, (height - 95) / d) * zoom;
   const origin = [(width - w * scale) / 2 + (width < 430 ? 7 : 1), (height - d * scale) / 2 + 8];
-  const to = ([x, y]) => [origin[0] + x * scale, origin[1] + y * scale];
+  const to = ([x, y]: Point) => [origin[0] + x * scale, origin[1] + y * scale];
   const floor = room.points.map(to);
-  guide(c, ...origin, w * scale, d * scale, room);
+  guide(c, origin[0], origin[1], w * scale, d * scale, room);
   c.save();
   c.shadowColor = "#43344e38";
   c.shadowBlur = 16;
@@ -498,7 +582,7 @@ export function drawPlan(canvas, project, items, positions, inspection, options 
     c.setLineDash([4, 5]);
     line(c, route, "#5b9e76a1", 1.25);
     c.setLineDash([]);
-    const [x, y] = route.at(-1);
+    const [x, y] = route[route.length - 1];
     oval(c, x, y, 3.1, 3.1, "#6ca681");
   }
   c.restore();
@@ -537,7 +621,7 @@ export function drawPlan(canvas, project, items, positions, inspection, options 
       c.setLineDash([3, 2]);
       line(c, arc, "#9682aa", 1);
       c.setLineDash([]);
-      line(c, [to(feature.hinge), arc.at(-1)], "#756783", 1.65);
+      line(c, [to(feature.hinge), arc[arc.length - 1]], "#756783", 1.65);
       const [x, y] = to(feature.hinge);
       oval(c, x, y, 2.3, 2.3, "#746482");
     } else {
@@ -564,4 +648,4 @@ export function drawPlan(canvas, project, items, positions, inspection, options 
     }
   });
   return { targets, scale, to };
-}
+};

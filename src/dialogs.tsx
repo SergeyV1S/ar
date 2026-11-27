@@ -1,13 +1,12 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent, MouseEvent, ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { arHelp } from "./ar.js";
+import { arHelp } from "./ar.ts";
 import {
   catalog,
   checkLabel,
-  decimal,
   itemSize,
   materials,
-  modes,
   money,
   newId,
   parseVoice,
@@ -18,21 +17,64 @@ import {
   safeUrl,
   sourceLabel,
   types
-} from "./data.js";
-import { arrange, dimensions, distance, inspect, normalize, validPolygon } from "./geometry.js";
-import { canvasContext } from "./plan.js";
-import { Button, Field, Icon, IconButton, Select, Thumbnail } from "./ui.jsx";
+} from "./data.ts";
+import {
+  arrange,
+  dimensions,
+  distance,
+  inspect,
+  normalize,
+  validPolygon,
+  variants
+} from "./geometry.ts";
+import type { FurnitureMatch } from "./photo.ts";
+import { canvasContext } from "./plan.ts";
+import type {
+  Action,
+  Inspection,
+  Item,
+  Opening,
+  Point,
+  Positions,
+  Project,
+  Room,
+  VoicePatch
+} from "./types.ts";
+import { Button, Field, Icon, IconButton, Select, Thumbnail } from "./ui.tsx";
 
-const featureTypes = { door: "Дверь", window: "Окно", socket: "Розетка" };
-const num = (data, key) => Number(data.get(key));
-const text = (data, key) => String(data.get(key) ?? "").trim();
+type DraftOpening = Omit<Opening, "offset" | "width"> & {
+  offset: number | string;
+  width: number | string;
+};
+type RoomEditorProps = {
+  project: Project;
+  save: (room: Room, passage: number) => void;
+  close: () => void;
+};
 
-export function Dialog({ title, icon, wide, children, close }) {
-  const dialog = useRef(null),
+const featureTypes: Record<string, string> = { door: "Дверь", window: "Окно", socket: "Розетка" };
+const num = (data: FormData, key: string) => Number(data.get(key));
+const text = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
+
+export const Dialog = ({
+  title,
+  icon,
+  wide,
+  children,
+  close
+}: {
+  title: string;
+  icon: string;
+  wide?: boolean;
+  children: ReactNode;
+  close: () => void;
+}) => {
+  const dialog = useRef<HTMLDialogElement>(null),
     onClose = useRef(close);
   onClose.current = close;
   useLayoutEffect(() => {
     const node = dialog.current;
+    if (!node) return;
     node.showModal();
     return () => {
       if (node.open) node.close();
@@ -65,9 +107,19 @@ export function Dialog({ title, icon, wide, children, close }) {
       </div>
     </dialog>
   );
-}
+};
 
-function Submit({ children = "Сохранить", disabled, close, extra = null }) {
+const Submit = ({
+  children = "Сохранить",
+  disabled,
+  close,
+  extra = null
+}: {
+  children?: ReactNode;
+  disabled?: boolean;
+  close: () => void;
+  extra?: ReactNode;
+}) => {
   return (
     <div className='form-actions'>
       {extra}
@@ -78,11 +130,19 @@ function Submit({ children = "Сохранить", disabled, close, extra = null
       </button>
     </div>
   );
-}
+};
 
-function ImagePicker({ onPhoto, label = "Добавить фото", camera = true }) {
+const ImagePicker = ({
+  onPhoto,
+  label = "Добавить фото",
+  camera = true
+}: {
+  onPhoto: (photo: string) => void;
+  label?: string;
+  camera?: boolean;
+}) => {
   const [error, setError] = useState("");
-  const load = async (event) => {
+  const load = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     let bitmap;
@@ -95,13 +155,16 @@ function ImagePicker({ onPhoto, label = "Добавить фото", camera = tr
       image.width = Math.max(1, Math.round(bitmap.width * factor));
       image.height = Math.max(1, Math.round(bitmap.height * factor));
       const ctx = image.getContext("2d");
+      if (!ctx) throw new Error("Canvas 2D недоступен.");
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, image.width, image.height);
       ctx.drawImage(bitmap, 0, 0, image.width, image.height);
       onPhoto(image.toDataURL("image/jpeg", 0.72));
       setError("");
     } catch (failure) {
-      setError(failure.message || "Не удалось открыть фотографию.");
+      setError(
+        (failure instanceof Error ? failure.message : "") || "Не удалось открыть фотографию."
+      );
     } finally {
       bitmap?.close();
       event.target.value = "";
@@ -128,24 +191,34 @@ function ImagePicker({ onPhoto, label = "Добавить фото", camera = tr
       )}
     </div>
   );
-}
+};
 
-export function RoomEditor({ project, save, close, action }) {
-  const [openings, setOpenings] = useState(project.room.openings);
+export const RoomEditor = ({
+  project,
+  save,
+  close,
+  action
+}: RoomEditorProps & { action: Action }) => {
+  const [openings, setOpenings] = useState<DraftOpening[]>(project.room.openings);
   const [status, setStatus] = useState(project.room.verified);
   const [error, setError] = useState("");
   const extent = dimensions(project.room.points);
-  const submit = (event) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget),
       width = num(data, "width"),
       depth = num(data, "depth");
     const room = resizeRoom(project.room, width, depth);
+    const normalizedOpenings = openings.map((opening) => ({
+      ...opening,
+      offset: Number(opening.offset),
+      width: Number(opening.width)
+    }));
     if (!validPolygon(room.points)) {
       setError("Проверьте размеры стен и площадь комнаты.");
       return;
     }
-    for (const opening of openings) {
+    for (const opening of normalizedOpenings) {
       const start = room.points[opening.wall],
         end = room.points[(opening.wall + 1) % room.points.length];
       if (!start || opening.offset + opening.width > distance(start, end) + 0.005) {
@@ -155,10 +228,10 @@ export function RoomEditor({ project, save, close, action }) {
         return;
       }
     }
-    const overlap = openings.some(
+    const overlap = normalizedOpenings.some(
       (a, index) =>
         a.type !== "socket" &&
-        openings
+        normalizedOpenings
           .slice(index + 1)
           .some(
             (b) =>
@@ -177,14 +250,14 @@ export function RoomEditor({ project, save, close, action }) {
       {
         ...room,
         name: text(data, "name") || project.room.name,
-        openings,
+        openings: normalizedOpenings,
         verified: status,
         source: changed ? "manual" : room.source
       },
       num(data, "passage") / 100
     );
   };
-  const change = (id, patch) => {
+  const change = (id: string, patch: Partial<DraftOpening>) => {
     setOpenings((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
     setStatus("review");
   };
@@ -375,22 +448,22 @@ export function RoomEditor({ project, save, close, action }) {
       <Submit close={close} />
     </form>
   );
-}
+};
 
-export function Outline({ project, save, close }) {
+export const Outline = ({ project, save, close }: RoomEditorProps) => {
   const [photo, setPhoto] = useState(""),
-    [points, setPoints] = useState([]),
+    [points, setPoints] = useState<Point[]>([]),
     [error, setError] = useState("");
-  const canvas = useRef(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
   const target = useRef([0, 0, 1, 1]);
   useEffect(() => {
     const image = new Image();
     const draw = () => {
-      const ctx = canvasContext(canvas.current);
+      const ctx = canvas.current ? canvasContext(canvas.current) : null;
       if (!ctx) return;
       const { c, width, height } = ctx;
       c.clearRect(0, 0, width, height);
-      let box = [12, 12, width - 24, height - 24];
+      let box: [number, number, number, number] = [12, 12, width - 24, height - 24];
       if (photo && image.complete && image.naturalWidth) {
         const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
         const w = image.naturalWidth * scale,
@@ -399,7 +472,7 @@ export function Outline({ project, save, close }) {
         c.drawImage(image, ...box);
       }
       target.current = box;
-      const xy = ([x, y]) => [box[0] + x * box[2], box[1] + y * box[3]];
+      const xy = ([x, y]: Point): [number, number] => [box[0] + x * box[2], box[1] + y * box[3]];
       c.beginPath();
       points.forEach((point, i) => (i ? c.lineTo(...xy(point)) : c.moveTo(...xy(point))));
       if (points.length > 2) {
@@ -420,20 +493,20 @@ export function Outline({ project, save, close }) {
         c.font = "bold 10px Arial";
         c.textAlign = "center";
         c.textBaseline = "middle";
-        c.fillText(i + 1, x, y);
+        c.fillText(String(i + 1), x, y);
       });
     };
     image.onload = draw;
     if (photo) image.src = photo;
     const observer = new ResizeObserver(draw);
-    observer.observe(canvas.current);
+    if (canvas.current) observer.observe(canvas.current);
     draw();
     return () => {
       observer.disconnect();
       image.onload = null;
     };
   }, [photo, points]);
-  const onClick = (event) => {
+  const onClick = (event: MouseEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect(),
       [x, y, w, h] = target.current;
     const p = [(event.clientX - bounds.left - x) / w, (event.clientY - bounds.top - y) / h];
@@ -441,7 +514,7 @@ export function Outline({ project, save, close }) {
     setError("");
     setPoints([...points, p]);
   };
-  const submit = (event) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (points.length < 3) {
       setError("Отметьте не менее трёх углов.");
@@ -538,9 +611,23 @@ export function Outline({ project, save, close }) {
       <Submit close={close} children='Сохранить контур' />
     </form>
   );
-}
+};
 
-export function ItemEditor({ item, owned, project, save, remove, close }) {
+export const ItemEditor = ({
+  item,
+  owned,
+  project,
+  save,
+  remove,
+  close
+}: {
+  item?: Item | null;
+  owned: boolean;
+  project: Project;
+  save: (item: Item) => void;
+  remove: (id: string) => void;
+  close: () => void;
+}) => {
   const [photo, setPhoto] = useState(item?.photo ?? "");
   const [name, setName] = useState(item?.name ?? "");
   const [kind, setKind] = useState(item?.kind ?? "other");
@@ -548,7 +635,10 @@ export function ItemEditor({ item, owned, project, save, remove, close }) {
   const [verified, setVerified] = useState(item?.verified ?? "review");
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState(false);
-  const [detection, setDetection] = useState({ status: "idle", matches: [] });
+  const [detection, setDetection] = useState<{ status: string; matches: FurnitureMatch[] }>({
+    status: "idle",
+    matches: []
+  });
   const scanNumber = useRef(0);
   useEffect(
     () => () => {
@@ -556,7 +646,7 @@ export function ItemEditor({ item, owned, project, save, remove, close }) {
     },
     []
   );
-  const setImage = (value) => {
+  const setImage = (value: string) => {
     scanNumber.current++;
     setDetection({ status: "idle", matches: [] });
     setPhoto(value);
@@ -567,14 +657,14 @@ export function ItemEditor({ item, owned, project, save, remove, close }) {
     const run = ++scanNumber.current;
     setDetection({ status: "loading", matches: [] });
     try {
-      const { identifyFurniture } = await import("./photo.js");
+      const { identifyFurniture } = await import("./photo.ts");
       const matches = await identifyFurniture(photo);
       if (scanNumber.current === run) setDetection({ status: "ready", matches });
     } catch {
       if (scanNumber.current === run) setDetection({ status: "error", matches: [] });
     }
   };
-  const submit = (event) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const url = safeUrl(text(data, "url"));
@@ -728,9 +818,9 @@ export function ItemEditor({ item, owned, project, save, remove, close }) {
       </div>
       <div className='form-grid three'>
         {[
-          ["w", "Ширина, см"],
-          ["d", "Глубина, см"],
-          ["h", "Высота, см"]
+          ["w", "Ширина, см"] as const,
+          ["d", "Глубина, см"] as const,
+          ["h", "Высота, см"] as const
         ].map(([key, label]) => (
           <Field label={label} key={key}>
             <input
@@ -862,14 +952,20 @@ export function ItemEditor({ item, owned, project, save, remove, close }) {
       />
     </form>
   );
-}
+};
 
-export function Voice({ project, apply }) {
+export const Voice = ({
+  project,
+  apply
+}: {
+  project: Project;
+  apply: (patch: VoicePatch) => void;
+}) => {
   const [phrase, setPhrase] = useState(""),
     [listening, setListening] = useState(false),
     [message, setMessage] = useState("");
-  const recognition = useRef(null);
-  const browserRecognition = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
+  const recognition = useRef<SpeechRecognition | null>(null);
+  const browserRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const { patch, notes } = parseVoice(phrase, project);
   useEffect(
     () => () => {
@@ -884,7 +980,7 @@ export function Voice({ project, apply }) {
   );
   const speak = () => {
     if (listening) {
-      recognition.current.stop();
+      recognition.current?.stop();
       return;
     }
     if (!browserRecognition) return;
@@ -973,11 +1069,23 @@ export function Voice({ project, apply }) {
       </div>
     </>
   );
-}
+};
 
-export function Catalog({ project, items, positions, add, action }) {
+export const Catalog = ({
+  project,
+  items,
+  positions,
+  add,
+  action
+}: {
+  project: Project;
+  items: Item[];
+  positions: Positions;
+  add: (item: Item) => void;
+  action: Action;
+}) => {
   const [fitOnly, setFitOnly] = useState(true);
-  const total = items.reduce((sum, item) => sum + item.price, 0);
+  const total = items.reduce((sum, item) => sum + (item.price ?? 0), 0);
   const external = project.mode === "used";
   if (project.mode !== "retail")
     return (
@@ -1027,7 +1135,7 @@ export function Catalog({ project, items, positions, add, action }) {
         : Boolean(positions[item.id]);
       const problems = [...purchaseIssues(project, item)];
       if (!fitsLayout) problems.push("Проверьте место на плане");
-      if ((!included ? total + item.price : total) > project.budget)
+      if ((!included ? total + (item.price ?? 0) : total) > project.budget)
         problems.push("Сверх общего бюджета");
       return { item, included, problems };
     })
@@ -1090,10 +1198,22 @@ export function Catalog({ project, items, positions, add, action }) {
       </div>
     </>
   );
-}
+};
 
-export function EstimateContent({ project, items, inspection, positions, print = false }) {
-  const total = items.reduce((sum, item) => sum + item.price, 0),
+export const EstimateContent = ({
+  project,
+  items,
+  inspection,
+  positions,
+  print = false
+}: {
+  project: Project;
+  items: Item[];
+  inspection: Inspection;
+  positions: Positions;
+  print?: boolean;
+}) => {
+  const total = items.reduce((sum, item) => sum + (item.price ?? 0), 0),
     difference = project.budget - total;
   const office = project.mode === "office";
   let balance = project.budget;
@@ -1130,8 +1250,8 @@ export function EstimateContent({ project, items, inspection, positions, print =
             {items.map((item) => {
               const issues = purchaseIssues(project, item);
               if (!positions[item.id]) issues.push("Не размещено");
-              if (item.price > balance) issues.push("За пределами бюджета");
-              else if (!issues.length) balance -= item.price;
+              if ((item.price ?? 0) > balance) issues.push("За пределами бюджета");
+              else if (!issues.length) balance -= item.price ?? 0;
               return (
                 <tr key={item.id}>
                   <td>
@@ -1167,7 +1287,7 @@ export function EstimateContent({ project, items, inspection, positions, print =
             })}
             {!items.length && (
               <tr>
-                <td colSpan='5'>Пока нет позиций к покупке.</td>
+                <td colSpan={5}>Пока нет позиций к покупке.</td>
               </tr>
             )}
           </tbody>
@@ -1198,9 +1318,17 @@ export function EstimateContent({ project, items, inspection, positions, print =
         ))}
     </>
   );
-}
+};
 
-export function Procurement({ project, save, close }) {
+export const Procurement = ({
+  project,
+  save,
+  close
+}: {
+  project: Project;
+  save: (fields: Project["procurement"]) => void;
+  close: () => void;
+}) => {
   return (
     <form
       onSubmit={(event) => {
@@ -1236,9 +1364,17 @@ export function Procurement({ project, save, close }) {
       <Submit close={close} />
     </form>
   );
-}
+};
 
-export function ExportOptions({ project, action, run }) {
+export const ExportOptions = ({
+  project,
+  action,
+  run
+}: {
+  project: Project;
+  action: Action;
+  run: (format: string) => void;
+}) => {
   const missing = project.mode === "office" ? procurementMissing(project) : [];
   return (
     <>
@@ -1280,9 +1416,17 @@ export function ExportOptions({ project, action, run }) {
       </div>
     </>
   );
-}
+};
 
-export function CheckReport({ project, inspection, action }) {
+export const CheckReport = ({
+  project,
+  inspection,
+  action
+}: {
+  project: Project;
+  inspection: Inspection;
+  action: Action;
+}) => {
   return (
     <>
       <div className='check-list'>
@@ -1318,9 +1462,21 @@ export function CheckReport({ project, inspection, action }) {
       </div>
     </>
   );
-}
+};
 
-export function ARHelp({ mode, support, error, back, launch }) {
+export const ARHelp = ({
+  mode,
+  support,
+  error,
+  back,
+  launch
+}: {
+  mode: string;
+  support: boolean | null;
+  error: string;
+  back: () => void;
+  launch: () => void;
+}) => {
   const scan = mode === "scan";
   return (
     <>
@@ -1361,4 +1517,4 @@ export function ARHelp({ mode, support, error, back, launch }) {
       </div>
     </>
   );
-}
+};

@@ -3,7 +3,7 @@ import "@tensorflow/tfjs-backend-cpu";
 import "@tensorflow/tfjs-backend-webgl";
 import { getBackend, setBackend } from "@tensorflow/tfjs-core";
 
-const mapping = {
+const mapping: Record<string, [string, string]> = {
   couch: ["sofa", "Диван"],
   chair: ["chair", "Стул или кресло"],
   "dining table": ["table", "Стол"],
@@ -11,9 +11,9 @@ const mapping = {
   bench: ["other", "Скамья"],
   "potted plant": ["other", "Напольное растение"]
 };
-let model;
+let model: ReturnType<typeof loadModel> | null;
 
-async function loadModel() {
+const loadModel = async () => {
   try {
     if (!getBackend() && !(await setBackend("webgl"))) await setBackend("cpu");
   } catch {
@@ -21,9 +21,9 @@ async function loadModel() {
   }
   const modelUrl = new URL("./furniture-model/model.json", document.baseURI).href;
   return load({ base: "lite_mobilenet_v2", modelUrl });
-}
+};
 
-export async function identifyFurniture(uri) {
+export const identifyFurniture = async (uri: string) => {
   const image = new Image();
   image.src = uri;
   await image.decode();
@@ -48,4 +48,6 @@ export async function identifyFurniture(uri) {
       }
     ];
   });
-}
+};
+
+export type FurnitureMatch = Awaited<ReturnType<typeof identifyFurniture>>[number];

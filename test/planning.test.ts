@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { analyzeAR } from "../src/ar.js";
+import { analyzeAR } from "../src/ar.ts";
 import {
   initialProject,
   parseVoice,
@@ -9,8 +9,9 @@ import {
   procurementMissing,
   validateImport,
   visibleItems
-} from "../src/data.js";
-import { area, dimensions, inspect, rect, validPolygon } from "../src/geometry.js";
+} from "../src/data.ts";
+import { area, dimensions, inspect, rect, validPolygon } from "../src/geometry.ts";
+import type { Point } from "../src/types.ts";
 
 test("the example has distinct valid plans and an 80 cm route", () => {
   const project = initialProject();
@@ -34,7 +35,9 @@ test("moving furniture into a door arc and through the wall produces warnings", 
 
 test("a narrow doorway cannot pass the requested minimum clearance", () => {
   const project = initialProject();
-  project.room.openings.find((opening) => opening.type === "door").width = 0.73;
+  const door = project.room.openings.find((opening) => opening.type === "door");
+  assert(door);
+  door.width = 0.73;
   assert.equal(
     inspect(project.room, visibleItems(project), positionsFor(project), 0.8).state,
     "blocked"
@@ -43,7 +46,7 @@ test("a narrow doorway cannot pass the requested minimum clearance", () => {
 
 test("AR recovers meter dimensions and associates door, window and outlet with walls", () => {
   const angle = 0.52;
-  const world = ([x, z], y = -0.8) => [
+  const world = ([x, z]: Point, y = -0.8) => [
     1 + x * Math.cos(angle) - z * Math.sin(angle),
     y,
     2 + x * Math.sin(angle) + z * Math.cos(angle)
@@ -55,6 +58,7 @@ test("AR recovers meter dimensions and associates door, window and outlet with w
     { type: "socket", points: [world([3.98, 1.2], -0.45)] },
     { type: "socket", points: [world([2, 1.5])] }
   ]);
+  assert(result);
   assert.deepEqual(dimensions(result.points), { w: 4, d: 3 });
   assert.equal(area(result.points), 12);
   assert.deepEqual(
@@ -79,8 +83,10 @@ test("self-intersecting outlines and unsafe imported supplier URLs are handled",
     false
   );
   const project = initialProject();
-  project.items.at(-1).url = "javascript:alert(1)";
-  assert.equal(validateImport(project).items.at(-1).url, "");
+  const lastItem = project.items.at(-1);
+  assert(lastItem);
+  lastItem.url = "javascript:alert(1)";
+  assert.equal(validateImport(project).items.at(-1)?.url, "");
   assert.throws(() =>
     validateImport({
       ...project,
@@ -101,6 +107,7 @@ test("voice parser produces editable meter dimensions and a ruble budget", () =>
     initialProject()
   );
   assert.deepEqual(result.patch.size, [4, 3]);
+  assert(result.patch.sofa);
   assert.equal(result.patch.sofa.w, 2.2);
   assert.equal(result.patch.sofa.d, 0.95);
   assert.equal(result.patch.budget, 80000);
@@ -110,14 +117,18 @@ test("voice parser produces editable meter dimensions and a ruble budget", () =>
 test("office export requires procurement information and supplier details", () => {
   const project = initialProject();
   project.mode = "office";
+  const lastItem = project.items.at(-1);
+  assert(lastItem);
   project.items.push({
-    ...project.items.at(-1),
+    ...lastItem,
     id: "supplier-offer",
     mode: "office",
     seller: "ООО Компания"
   });
   assert.equal(procurementMissing(project).length, 6);
-  project.items.at(-1).details = "ИНН 0000000000";
+  const supplier = project.items.at(-1);
+  assert(supplier);
+  supplier.details = "ИНН 0000000000";
   project.procurement = {
     purpose: "Кабинет",
     person: "Ответственный",

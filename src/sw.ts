@@ -1,3 +1,6 @@
+/// <reference lib="webworker" />
+export {};
+declare const self: ServiceWorkerGlobalScope;
 const CACHE = "metrika-offline-v2";
 const SCOPE = self.registration.scope;
 const entry = new URL("./", SCOPE);

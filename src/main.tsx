@@ -5,13 +5,13 @@ import { createRoot } from "react-dom/client";
 import "@fontsource-variable/manrope";
 
 import "../style.css";
-import { arHelp, startAR, supportsAR } from "./ar.js";
+import type { ARController } from "./ar.ts";
+import { arHelp, startAR, supportsAR } from "./ar.ts";
 import {
   checkLabel,
   decimal,
   initialProject,
   modes,
-  money,
   newProtection,
   positionsFor,
   procurementFields,
@@ -24,7 +24,7 @@ import {
   validateImport,
   visibleItems,
   writeLocal
-} from "./data.js";
+} from "./data.ts";
 import {
   ARHelp,
   Catalog,
@@ -37,9 +37,21 @@ import {
   Procurement,
   RoomEditor,
   Voice
-} from "./dialogs.jsx";
-import { area, arrange, clamp, dimensions, inspect, rect, variants } from "./geometry.js";
-import { drawPlan } from "./plan.js";
+} from "./dialogs.tsx";
+import { area, arrange, clamp, dimensions, inspect, rect, variants } from "./geometry.ts";
+import { drawPlan } from "./plan.ts";
+import type {
+  ARMode,
+  Action,
+  Item,
+  Position,
+  Positions,
+  Project,
+  Protection,
+  Room,
+  VoicePatch,
+  XRState
+} from "./types.ts";
 import {
   Brand,
   Button,
@@ -51,9 +63,9 @@ import {
   Select,
   Settings,
   Shopping
-} from "./ui.jsx";
+} from "./ui.tsx";
 
-const label = {
+const label: Record<string, [string, string]> = {
   room: ["Комната", "ruler"],
   outline: ["Контур комнаты", "scan"],
   voice: ["Голосовой ввод", "mic"],
@@ -72,7 +84,7 @@ const label = {
   "new-project": ["Новый проект", "folder"]
 };
 
-function download(name, content, type) {
+const download = (name: string, content: string, type: string) => {
   const anchor = document.createElement("a");
   const url = URL.createObjectURL(new Blob([content], { type }));
   anchor.href = url;
@@ -81,9 +93,9 @@ function download(name, content, type) {
   anchor.click();
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
+};
 
-function makeCsv(project, bought, positions) {
+const makeCsv = (project: Project, bought: Item[], positions: Positions) => {
   const items = visibleItems(project);
   const headers = [
     "Позиция",
@@ -124,8 +136,8 @@ function makeCsv(project, bought, positions) {
       ...(positions[item.id] ? [] : ["Не размещено"])
     ].join(", ")
   ]);
-  const total = bought.reduce((sum, item) => sum + item.price, 0);
-  const csvField = (value) => {
+  const total = bought.reduce((sum, item) => sum + (item.price ?? 0), 0);
+  const csvField = (value: unknown) => {
     const entry = String(value ?? "");
     const safe =
       typeof value === "string" && /^[\t\n\r ]*[=+\-@]/.test(entry) ? `'${entry}` : entry;
@@ -150,9 +162,19 @@ function makeCsv(project, bought, positions) {
       ])
     );
   return "\uFEFF" + lines.map((line) => line.map(csvField).join(";")).join("\r\n");
-}
+};
 
-function Privacy({ protection, protect, lock, error }) {
+const Privacy = ({
+  protection,
+  protect,
+  lock,
+  error
+}: {
+  protection: Protection | null;
+  protect: (password: string) => void;
+  lock: () => void;
+  error: string;
+}) => {
   const [password, setPassword] = useState(""),
     [confirm, setConfirm] = useState(""),
     [mismatch, setMismatch] = useState(false);
@@ -227,9 +249,17 @@ function Privacy({ protection, protect, lock, error }) {
       </div>
     </form>
   );
-}
+};
 
-function Locked({ unlock, error, busy }) {
+const Locked = ({
+  unlock,
+  error,
+  busy
+}: {
+  unlock: (password: FormDataEntryValue | null) => void;
+  error: string;
+  busy: boolean;
+}) => {
   return (
     <main className='locked-shell'>
       <Brand onClick={() => {}} />
@@ -267,9 +297,19 @@ function Locked({ unlock, error, busy }) {
       </section>
     </main>
   );
-}
+};
 
-function XRControls({ mode, state, overlayRef, control }) {
+const XRControls = ({
+  mode,
+  state,
+  overlayRef,
+  control
+}: {
+  mode: ARMode | null;
+  state: XRState;
+  overlayRef: React.RefObject<HTMLDivElement | null>;
+  control: (method: keyof ARController, value?: string) => void;
+}) => {
   const scan = mode === "scan";
   return (
     <div className='xr-overlay' ref={overlayRef} hidden={!mode}>
@@ -283,7 +323,7 @@ function XRControls({ mode, state, overlayRef, control }) {
             <p aria-live='polite'>{state.text || "Подключаем камеру…"}</p>
           </div>
         </div>
-        {scan && state.count >= 3 && (
+        {scan && (state.count ?? 0) >= 3 && (
           <Field label='Что отметить'>
             <Select
               value={state.kind ?? "corner"}
@@ -301,7 +341,7 @@ function XRControls({ mode, state, overlayRef, control }) {
           <Button icon='rotate' onClick={() => control("undo")}>
             {scan ? "Отменить точку" : "Сбросить"}
           </Button>
-          {scan && state.count >= 3 && (
+          {scan && (state.count ?? 0) >= 3 && (
             <Button icon='check' onClick={() => control("save")}>
               Сохранить контур
             </Button>
@@ -318,29 +358,29 @@ function XRControls({ mode, state, overlayRef, control }) {
       </div>
     </div>
   );
-}
+};
 
-function App() {
+const App = () => {
   const [initial] = useState(readLocal);
-  const [project, setProject] = useState(initial.project ?? initialProject);
+  const [project, setProject] = useState<Project>(initial.project ?? initialProject);
   const [locked, setLocked] = useState(initial.locked ?? null);
-  const [protection, setProtection] = useState(null);
+  const [protection, setProtection] = useState<Protection | null>(null);
   const [privacyError, setPrivacyError] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [status, setStatus] = useState(initial.unreadable ? "ошибка чтения" : "Локальный проект");
-  const [modal, setModal] = useState(null),
-    [selected, setSelected] = useState(null);
+  const [modal, setModal] = useState<{ name: string; id?: string | number } | null>(null),
+    [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState(""),
     [printImage, setPrintImage] = useState("");
-  const [arSupport, setArSupport] = useState(null),
+  const [arSupport, setArSupport] = useState<boolean | null>(null),
     [arError, setArError] = useState("");
-  const [xrMode, setXrMode] = useState(null),
-    [xrState, setXrState] = useState({});
-  const overlay = useRef(null),
-    controller = useRef(null),
+  const [xrMode, setXrMode] = useState<ARMode | null>(null),
+    [xrState, setXrState] = useState<XRState>({});
+  const overlay = useRef<HTMLDivElement>(null),
+    controller = useRef<ARController | null>(null),
     writes = useRef(Promise.resolve()),
-    timer = useRef(null);
-  const fileInput = useRef(null),
+    timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const fileInput = useRef<HTMLInputElement>(null),
     updateMade = useRef(false);
 
   const allItems = useMemo(() => visibleItems(project), [project.items, project.mode]);
@@ -353,16 +393,16 @@ function App() {
     () => inspect(project.room, allItems, positions, project.passage),
     [project.room, allItems, positions, project.passage]
   );
-  const notify = useCallback((message) => {
+  const notify = useCallback((message: string) => {
     setToast(message);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast(""), 4600);
   }, []);
-  const change = useCallback((updater) => {
+  const change = useCallback((updater: React.SetStateAction<Project>) => {
     updateMade.current = true;
     setProject(updater);
   }, []);
-  const update = (patch) => change((current) => ({ ...current, ...patch }));
+  const update = (patch: Partial<Project>) => change((current) => ({ ...current, ...patch }));
   const close = () => setModal(null);
 
   useEffect(() => {
@@ -397,14 +437,14 @@ function App() {
     };
   }, []);
 
-  const action = (name, id) => {
+  const action: Action = (name, id) => {
     if (name === "workspace") {
       close();
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     if (name === "variant") {
-      update({ variant: id });
+      update({ variant: Number(id) });
       setSelected(null);
       return;
     }
@@ -434,7 +474,7 @@ function App() {
     setModal({ name, id });
   };
 
-  const move = (id, pos) => {
+  const move = (id: string, pos: Position) => {
     const { w, d } = dimensions(project.room.points);
     const limit = { ...pos, x: clamp(pos.x, -5, w + 2), y: clamp(pos.y, -5, d + 2) };
     update({
@@ -448,7 +488,7 @@ function App() {
     });
   };
 
-  const saveRoom = (room, passage) => {
+  const saveRoom = (room: Room, passage: number) => {
     const geometryChanged =
       room.points.some(
         ([x, y], i) => x !== project.room.points[i]?.[0] || y !== project.room.points[i]?.[1]
@@ -460,7 +500,7 @@ function App() {
     notify("Параметры комнаты сохранены.");
   };
 
-  const storeItem = (item, fromCatalog = false) => {
+  const storeItem = (item: Item, fromCatalog = false) => {
     const old = project.items.find((candidate) => candidate.id === item.id);
     if (!old && project.items.length >= 60) {
       notify("В одном проекте можно хранить до 60 предметов.");
@@ -470,7 +510,8 @@ function App() {
       notify("Введите название мебели.");
       return;
     }
-    const redraw = !old || ["w", "d", "access", "kind"].some((key) => old[key] !== item[key]);
+    const redraw =
+      !old || (["w", "d", "access", "kind"] as const).some((key) => old[key] !== item[key]);
     update({
       items: old
         ? project.items.map((candidate) => (candidate.id === item.id ? item : candidate))
@@ -481,7 +522,7 @@ function App() {
     notify(old ? "Изменения сохранены." : "Мебель добавлена в проект.");
   };
 
-  const removeItem = (id) => {
+  const removeItem = (id: string) => {
     const layouts = Object.fromEntries(
       Object.entries(project.layouts).map(([mode, alternatives]) => [
         mode,
@@ -499,7 +540,7 @@ function App() {
     notify("Позиция удалена.");
   };
 
-  const acceptVoice = (patch) => {
+  const acceptVoice = (patch: VoicePatch) => {
     const { size, sofa, ...other } = patch;
     let room = project.room;
     if (size) {
@@ -522,7 +563,7 @@ function App() {
     notify("Голосовой ввод применён. Проверьте размеры на плане.");
   };
 
-  async function launchAR(mode) {
+  const launchAR = async (mode: ARMode) => {
     flushSync(() => {
       setXrMode(mode);
       setXrState({});
@@ -532,7 +573,7 @@ function App() {
     try {
       controller.current = await startAR({
         mode,
-        overlay: overlay.current,
+        overlay: overlay.current! /* The overlay is mounted before launchAR via flushSync. */,
         items: allItems,
         positions,
         onState: setXrState,
@@ -562,15 +603,16 @@ function App() {
       controller.current = null;
       setXrMode(null);
       setArError(
-        failure.name === "NotAllowedError" || failure.name === "SecurityError"
+        failure instanceof Error &&
+          (failure.name === "NotAllowedError" || failure.name === "SecurityError")
           ? "Доступ к AR или камере не разрешён. Проверьте разрешения сайта."
           : `Не удалось запустить AR. ${arHelp}`
       );
       setModal({ name: mode === "scan" ? "ar-scan" : "ar-view" });
     }
-  }
+  };
 
-  async function protect(password) {
+  const protect = async (password: string) => {
     if (!globalThis.crypto?.subtle) {
       setPrivacyError("Для локального шифрования откройте сайт по HTTPS или с localhost.");
       return;
@@ -588,9 +630,9 @@ function App() {
         "Не удалось сохранить защищённую копию. Проверьте настройки хранилища браузера."
       );
     }
-  }
+  };
 
-  async function lock() {
+  const lock = async () => {
     try {
       await writes.current;
       const record = readLocal().locked;
@@ -603,13 +645,16 @@ function App() {
     } catch {
       setPrivacyError("Не удалось проверить сохранённую копию. Проект остался открытым.");
     }
-  }
+  };
 
-  async function unlock(password) {
+  const unlock = async (password: FormDataEntryValue | null) => {
     setUnlocking(true);
     setPrivacyError("");
     try {
-      const result = await unlockLocal(locked, String(password));
+      const result = await unlockLocal(
+        locked! /* Unlock is only rendered for a locked record. */,
+        String(password)
+      );
       updateMade.current = false;
       setProject(result.project);
       setProtection(result.protection);
@@ -620,9 +665,9 @@ function App() {
     } finally {
       setUnlocking(false);
     }
-  }
+  };
 
-  async function importProject(event) {
+  const importProject = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -634,11 +679,17 @@ function App() {
       close();
       notify("Проект загружен из файла.");
     } catch (error) {
-      notify(error instanceof SyntaxError ? "Не удалось прочитать JSON проекта." : error.message);
+      notify(
+        error instanceof SyntaxError
+          ? "Не удалось прочитать JSON проекта."
+          : error instanceof Error
+            ? error.message
+            : String(error)
+      );
     }
-  }
+  };
 
-  const exportData = (format) => {
+  const exportData = (format: string) => {
     if (format !== "json" && project.mode === "office" && procurementMissing(project).length) {
       action("export");
       return;
@@ -668,7 +719,9 @@ function App() {
         close();
         setPrintImage(image);
       });
-      const ready = document.querySelector("#print-view img")?.decode?.() ?? Promise.resolve();
+      const ready =
+        document.querySelector<HTMLImageElement>("#print-view img")?.decode?.() ??
+        Promise.resolve();
       ready.catch(() => {}).finally(() => window.print());
     }
   };
@@ -678,6 +731,7 @@ function App() {
     modal?.name === "item" ? project.items.find((candidate) => candidate.id === modal.id) : null;
   const activeDialog = modal && label[modal.name];
   const dialogContent = () => {
+    if (!modal) return null;
     switch (modal.name) {
       case "room":
         return <RoomEditor project={project} save={saveRoom} action={action} close={close} />;
@@ -781,7 +835,7 @@ function App() {
               <Button icon='download' onClick={() => exportData("json")}>
                 Сохранить копию
               </Button>
-              <Button icon='upload' className='primary' onClick={() => fileInput.current.click()}>
+              <Button icon='upload' className='primary' onClick={() => fileInput.current?.click()}>
                 Импорт проекта
               </Button>
             </div>
@@ -862,11 +916,11 @@ function App() {
       </main>
       {activeDialog && (
         <Dialog
-          key={`${modal.name}-${modal.id ?? ""}`}
+          key={`${modal?.name}-${modal?.id ?? ""}`}
           title={activeDialog[0]}
           icon={activeDialog[1]}
           close={close}
-          wide={["room", "catalog", "estimate", "outline"].includes(modal.name)}
+          wide={["room", "catalog", "estimate", "outline"].includes(modal?.name ?? "")}
         >
           {dialogContent()}
         </Dialog>
@@ -914,13 +968,15 @@ function App() {
       )}
     </>
   );
-}
+};
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")! /* index.html declares the root element. */).render(
+  <App />
+);
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener(
     "load",
-    () => navigator.serviceWorker.register("./sw.js").catch(() => {}),
+    () => navigator.serviceWorker.register("./sw.ts").catch(() => {}),
     { once: true }
   );
 }

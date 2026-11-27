@@ -1,10 +1,13 @@
+import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 import React, { useLayoutEffect, useRef, useState } from "react";
 
-import { decimal, itemSize, materials, modes, money, purchaseIssues, sourceLabel } from "./data.js";
-import { area, dimensions, pointIn, round, variants } from "./geometry.js";
-import { drawPlan } from "./plan.js";
+import { decimal, itemSize, materials, modes, money, purchaseIssues, sourceLabel } from "./data.ts";
+import { area, dimensions, pointIn, round, variants } from "./geometry.ts";
+import type { Drawing } from "./plan.ts";
+import { drawPlan } from "./plan.ts";
+import type { Action, Inspection, Item, Position, Positions, Project, Room } from "./types.ts";
 
-const icons = {
+const icons: Record<string, string> = {
   brand: "M4 16V5h10M9 16v-6h8v6m3-7v7h-3M4 20h8M20 5h.01",
   layout: "M3.5 4h17v16h-17zM3.5 9h17m-10 0v11",
   grid: "M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z",
@@ -47,7 +50,15 @@ const icons = {
   info: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0zm-10-1v6m0-10h.01"
 };
 
-export function Icon({ name, size = 18, className = "" }) {
+export const Icon = ({
+  name,
+  size = 18,
+  className = ""
+}: {
+  name: string;
+  size?: number;
+  className?: string;
+}) => {
   return (
     <svg
       className={className}
@@ -64,18 +75,28 @@ export function Icon({ name, size = 18, className = "" }) {
       <path d={icons[name] ?? icons.cube} />
     </svg>
   );
-}
+};
 
-export function Button({ icon, children, className = "", ...props }) {
+export const Button = ({
+  icon,
+  children,
+  className = "",
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: string }) => {
   return (
     <button type='button' className={`btn ${className}`} {...props}>
       {icon && <Icon name={icon} />}
       {children}
     </button>
   );
-}
+};
 
-export function IconButton({ icon, label, className = "", ...props }) {
+export const IconButton = ({
+  icon,
+  label,
+  className = "",
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string; label: string }) => {
   return (
     <button
       type='button'
@@ -87,9 +108,19 @@ export function IconButton({ icon, label, className = "", ...props }) {
       <Icon name={icon} />
     </button>
   );
-}
+};
 
-export function Field({ label, children, hint, className = "" }) {
+export const Field = ({
+  label,
+  children,
+  hint,
+  className = ""
+}: {
+  label: ReactNode;
+  children: ReactNode;
+  hint?: ReactNode;
+  className?: string;
+}) => {
   return (
     <label className={`field ${className}`}>
       <span>{label}</span>
@@ -97,18 +128,18 @@ export function Field({ label, children, hint, className = "" }) {
       {hint && <small>{hint}</small>}
     </label>
   );
-}
+};
 
-export function Select({ children, ...props }) {
+export const Select = ({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) => {
   return (
     <span className='select'>
       <select {...props}>{children}</select>
       <Icon name='down' size={15} />
     </span>
   );
-}
+};
 
-export function Brand({ onClick }) {
+export const Brand = ({ onClick }: { onClick: React.MouseEventHandler<HTMLButtonElement> }) => {
   return (
     <button type='button' className='brand' onClick={onClick} aria-label='Метрика, планировка'>
       <span className='brand-mark'>
@@ -119,9 +150,17 @@ export function Brand({ onClick }) {
       </span>
     </button>
   );
-}
+};
 
-export function PanelTitle({ icon, title, count }) {
+export const PanelTitle = ({
+  icon,
+  title,
+  count
+}: {
+  icon: string;
+  title: string;
+  count?: number;
+}) => {
   return (
     <div className='panel-heading'>
       <span className='heading-icon'>
@@ -131,9 +170,9 @@ export function PanelTitle({ icon, title, count }) {
       {count !== undefined && <span className='count'>{count}</span>}
     </div>
   );
-}
+};
 
-export function Header({ action, status }) {
+export const Header = ({ action, status }: { action: Action; status: string }) => {
   return (
     <header className='topbar'>
       <div className='top-inner'>
@@ -170,9 +209,9 @@ export function Header({ action, status }) {
       </div>
     </header>
   );
-}
+};
 
-export function ProjectHeader({ room, action }) {
+export const ProjectHeader = ({ room, action }: { room: Room; action: Action }) => {
   return (
     <section className='project-head'>
       <div>
@@ -195,12 +234,20 @@ export function ProjectHeader({ room, action }) {
       </div>
     </section>
   );
-}
+};
 
-export function Settings({ project, update, action }) {
+export const Settings = ({
+  project,
+  update,
+  action
+}: {
+  project: Project;
+  update: (patch: Partial<Project>) => void;
+  action: Action;
+}) => {
   const { w, d } = dimensions(project.room.points);
   const owned = project.items.filter((item) => item.owned);
-  const [budgetEntry, setBudgetEntry] = useState(null);
+  const [budgetEntry, setBudgetEntry] = useState<string | null>(null);
   return (
     <aside className='panel settings' aria-label='Настройки'>
       <PanelTitle icon='sliders' title='Настройки' />
@@ -298,7 +345,7 @@ export function Settings({ project, update, action }) {
             owned.map((item) => (
               <button className='owned-item' key={item.id} onClick={() => action("item", item.id)}>
                 <span className={`owned-icon ${item.kind}`}>
-                  <Icon name={item.kind} size={19} />
+                  <Icon name={item.kind ?? "other"} size={19} />
                 </span>
                 <span>
                   <strong>{item.name}</strong>
@@ -314,9 +361,9 @@ export function Settings({ project, update, action }) {
       </section>
     </aside>
   );
-}
+};
 
-function MiniPlan({ style }) {
+const MiniPlan = ({ style }: { style: string }) => {
   return (
     <span aria-hidden='true' className={`mini-plan ${style}`}>
       <i />
@@ -324,9 +371,9 @@ function MiniPlan({ style }) {
       <i />
     </span>
   );
-}
+};
 
-export function Planner({
+export const Planner = ({
   project,
   items,
   positions,
@@ -335,15 +382,32 @@ export function Planner({
   setChosen,
   move,
   action
-}) {
-  const canvas = useRef(null),
-    drawing = useRef(null),
-    drag = useRef(null);
+}: {
+  project: Project;
+  items: Item[];
+  positions: Positions;
+  inspection: Inspection;
+  chosen: string | null;
+  setChosen: (id: string | null) => void;
+  move: (id: string, pos: Position) => void;
+  action: Action;
+}) => {
+  const canvas = useRef<HTMLCanvasElement>(null),
+    drawing = useRef<Drawing | null>(null),
+    drag = useRef<{
+      id: string;
+      x: number;
+      y: number;
+      pos: Position;
+      scale: number;
+      latest: Position | null;
+    } | null>(null);
   const [view, setView] = useState("2d"),
     [zoom, setZoom] = useState(1),
-    [live, setLive] = useState(null);
+    [live, setLive] = useState<{ id: string; pos: Position } | null>(null);
   useLayoutEffect(() => {
     const node = canvas.current;
+    if (!node) return;
     const paint = () => {
       const all = live ? { ...positions, [live.id]: live.pos } : positions;
       drawing.current = drawPlan(node, project, items, all, inspection, {
@@ -352,7 +416,7 @@ export function Planner({
         selected: chosen
       });
       if (drawing.current)
-        node.parentElement.style.setProperty("--scale-line", `${drawing.current.scale}px`);
+        node.parentElement?.style.setProperty("--scale-line", `${drawing.current.scale}px`);
     };
     paint();
     const observer = new ResizeObserver(paint);
@@ -362,19 +426,22 @@ export function Planner({
     });
     return () => observer.disconnect();
   }, [project, items, positions, inspection, view, zoom, chosen, live]);
-  const eventPoint = (event) => {
+  const eventPoint = (event: PointerEvent<HTMLCanvasElement>) => {
     const { left, top } = event.currentTarget.getBoundingClientRect();
     return [event.clientX - left, event.clientY - top];
   };
-  const start = (event) => {
+  const start = (event: PointerEvent<HTMLCanvasElement>) => {
     if (event.button !== 0 || !drawing.current) return;
     const [x, y] = eventPoint(event);
     const found = [...drawing.current.targets]
       .reverse()
       .find((target) =>
         target.polygon
-          ? pointIn([x, y], target.polygon) || pointIn([x, y], target.front)
-          : x >= target.x && x <= target.x + target.w && y >= target.y && y <= target.y + target.h
+          ? pointIn([x, y], target.polygon) || pointIn([x, y], target.front ?? [])
+          : x >= (target.x ?? 0) &&
+            x <= (target.x ?? 0) + (target.w ?? 0) &&
+            y >= (target.y ?? 0) &&
+            y <= (target.y ?? 0) + (target.h ?? 0)
       );
     setChosen(found?.item.id ?? null);
     if (!found || view !== "2d") return;
@@ -388,7 +455,7 @@ export function Planner({
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
-  const track = (event) => {
+  const track = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!drag.current) return;
     const [x, y] = eventPoint(event),
       origin = drag.current;
@@ -400,16 +467,20 @@ export function Planner({
     };
     setLive({ id: origin.id, pos: origin.latest });
   };
-  const stop = (event) => {
+  const stop = (event: PointerEvent<HTMLCanvasElement>) => {
     const pointer = drag.current;
     drag.current = null;
     setLive(null);
     if (pointer?.latest && event.type !== "pointercancel") move(pointer.id, pointer.latest);
   };
-  const key = (event) => {
-    const offset = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] }[
-      event.key
-    ];
+  const key = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    const offsets: Record<string, number[]> = {
+      ArrowRight: [1, 0],
+      ArrowLeft: [-1, 0],
+      ArrowDown: [0, 1],
+      ArrowUp: [0, -1]
+    };
+    const offset = offsets[event.key];
     if (!offset || !chosen || !positions[chosen] || view !== "2d") return;
     event.preventDefault();
     const pos = positions[chosen],
@@ -565,9 +636,15 @@ export function Planner({
       </div>
     </section>
   );
-}
+};
 
-export function Thumbnail({ item, className = "" }) {
+export const Thumbnail = ({
+  item,
+  className = ""
+}: {
+  item: Partial<Item>;
+  className?: string;
+}) => {
   if (item.photo)
     return (
       <span className={`product-image ${className}`}>
@@ -579,13 +656,21 @@ export function Thumbnail({ item, className = "" }) {
       className={`product-image ${item.illustration ? `image-${item.illustration}` : "image-placeholder"} ${className}`}
       aria-hidden='true'
     >
-      {!item.illustration && <Icon name={item.kind} size={24} />}
+      {!item.illustration && <Icon name={item.kind ?? "other"} size={24} />}
     </span>
   );
-}
+};
 
-export function Shopping({ project, items, action }) {
-  const total = items.reduce((sum, item) => sum + item.price, 0);
+export const Shopping = ({
+  project,
+  items,
+  action
+}: {
+  project: Project;
+  items: Item[];
+  action: Action;
+}) => {
+  const total = items.reduce((sum, item) => sum + (item.price ?? 0), 0);
   const difference = project.budget - total;
   const fraction = project.budget ? Math.min(total / project.budget, 1) : Number(total > 0);
   return (
@@ -676,4 +761,4 @@ export function Shopping({ project, items, action }) {
       </button>
     </aside>
   );
-}
+};
