@@ -1,0 +1,6 @@
+services:
+  metrika:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${METRIKA_BIND:-127.0.0.1}:${METRIKA_PORT:-4178}:80"
