@@ -8,6 +8,7 @@ export {
   types
 } from "./catalog.ts";
 export {
+  getPurchaseBudget,
   initialProject,
   itemSize,
   positionsFor,

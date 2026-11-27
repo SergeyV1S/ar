@@ -1,4 +1,5 @@
 export { getImportError, makeCsv } from "./exportProject.ts";
+export { getItemPath } from "./links.ts";
 export {
   getARAvailabilityMessage,
   getARCollectLabel,

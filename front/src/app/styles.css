@@ -4,6 +4,8 @@
 @import "tailwindcss/utilities.css" layer(utilities) source("../");
 @import "../shared/components/styles.css";
 @import "../pages/planner/styles.css";
+@import "../pages/catalog/styles.css";
+@import "../pages/estimate/styles.css";
 
 @theme {
   --color-ink: #241b32;

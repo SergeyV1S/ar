@@ -1,1 +1,1 @@
-export { plannerRoute } from "./route.tsx";
+export { plannerRoute, projectRoute } from "./route.tsx";

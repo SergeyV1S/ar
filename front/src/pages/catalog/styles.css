@@ -1,0 +1,85 @@
+@layer components {
+  .purchase-conditions {
+    @apply grid grid-cols-3 gap-3 mt-3;
+  }
+  .purchase-conditions input,
+  .purchase-conditions select {
+    @apply min-h-11;
+  }
+  .catalog-layout {
+    @apply grid grid-cols-[minmax(0,1fr)_17rem] items-start gap-4 mt-4;
+  }
+  .catalog-results {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .catalog-context {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .catalog-context .btn,
+  .catalog-results .editor-links:not(:empty) {
+    @apply mt-3;
+  }
+  .catalog-results .row-title {
+    @apply flex-wrap;
+  }
+  .catalog-card-body {
+    @apply wrap-anywhere;
+  }
+  .catalog-card-body > p {
+    @apply text-sm;
+  }
+  .catalog-card-body .btn {
+    @apply h-auto min-h-11 text-xs;
+  }
+  .catalog-loading .catalog-grid {
+    @apply mt-2;
+  }
+  .catalog-loading .catalog-grid span {
+    @apply block h-40 rounded-xl bg-purple-soft;
+  }
+  .catalog-results .check-field {
+    @apply min-h-11 w-fit cursor-pointer;
+  }
+  @media (max-width: 1040px) {
+    .catalog-grid {
+      @apply grid-cols-2;
+    }
+  }
+  @media (max-width: 760px) {
+    .catalog-layout,
+    .purchase-conditions {
+      @apply grid-cols-1;
+    }
+    .catalog-results,
+    .catalog-context {
+      grid-column: auto;
+      grid-row: auto;
+    }
+    .purchase-conditions input,
+    .purchase-conditions select {
+      @apply text-base;
+    }
+  }
+  @media (max-width: 540px) {
+    .catalog-grid {
+      @apply grid-cols-1;
+    }
+    .catalog-card {
+      @apply grid grid-cols-[minmax(5.5rem,25%)_minmax(0,1fr)];
+    }
+    .catalog-card .product-image {
+      @apply h-auto aspect-square bg-size-[200%_auto];
+    }
+    .catalog-card .image-table {
+      @apply bg-top;
+    }
+    .catalog-card .image-cabinet {
+      @apply bg-center;
+    }
+    .catalog-card .image-pouf {
+      @apply bg-bottom;
+    }
+  }
+}

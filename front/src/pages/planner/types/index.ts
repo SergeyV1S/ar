@@ -74,22 +74,17 @@ type DialogName =
   | "add-owned"
   | "add-buy"
   | "item"
-  | "catalog"
-  | "estimate"
-  | "export"
   | "procurement"
   | "checks"
   | "projects"
   | "privacy"
   | "ar-scan"
   | "ar-view"
-  | "new-project";
+  | "new-project"
+  | "replan-confirm";
 
 export type PlannerModal = { name: DialogName; id?: string | number };
-export type Action = (
-  name: DialogName | "workspace" | "variant" | "replan",
-  id?: string | number
-) => void;
+export type Action = (name: DialogName | "variant" | "replan", id?: string | number) => void;
 export type ScanFeature = { type: string; points: Point[] };
 export type ScanResult = { points: Point[]; openings: Opening[]; skipped: number };
 export type XRState = {

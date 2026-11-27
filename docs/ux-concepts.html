@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Три UX-концепции для планировщика мебели «Метрика». Схемы страниц и переходов.">
+  <title>Метрика — три UX-концепции</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f1f4f3;
+      --surface: #fff;
+      --ink: #162d2d;
+      --muted: #425b59;
+      --line: #a7b9b6;
+      --accent: #215a53;
+      --soft: #e1eeeb;
+      --focus: #15518e;
+      --gutter: clamp(1rem, 4vw, 3rem);
+      font: 100%/1.55 system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    a { color: var(--accent); text-underline-offset: .22em; }
+    a:hover { color: var(--ink); text-decoration-thickness: .13em; }
+    a:focus-visible { outline: .18rem solid var(--focus); outline-offset: .2rem; }
+    a:active { background: var(--soft); }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { line-height: 1.15; text-wrap: balance; }
+    h1 { font-size: clamp(2.1rem, 5.3vw, 4.1rem); letter-spacing: -.045em; }
+    h2 { font-size: clamp(1.35rem, 2.7vw, 1.9rem); letter-spacing: -.022em; }
+    h3 { font-size: 1.125rem; }
+    p { max-inline-size: 66ch; }
+    .screen { display: none; }
+    #start, .screen:target, .screen:has(:target) { display: block; }
+    body:has(> .screen:not(#start):is(:target, :has(:target))) > #start { display: none; }
+    .wrap { width: min(calc(100% - 2 * var(--gutter)), 70rem); margin-inline: auto; }
+    .skip {
+      position: absolute;
+      inset-inline-start: var(--gutter);
+      inset-block-start: .5rem;
+      z-index: 1;
+      padding: .65rem 1rem;
+      transform: translateY(-150%);
+      background: var(--surface);
+    }
+    .skip:focus { transform: none; }
+    .mast { border-block-end: 1px solid var(--line); background: var(--surface); }
+    .mast-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .5rem 1rem;
+      flex-wrap: wrap;
+      padding-block: .65rem;
+    }
+    .brand { font-weight: 750; }
+    .brand span { color: var(--muted); font-weight: 500; }
+    .mast a, .steps a, .action {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: 2.75rem;
+    }
+    main { padding-block: clamp(1.8rem, 4vw, 3rem) 3rem; scroll-margin-top: 1rem; }
+    .intro { margin-block-end: 2rem; }
+    .intro p, .page-lead > p:not(.concept) { color: var(--muted); margin-block-start: .8rem; }
+    .intro .hint { font-size: .9375rem; }
+    .options { border-block-start: 1px solid var(--line); }
+    .option {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+      gap: 1rem clamp(1.25rem, 5vw, 5rem);
+      align-items: center;
+      padding-block: 1.3rem;
+      border-block-end: 1px solid var(--line);
+    }
+    .option h2 a {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: 2.75rem;
+    }
+    .option p { margin-block-start: .45rem; }
+    .option .fit, .option .flow { color: var(--muted); font-size: .9375rem; }
+    .option .flow { margin-block-start: .7rem; color: var(--accent); font-weight: 650; }
+    .thumbnail {
+      display: grid;
+      gap: .45rem;
+      align-content: center;
+      min-block-size: 8.25rem;
+      padding: .8rem;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: .8125rem;
+      line-height: 1.35;
+    }
+    .thumbnail span { display: grid; align-content: center; min-inline-size: 0; padding: .35rem .45rem; }
+    .thumbnail span:first-child { color: var(--ink); font-weight: 720; }
+    .thumbnail span:not(:first-child) { border: 1px solid var(--line); }
+    .thumbnail .highlight { background: var(--soft); }
+    .thumbnail-guided { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+    .thumbnail-guided span:nth-child(3) { grid-column: 1 / -1; }
+    .thumbnail-guided span:last-child { grid-column: 1; }
+    .thumbnail-editor { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+    .thumbnail-editor span:first-child { grid-column: 1 / -1; }
+    .thumbnail-editor span:nth-child(2) { grid-column: 2; grid-row: 2; }
+    .thumbnail-editor span:nth-child(3) { grid-column: 1; grid-row: 2 / span 2; }
+    .thumbnail-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .thumbnail-overview span:nth-child(-n+2) { grid-column: 1 / -1; }
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem clamp(1rem, 4vw, 3rem);
+      margin-block-start: 2rem;
+    }
+    .notes h2, .notes h3 { margin-block-end: .5rem; }
+    .notes p + p { margin-block-start: .6rem; }
+    .notes .wide { grid-column: 1 / -1; }
+    .notes ul { padding-inline-start: 1.2rem; margin-block: .5rem 0; }
+    .notes li + li { margin-block-start: .4rem; }
+    .concept { font-size: .9375rem; font-weight: 700; color: var(--accent); margin-block-end: .45rem; }
+    .page-lead h1 { font-size: clamp(2.05rem, 5vw, 3.5rem); }
+    .steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-block: 1.35rem 1.7rem;
+    }
+    .steps a {
+      padding: .35rem .75rem;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      text-decoration: none;
+    }
+    .steps a:hover { text-decoration: underline; }
+    .steps a[aria-current="page"] {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--surface);
+      font-weight: 700;
+    }
+    .layout-heading { margin-block-end: .65rem; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      gap: .6rem;
+      padding: .6rem;
+      border: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .block {
+      padding: clamp(.85rem, 2.4vw, 1.4rem);
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .block p { margin-block-start: .45rem; color: var(--muted); }
+    .block.full { grid-column: 1 / -1; }
+    .block.major h3 { font-size: 1.25rem; }
+    .diagram {
+      display: grid;
+      place-items: center;
+      margin-block-start: .8rem;
+      background: var(--paper);
+      min-block-size: 8.75rem;
+    }
+    .room {
+      position: relative;
+      width: min(75%, 14rem);
+      aspect-ratio: 2 / 1;
+      border: 2px solid var(--accent);
+      background: var(--surface);
+    }
+    .room span { position: absolute; display: block; }
+    .room span:nth-child(1) {
+      inset: 12% auto auto 8%;
+      width: 52%;
+      height: 25%;
+      border: 2px solid var(--accent);
+      background: var(--soft);
+    }
+    .room span:nth-child(2) {
+      inset: auto 8% 13% auto;
+      width: 22%;
+      height: 44%;
+      border: 2px solid var(--accent);
+      background: var(--soft);
+    }
+    .room span:nth-child(3) {
+      inset: auto auto -2px 9%;
+      width: 24%;
+      aspect-ratio: 1;
+      border: 1px dashed var(--accent);
+      border-radius: 0 100% 0 0;
+      background: var(--surface);
+    }
+    .journey { display: flex; flex-wrap: wrap; gap: .5rem; margin-block-start: .85rem; }
+    .action {
+      padding: .5rem .8rem;
+      border: 1px solid var(--accent);
+      background: var(--surface);
+      font-weight: 650;
+    }
+    .action:first-child { background: var(--accent); color: var(--surface); }
+    .action:first-child:hover, .action:first-child:active { background: var(--ink); }
+    .page-notes { margin-block-start: 1.6rem; }
+    .source { margin-block-start: 1.6rem; color: var(--muted); font-size: .875rem; }
+    @media (max-width: 38rem) {
+      .option, .layout, .notes { grid-template-columns: minmax(0, 1fr); }
+      .option { padding-block: 1rem 1.15rem; }
+      .thumbnail { min-block-size: 0; }
+      .block.full, .notes .wide { grid-column: auto; }
+    }
+    @media (forced-colors: active) {
+      .steps a[aria-current="page"] { border-width: 2px; text-decoration: underline; }
+      .room span, .room { border-color: CanvasText; }
+    }
+  </style>
+</head>
+<body>
+  <div id="start" class="screen" tabindex="-1">
+    <a class="skip" href="#start-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+      </div>
+    </header>
+    <main class="wrap" id="start-content" tabindex="-1">
+      <header class="intro">
+        <h1>Три сценария работы в «Метрике»</h1>
+        <p>Сегодня план, настройки и покупки находятся на одном экране, а комната, каталог и смета открываются в диалогах. Здесь три способа сделать первый шаг и переходы между задачами понятнее.</p>
+        <p class="hint">Выберите вариант, чтобы открыть схемы его страниц. Ссылки показывают переходы между экранами, а описания внутри блоков — действия в будущем интерфейсе.</p>
+      </header>
+      <div class="options">
+        <article class="option">
+          <div>
+            <h2><a href="#guided">Пошаговая настройка</a></h2>
+            <p>Пользователь отвечает на один вопрос за раз. План появляется после ввода комнаты, мебели и условий покупки.</p>
+            <p class="fit">Подходит для первого проекта на телефоне. Для точечной правки готового проекта нужен прямой переход к пройденному шагу.</p>
+            <p class="flow">Старт → Комната → Своя мебель → Условия → План → Покупки → Смета</p>
+          </div>
+          <div class="thumbnail thumbnail-guided" aria-hidden="true">
+              <span>Размеры комнаты</span>
+              <span class="highlight">Шаг 1 из 6</span>
+              <span>Длина и ширина</span>
+              <span>Сохранить размеры</span>
+          </div>
+        </article>
+        <article class="option">
+          <div>
+            <h2><a href="#editor">Редактор с планом в центре</a></h2>
+            <p>Проект сразу открывается на плане. Размеры, мебель и замечания редактируются в контексте выбранного объекта.</p>
+            <p class="fit">Подходит, если пользователь часто двигает мебель и сравнивает варианты. Первое пустое состояние должно явно вести к вводу размеров.</p>
+            <p class="flow">План ↔ Каталог ↔ Смета</p>
+          </div>
+          <div class="thumbnail thumbnail-editor" aria-hidden="true">
+              <span>План комнаты</span>
+              <span>Комната и мебель</span>
+              <span class="highlight">Вид сверху</span>
+              <span>Выбранный предмет</span>
+          </div>
+        </article>
+        <article class="option">
+          <div>
+            <h2><a href="#overview">Обзор проекта по задачам</a></h2>
+            <p>Стартовый экран показывает, что уже сделано и что мешает закончить работу. Каждый раздел открывается напрямую.</p>
+            <p class="fit">Подходит для возвращения к черновику и подготовки служебной сметы. Для серии мелких правок нужен прямой переход между связанными разделами.</p>
+            <p class="flow">Обзор ↔ Комната / Расстановка / Покупки / Смета</p>
+          </div>
+          <div class="thumbnail thumbnail-overview" aria-hidden="true">
+              <span>Обзор проекта</span>
+              <span class="highlight">Проверить размеры</span>
+              <span>Комната · Расстановка</span>
+              <span>Покупки · Смета</span>
+          </div>
+        </article>
+      </div>
+      <div class="notes">
+        <section>
+          <h2>С какого варианта начать</h2>
+          <p>Я бы начал с пошаговой настройки. Пользователь, который впервые пришёл со своей комнатой, сразу видит, какие данные нужны для плана. Если основная работа — править готовые планы, редактор даст более короткий путь. Если важнее вернуться к черновику и подготовить документы, лучше подходит обзор по задачам.</p>
+        </section>
+        <section>
+          <h2>Как сравнить на одной задаче</h2>
+          <p>Попросить пользователя задать размеры вручную, добавить свою мебель, проверить замечание по проходу и открыть смету. Затем попросить вернуться и исправить размер предмета. Смотреть, на каких переходах человеку понадобилась подсказка.</p>
+        </section>
+        <section class="wide">
+          <h2>Общие правила переходов</h2>
+          <ul>
+            <li>Показывать текущую страницу по названию и выделению. Возвращать пользователя к выбранному варианту, предмету или месту в списке.</li>
+            <li>После добавления предмета или сохранения явно сообщать результат. В пошаговом варианте к заполненным шагам можно вернуться с сохранёнными данными. Ошибку показывать рядом с тем, что можно исправить. При сбое каталога оставить доступ к плану и смете.</li>
+            <li>Подписывать действия словами, сохранять видимый фокус, давать кнопки и клавиатурный способ для действий на плане. Проверку и предупреждения передавать текстом.</li>
+            <li>Различать «Сохранено на устройстве», «План и смета в PDF», «Смета в CSV» и «Копия проекта в JSON». Покупка у продавца происходит вне сервиса.</li>
+          </ul>
+        </section>
+      </div>
+      <footer class="source">
+        <p>Основа схем — текущий планировщик, README и требования проекта. Правила навигации и доступности сверены с <a href="https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md">Vercel Web Interface Guidelines</a>.</p>
+      </footer>
+    </main>
+  </div>
+
+  <div id="guided" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка</p>
+        <h1>Старт</h1>
+        <p>Начните с комнаты или вернитесь к текущему проекту.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided" aria-current="page">Старт</a>
+          <a href="#guided-room">Комната</a>
+          <a href="#guided-furniture">Своя мебель</a>
+          <a href="#guided-terms">Условия</a>
+          <a href="#guided-plan">План</a>
+          <a href="#guided-buy">Покупки</a>
+          <a href="#guided-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-layout">
+        <h2 class="layout-heading" id="guided-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Текущий проект</h3>
+            <p>Имя комнаты и последнее успешное сохранение. Если проект есть, основное действие — «Продолжить проект».</p>
+          </section>
+          <section class="block">
+            <h3>Новый проект</h3>
+            <p>Кнопка «Начать с комнаты». Импорт и резервная копия находятся рядом, в разделе работы с файлом.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-room">Начать с комнаты</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>На телефоне первой идёт карточка текущего проекта. При первом открытии первым действием становится «Начать с комнаты».</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Пример открывается как явно подписанный демонстрационный проект. Перед заменой текущего плана можно скачать его копию.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="guided-room" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-room-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-room-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка · Шаг 1 из 6</p>
+        <h1>Комната</h1>
+        <p>Первый шаг даёт планировщику размеры и границы комнаты.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided">Старт</a>
+          <a href="#guided-room" aria-current="page">Комната</a>
+          <a href="#guided-furniture">Своя мебель</a>
+          <a href="#guided-terms">Условия</a>
+          <a href="#guided-plan">План</a>
+          <a href="#guided-buy">Покупки</a>
+          <a href="#guided-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-room-layout">
+        <h2 class="layout-heading" id="guided-room-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Размеры комнаты</h3>
+            <p>Ручной ввод длины и ширины с единицами у каждого поля. Для сложной формы — ручная разметка контура.</p>
+          </section>
+          <section class="block">
+            <h3>Другие способы ввода</h3>
+            <p>«Измерить камерой» и «Ввести голосом». После ввода показать, какие значения получены и что требуется проверить.</p>
+          </section>
+          <section class="block full">
+            <h3>Двери, окна и розетки</h3>
+            <p>Добавляются на схему ниже размеров. Ошибка привязана к конкретному проёму или полю.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-furniture">Перейти к своей мебели</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Вверху выбор способа, под ним только поля выбранного способа. Кнопка сохранения следует сразу за формой.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Если AR недоступен или камера не разрешена, объяснить причину и предложить ручной ввод рядом с сообщением.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="guided-furniture" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-furniture-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-furniture-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка · Шаг 2 из 6</p>
+        <h1>Своя мебель</h1>
+        <p>Пользователь указывает предметы, которые уже есть в комнате.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided">Старт</a>
+          <a href="#guided-room">Комната</a>
+          <a href="#guided-furniture" aria-current="page">Своя мебель</a>
+          <a href="#guided-terms">Условия</a>
+          <a href="#guided-plan">План</a>
+          <a href="#guided-buy">Покупки</a>
+          <a href="#guided-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-furniture-layout">
+        <h2 class="layout-heading" id="guided-furniture-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Имеющиеся предметы</h3>
+            <p>Список с названием, габаритами и пометкой «Проверьте размеры» у непроверенных предметов.</p>
+          </section>
+          <section class="block">
+            <h3>Добавление предмета</h3>
+            <p>«Добавить вручную» и «Распознать по фото». Фото подсказывает тип предмета. Габариты пользователь вводит и сверяет.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-terms">Перейти к условиям</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сначала список и кнопка добавления. Форма предмета открывается отдельным экраном с возвратом к списку.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Если своей мебели нет, действие «Продолжить без своей мебели» ведёт к условиям покупки.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="guided-terms" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-terms-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-terms-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка · Шаг 3 из 6</p>
+        <h1>Условия</h1>
+        <p>Ограничения видны до расчёта и применяются к выбранному способу покупки.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided">Старт</a>
+          <a href="#guided-room">Комната</a>
+          <a href="#guided-furniture">Своя мебель</a>
+          <a href="#guided-terms" aria-current="page">Условия</a>
+          <a href="#guided-plan">План</a>
+          <a href="#guided-buy">Покупки</a>
+          <a href="#guided-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-terms-layout">
+        <h2 class="layout-heading" id="guided-terms-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Условия покупки</h3>
+            <p>Общий бюджет, материал и способ покупки. Лимит отдельной позиции задаётся в карточке этой позиции.</p>
+          </section>
+          <section class="block">
+            <h3>Когда нужна служебная закупка</h3>
+            <p>Показать, что понадобится пароль проекта, а данные поставщиков и пять обязательных полей заполняются в смете.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-plan">Перейти к плану</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Поля в одну колонку. Дополнительные сведения о служебном режиме сразу под выбором способа покупки.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Если задача только в перестановке, из этого шага можно перейти к плану без подбора товаров.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="guided-plan" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-plan-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-plan-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка · Шаг 4 из 6</p>
+        <h1>План</h1>
+        <p>Пользователь выбирает вариант и проверяет, можно ли им пользоваться в комнате.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided">Старт</a>
+          <a href="#guided-room">Комната</a>
+          <a href="#guided-furniture">Своя мебель</a>
+          <a href="#guided-terms">Условия</a>
+          <a href="#guided-plan" aria-current="page">План</a>
+          <a href="#guided-buy">Покупки</a>
+          <a href="#guided-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-plan-layout">
+        <h2 class="layout-heading" id="guided-plan-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block draw major">
+            <h3>План комнаты</h3>
+            <p>Вид сверху по умолчанию. Рядом переключение 2D/3D, под планом легенда и действие «Посмотреть в AR».</p>
+            <div class="diagram" aria-hidden="true"><div class="room"><span></span><span></span><span></span></div></div>
+          </section>
+          <section class="block">
+            <h3>Варианты и проверка</h3>
+            <p>У каждого варианта — краткие отличия и число замечаний. У замечания — предмет, причина и переход к исправлению.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-buy">Подобрать мебель</a>
+          <a class="action" href="#guided-estimate">Перейти к смете</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сначала вид сверху, затем варианты, под выбранным вариантом — замечания. Покупки и смета доступны ниже плана.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>При отсутствии варианта без замечаний показать, что именно надо изменить. Если новый расчёт заменит ручную расстановку, сообщить об этом до запуска.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="guided-buy" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-buy-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-buy-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка · Шаг 5 из 6</p>
+        <h1>Покупки</h1>
+        <p>Пользователь подбирает недостающие предметы для выбранного плана.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided">Старт</a>
+          <a href="#guided-room">Комната</a>
+          <a href="#guided-furniture">Своя мебель</a>
+          <a href="#guided-terms">Условия</a>
+          <a href="#guided-plan">План</a>
+          <a href="#guided-buy" aria-current="page">Покупки</a>
+          <a href="#guided-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-buy-layout">
+        <h2 class="layout-heading" id="guided-buy-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Предложения</h3>
+            <p>Габариты, цена, материал, продавец, источник и наличие. У действия есть результат: «Добавить в смету» → «В смете».</p>
+          </section>
+          <section class="block">
+            <h3>Условия и остаток бюджета</h3>
+            <p>Выбранный способ покупки, ограничения и оставшаяся сумма. Рядом — «Добавить позицию вручную».</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-plan">Проверить план</a>
+          <a class="action" href="#guided-estimate">Открыть смету</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Над списком — остаток бюджета и кнопка раскрытия условий. После добавления рядом с товаром виден его статус.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>У демонстрационных наборов, включая текущий набор Hoff, цена и наличие помечены как тестовые. Пустая выдача предлагает изменить условия. Сбой загрузки предлагает повторить попытку.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="guided-estimate" class="screen" tabindex="-1">
+    <a class="skip" href="#guided-estimate-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="guided-estimate-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Пошаговая настройка · Шаг 6 из 6</p>
+        <h1>Смета</h1>
+        <p>Перед выгрузкой пользователь проверяет итог и состав покупок.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#guided">Старт</a>
+          <a href="#guided-room">Комната</a>
+          <a href="#guided-furniture">Своя мебель</a>
+          <a href="#guided-terms">Условия</a>
+          <a href="#guided-plan">План</a>
+          <a href="#guided-buy">Покупки</a>
+          <a href="#guided-estimate" aria-current="page">Смета</a>
+      </nav>
+      <section aria-labelledby="guided-estimate-layout">
+        <h2 class="layout-heading" id="guided-estimate-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block full major">
+            <h3>Бюджет и итог</h3>
+            <p>Общий бюджет, итог и строка «Осталось» или «Превышение».</p>
+          </section>
+          <section class="block">
+            <h3>Позиции к покупке</h3>
+            <p>Цена, количество, сумма, продавец и редактирование. Свою мебель и покупки обозначать одинаково во всех разделах.</p>
+          </section>
+          <section class="block">
+            <h3>Документы</h3>
+            <p>План и смета в PDF, таблица CSV. В служебном режиме — поля проекта и недостающие реквизиты с переходом к их заполнению.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#guided-buy">Вернуться к покупкам</a>
+          <a class="action" href="#guided">К началу проекта</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Итог над списком, затем карточки позиций, под ними обязательные поля и действия выгрузки.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Пустая смета показывает «Нет позиций к покупке» и ссылку на подбор. Резервная копия JSON остаётся в разделе проекта.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="editor" class="screen" tabindex="-1">
+    <a class="skip" href="#editor-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="editor-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Редактор с планом в центре</p>
+        <h1>План</h1>
+        <p>Главная задача экрана — увидеть комнату и сразу изменить расстановку.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#editor" aria-current="page">План</a>
+          <a href="#editor-catalog">Каталог</a>
+          <a href="#editor-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="editor-layout">
+        <h2 class="layout-heading" id="editor-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block full">
+            <h3>Инструменты плана</h3>
+            <p>Имя проекта и статус сохранения. В меню «Проект» — новый проект, импорт, копия JSON и защита.</p>
+          </section>
+          <section class="block draw major">
+            <h3>План комнаты</h3>
+            <p>2D/3D, масштаб, AR-просмотр и выбранный вариант. Рядом с выбранной мебелью — быстрый поворот.</p>
+            <div class="diagram" aria-hidden="true"><div class="room"><span></span><span></span><span></span></div></div>
+          </section>
+          <section class="block">
+            <h3>Боковая панель</h3>
+            <p>По умолчанию — «Комната», «Своя мебель», «Проверка плана». При выборе предмета — габариты и действия редактирования.</p>
+          </section>
+          <section class="block full">
+            <h3>Варианты расстановки</h3>
+            <p>Под холстом — переключение вариантов и ссылка на замечания выбранного варианта.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#editor-catalog">Подобрать мебель</a>
+          <a class="action" href="#editor-estimate">Открыть смету</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>План остаётся первым. «Комната», «Мебель» и «Проверка» открываются из подписанных кнопок. Для длинной формы подойдёт отдельный экран с возвратом к тому же месту на плане.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Пустой план предлагает «Задать размеры комнаты» с ручным вводом, AR-обмером и голосом. Для выбора и перемещения мебели предусмотрен доступный список предметов и кнопки наряду с перетаскиванием.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="editor-catalog" class="screen" tabindex="-1">
+    <a class="skip" href="#editor-catalog-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="editor-catalog-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Редактор с планом в центре</p>
+        <h1>Каталог</h1>
+        <p>Пользователь видит, что подходит под размеры и ограничения текущего плана.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#editor">План</a>
+          <a href="#editor-catalog" aria-current="page">Каталог</a>
+          <a href="#editor-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="editor-catalog-layout">
+        <h2 class="layout-heading" id="editor-catalog-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block full">
+            <h3>Фильтры и контекст</h3>
+            <p>Способ покупки, материал, бюджет и лимит позиции по месту редактирования. Если открыт подбор для предмета, его размеры показаны над результатами.</p>
+          </section>
+          <section class="block major">
+            <h3>Предложения</h3>
+            <p>Список с габаритами, материалом, ценой, продавцом, наличием и статусом источника. Видно, что уже добавлено.</p>
+          </section>
+          <section class="block">
+            <h3>Место на плане</h3>
+            <p>Обозначение выбранного предмета и ссылка «Вернуться к плану». Если подбор общий, вместо предмета — краткий остаток бюджета.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#editor">Вернуться к плану</a>
+          <a class="action" href="#editor-estimate">Открыть смету</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сначала контекст и фильтры, затем список. Возврат на план рядом с подтверждением добавления.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Если пользователь возвращается из карточки, сохраняются фильтры и позиция в списке. При пустой выдаче доступны изменение фильтров и ручное добавление.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="editor-estimate" class="screen" tabindex="-1">
+    <a class="skip" href="#editor-estimate-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="editor-estimate-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Редактор с планом в центре</p>
+        <h1>Смета</h1>
+        <p>Сверка покупок в отдельном разделе с прямой связью со схемой комнаты.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#editor">План</a>
+          <a href="#editor-catalog">Каталог</a>
+          <a href="#editor-estimate" aria-current="page">Смета</a>
+      </nav>
+      <section aria-labelledby="editor-estimate-layout">
+        <h2 class="layout-heading" id="editor-estimate-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block full major">
+            <h3>Итог и бюджет</h3>
+            <p>Итог, доступный остаток или превышение. Лимит позиции показывать рядом с её ценой.</p>
+          </section>
+          <section class="block major">
+            <h3>Позиции</h3>
+            <p>Список покупок и услуг. У мебели — «Показать на плане», у цены — редактирование.</p>
+          </section>
+          <section class="block">
+            <h3>Выгрузка</h3>
+            <p>План и смета в PDF или смета в CSV. В служебном режиме рядом видны недостающие поля и сведения о поставщиках.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#editor">Вернуться к плану</a>
+          <a class="action" href="#editor-catalog">К каталогу</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сверху итог, ниже карточки позиций. Ссылка «Показать на плане» возвращает к выбранному предмету.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Если цена отсутствует, указать это в позиции и объяснить, какие суммы вошли в итог. Правило расчёта при неполной цене требует согласования.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="overview" class="screen" tabindex="-1">
+    <a class="skip" href="#overview-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="overview-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Обзор проекта по задачам</p>
+        <h1>Обзор</h1>
+        <p>Пользователь видит состояние текущего проекта и ближайшее необходимое действие.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#overview" aria-current="page">Обзор</a>
+          <a href="#overview-room">Комната</a>
+          <a href="#overview-plan">Расстановка</a>
+          <a href="#overview-buy">Покупки</a>
+          <a href="#overview-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="overview-layout">
+        <h2 class="layout-heading" id="overview-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block full">
+            <h3>Текущий проект</h3>
+            <p>Имя комнаты, сохранение на устройстве и меню с новым проектом, импортом, копией JSON и защитой.</p>
+          </section>
+          <section class="block major">
+            <h3>Что сделать дальше</h3>
+            <p>Показать одно действие по данным проекта: «Проверить размеры», «Разобрать замечания» или «Заполнить поля закупки».</p>
+          </section>
+          <section class="block">
+            <h3>Разделы проекта</h3>
+            <p>Комната, Расстановка, Покупки и Смета. У каждого — краткий статус и прямой переход.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#overview-room">Открыть комнату</a>
+          <a class="action" href="#overview-plan">Открыть расстановку</a>
+          <a class="action" href="#overview-buy">Открыть покупки</a>
+          <a class="action" href="#overview-estimate">Открыть смету</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сначала действие, затем разделы списком. В служебном проекте сначала проверяется пароль, затем открывается содержимое.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Если проекта ещё нет, главное действие — «Задать размеры комнаты». При ошибке локального сохранения статус остаётся виден рядом с названием проекта.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="overview-room" class="screen" tabindex="-1">
+    <a class="skip" href="#overview-room-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="overview-room-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Обзор проекта по задачам</p>
+        <h1>Комната</h1>
+        <p>В одном месте собраны все исходные данные, которые влияют на расстановку.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#overview">Обзор</a>
+          <a href="#overview-room" aria-current="page">Комната</a>
+          <a href="#overview-plan">Расстановка</a>
+          <a href="#overview-buy">Покупки</a>
+          <a href="#overview-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="overview-room-layout">
+        <h2 class="layout-heading" id="overview-room-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Комната и замеры</h3>
+            <p>Размеры, контур, двери, окна и розетки. Рядом с ними — источник замера, статус проверки и выбор ручного ввода, камеры или голоса.</p>
+          </section>
+          <section class="block">
+            <h3>Своя мебель</h3>
+            <p>Предметы с габаритами. Для добавления есть ручной ввод и распознавание типа по фото.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#overview-plan">Проверить расстановку</a>
+          <a class="action" href="#overview">К обзору</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сначала комната и проёмы, затем мебель. Для обеих групп — своё короткое действие добавления или правки.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>После правки размеров показать влияние на выбранную расстановку и дать переход к её проверке.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="overview-plan" class="screen" tabindex="-1">
+    <a class="skip" href="#overview-plan-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="overview-plan-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Обзор проекта по задачам</p>
+        <h1>Расстановка</h1>
+        <p>Сравнение вариантов и проверка проходов собраны на одном экране.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#overview">Обзор</a>
+          <a href="#overview-room">Комната</a>
+          <a href="#overview-plan" aria-current="page">Расстановка</a>
+          <a href="#overview-buy">Покупки</a>
+          <a href="#overview-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="overview-plan-layout">
+        <h2 class="layout-heading" id="overview-plan-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block draw major">
+            <h3>Выбранный вариант</h3>
+            <p>План 2D, просмотр в 3D и AR, ручное размещение и переключение вариантов.</p>
+            <div class="diagram" aria-hidden="true"><div class="room"><span></span><span></span><span></span></div></div>
+          </section>
+          <section class="block">
+            <h3>Что проверить</h3>
+            <p>Замечания по проходам, дверям и габаритам. Каждое ведёт к предмету на плане или к данным комнаты.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#overview-room">Уточнить размеры</a>
+          <a class="action" href="#overview-buy">Подобрать мебель</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Под переключателем вариантов сначала план, затем замечания с прямыми переходами к правке.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>Вариант с замечаниями подписан явно. Если пересчёт заменяет положение предметов, пользователь видит это до действия.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="overview-buy" class="screen" tabindex="-1">
+    <a class="skip" href="#overview-buy-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="overview-buy-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Обзор проекта по задачам</p>
+        <h1>Покупки</h1>
+        <p>Условия подбора и список покупок видны в одном разделе.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#overview">Обзор</a>
+          <a href="#overview-room">Комната</a>
+          <a href="#overview-plan">Расстановка</a>
+          <a href="#overview-buy" aria-current="page">Покупки</a>
+          <a href="#overview-estimate">Смета</a>
+      </nav>
+      <section aria-labelledby="overview-buy-layout">
+        <h2 class="layout-heading" id="overview-buy-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block full">
+            <h3>Правила подбора</h3>
+            <p>Общий бюджет, материал, способ покупки. У каждой позиции — свой лимит, если он задан.</p>
+          </section>
+          <section class="block major">
+            <h3>Каталог</h3>
+            <p>Подходящие позиции с ценой, источником, наличием и объяснением ограничений.</p>
+          </section>
+          <section class="block">
+            <h3>Запланированные покупки</h3>
+            <p>Выбранные товары и ручные позиции. Для служебного предложения — сведения о поставщике и КП.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#overview-estimate">Проверить смету</a>
+          <a class="action" href="#overview">К обзору</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Наверху условия, под ними список уже выбранного и переход к подбору. Рядом с добавлением видна ссылка на смету.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>При смене способа покупки объяснить, какие позиции показаны для выбранного режима. Демонстрационный характер предложения обозначается у карточки.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="overview-estimate" class="screen" tabindex="-1">
+    <a class="skip" href="#overview-estimate-content">К содержанию</a>
+    <header class="mast">
+      <div class="wrap mast-inner">
+        <span class="brand">Метрика <span> / UX-концепции</span></span>
+        <a href="#start">Сравнить варианты</a>
+      </div>
+    </header>
+    <main class="wrap" id="overview-estimate-content" tabindex="-1">
+      <header class="page-lead">
+        <p class="concept">Обзор проекта по задачам</p>
+        <h1>Смета</h1>
+        <p>Содержимое сметы и готовность документов проверяются до выгрузки.</p>
+      </header>
+      <nav class="steps" aria-label="Страницы варианта">
+          <a href="#overview">Обзор</a>
+          <a href="#overview-room">Комната</a>
+          <a href="#overview-plan">Расстановка</a>
+          <a href="#overview-buy">Покупки</a>
+          <a href="#overview-estimate" aria-current="page">Смета</a>
+      </nav>
+      <section aria-labelledby="overview-estimate-layout">
+        <h2 class="layout-heading" id="overview-estimate-layout">Расположение блоков</h2>
+        <div class="layout">
+          <section class="block major">
+            <h3>Итог и позиции</h3>
+            <p>Бюджет, итог и разница. Позиции с количеством, ценой, продавцом и переходом к редактированию.</p>
+          </section>
+          <section class="block">
+            <h3>Готовность документов</h3>
+            <p>В служебном режиме показать назначение помещения, ответственного, статью бюджета, обоснование выбора и ссылку на КП. К недостающим реквизитам дать прямой переход.</p>
+          </section>
+          <section class="block full">
+            <h3>Выгрузка</h3>
+            <p>План и смета в PDF, таблица CSV. Если сведений не хватает, объяснить это возле действия и оставить доступ к черновику.</p>
+          </section>
+        </div>
+        <nav class="journey" aria-label="Переходы с этой страницы">
+          <a class="action" href="#overview-buy">Исправить позиции</a>
+          <a class="action" href="#overview">К обзору</a>
+        </nav>
+      </section>
+      <div class="notes page-notes">
+        <section>
+          <h2>На телефоне</h2>
+          <p>Сначала итог и ближайшее действие по документам, затем список позиций и остальные поля.</p>
+        </section>
+        <section>
+          <h2>Что важно в сценарии</h2>
+          <p>В частном режиме служебные поля скрыты. После заполнения полей пользователь возвращается к тому же действию выгрузки.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

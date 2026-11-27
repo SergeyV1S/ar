@@ -1,6 +1,7 @@
-import { Button, Icon } from "../../../shared/components/index.ts";
+import type { Action, ExportFormat, Project } from "@/pages/planner/types/index.ts";
+import { Button, Icon } from "@/shared/components/index.ts";
+
 import { useExportOptions } from "../hooks/index.ts";
-import type { Action, ExportFormat, Project } from "../types/index.ts";
 
 export type ExportOptionsProps = {
   project: Project;
@@ -9,7 +10,7 @@ export type ExportOptionsProps = {
 };
 
 export const ExportOptions = (props: ExportOptionsProps) => {
-  const { missing, openProcurement, exportPdf, exportCsv, exportJson } = useExportOptions(props);
+  const { missing, openProcurement, exportPdf, exportCsv } = useExportOptions(props);
   return (
     <>
       {missing.length > 0 && (
@@ -20,10 +21,12 @@ export const ExportOptions = (props: ExportOptionsProps) => {
               <li key={value}>{value}</li>
             ))}
           </ul>
-          <Button icon='receipt' onClick={openProcurement}>
-            Поля закупки
-          </Button>
         </div>
+      )}
+      {props.project.mode === "office" && (
+        <Button icon='receipt' onClick={openProcurement}>
+          Редактировать поля закупки
+        </Button>
       )}
       <div className='option-list'>
         <button disabled={missing.length > 0} onClick={exportPdf}>
@@ -38,13 +41,6 @@ export const ExportOptions = (props: ExportOptionsProps) => {
           <span>
             <strong>Таблица закупки в CSV</strong>
             <small>Позиции, цены, габариты и поставщики</small>
-          </span>
-        </button>
-        <button onClick={exportJson}>
-          <Icon name='download' />
-          <span>
-            <strong>Скачать данные проекта</strong>
-            <small>Файл JSON для переноса на другое устройство</small>
           </span>
         </button>
       </div>

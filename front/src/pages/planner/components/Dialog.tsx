@@ -7,17 +7,19 @@ export type DialogProps = {
   title: string;
   icon: string;
   wide?: boolean;
+  fullScreenOnMobile?: boolean;
   children: ReactNode;
   close: () => void;
 };
 
 export const Dialog = (props: DialogProps) => {
-  const { title, icon, wide, children, close } = props;
+  const { title, icon, wide, fullScreenOnMobile, children, close } = props;
   const { dialog, cancel, closeFromBackdrop } = useDialog(props);
   return (
     <dialog
       ref={dialog}
       className={wide ? "wide-dialog" : ""}
+      data-full-screen={fullScreenOnMobile || undefined}
       aria-labelledby='dialog-title'
       onCancel={cancel}
       onClick={closeFromBackdrop}

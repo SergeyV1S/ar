@@ -27,7 +27,6 @@ type Options = {
   backup: () => Promise<string>;
   clearSelection: () => void;
   close: () => void;
-  openExport: () => void;
   notify: (message: string) => void;
 };
 
@@ -43,7 +42,6 @@ export const useProjectFiles = ({
   backup,
   clearSelection,
   close,
-  openExport,
   notify
 }: Options) => {
   const [printImage, setPrintImage] = useState("");
@@ -83,7 +81,7 @@ export const useProjectFiles = ({
 
   const exportData = async (format: ExportFormat) => {
     if (format !== "json" && project.mode === "office" && procurementMissing(project).length) {
-      openExport();
+      notify("Заполните поля и реквизиты служебной закупки перед выгрузкой.");
       return;
     }
     const filename = project.room.name.replace(/[\\/:*?"<>|]/g, "_").slice(0, 60) || "Комната";

@@ -188,14 +188,13 @@ export const ItemEditor = (props: ItemEditorProps) => {
                 required
               />
             </Field>
-            <Field label='Цена за единицу, ₽'>
+            <Field label='Цена за единицу, ₽ (если известна)'>
               <input
                 name='price'
                 type='number'
                 min='0'
                 max='1000000000'
                 defaultValue={item?.price}
-                required
                 onChange={markEdited}
               />
             </Field>

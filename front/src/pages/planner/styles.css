@@ -48,62 +48,30 @@
   .save-state i.warning {
     @apply bg-[#c1715d];
   }
-  .account {
-    @apply bg-[#f3eefc] text-[#7146cf] border-[#ece3fc];
-  }
-  .text-btn {
-    @apply bg-transparent bg-none text-purple-dark inline-flex items-center gap-1.75 font-[750] py-1.5 px-0 text-[13.5px];
-  }
-  .text-btn:hover {
-    @apply text-[#44228c];
-  }
-
   .shell {
     @apply w-[min(1500px,_calc(100%_-_76px))] my-0 mx-auto;
   }
   .project-head {
     @apply flex justify-between gap-6 items-end pt-6.25 pr-0 pb-6 pl-0;
   }
-  .breadcrumb {
-    @apply flex gap-1.75 items-center text-[#777084] font-[650] text-[13px] mb-2.25;
-  }
-  .breadcrumb > svg:first-child {
-    @apply text-[#8d78ba];
-  }
-  .breadcrumb button {
-    @apply p-0 bg-transparent text-[#6b617c] font-bold;
-  }
-  .breadcrumb button:hover {
-    @apply text-purple-dark;
-  }
-  .breadcrumb span {
-    @apply text-[#503a72] wrap-anywhere;
-  }
   .project-head h1 {
     @apply text-[clamp(31px,_3vw,_42px)] tracking-[-.055em] font-[850] leading-[1.11];
   }
   .project-head p {
-    @apply mt-2 text-muted font-[560] text-[15px];
-  }
-  .project-actions {
-    @apply flex gap-2.25 items-center pb-0.5;
-  }
-  .project-actions .btn {
-    @apply min-h-10.75 px-3.75;
+    @apply mt-2 text-muted font-[560] text-[15px] wrap-anywhere;
   }
   .workgrid {
-    @apply grid grid-cols-[minmax(224px,.82fr)_minmax(0,2.38fr)_minmax(272px,.98fr)] gap-4.25 items-start;
+    @apply grid grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] grid-rows-[max-content_1fr] items-start gap-4;
+  }
+  .plan-side {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
   .panel {
     @apply min-w-0 bg-surface;
     border: 1px solid #e9e6ef;
     @apply rounded-2xl shadow-[0_2px_3px_#26154403,0_9px_22px_#37245004];
   }
-  .panel-heading {
-    @apply flex items-center min-h-15.5 py-3.5 px-4.25 gap-2.5;
-    border-bottom: 1px solid #efedf3;
-  }
-  .panel-heading h2,
   .planner-heading h2 {
     @apply text-[19px] font-[850] tracking-[-.037em];
   }
@@ -112,14 +80,6 @@
     display: inline-grid;
     place-items: center;
     @apply flex-none;
-  }
-  .count {
-    display: inline-grid;
-    place-items: center;
-    @apply min-w-5.25 h-5 rounded-[7px] py-0 px-1.25 text-[#6a42c1] bg-[#f2ecfd] font-extrabold text-[11px] leading-none tracking-[0];
-  }
-  .shopping .panel-heading .count {
-    @apply ml-auto;
   }
   .settings-section {
     @apply pt-3.5 pr-4.25 pb-4 pl-4.25;
@@ -131,52 +91,32 @@
   .row-title {
     @apply flex justify-between gap-2 items-center;
   }
-  .settings-section h3,
-  .variants h3,
-  .shopping-label h3 {
-    @apply font-[825] text-[14px] tracking-[-.018em];
+  .plan-side h2,
+  .variants h2,
+  .editor-panel h2 {
+    @apply text-base font-extrabold wrap-anywhere;
   }
-  .settings-section h3 .count {
-    vertical-align: 1px;
-    @apply ml-1;
+  .plan-side p,
+  .catalog-context p {
+    @apply mt-1.5 text-sm text-muted wrap-anywhere;
   }
-  .room-summary {
-    @apply flex w-full items-center gap-2.25 rounded-[9px] mt-1.75 py-2.25 px-2 text-left;
-    border: 1px solid #efedf4;
-    @apply bg-[#faf9fc];
+  .plan-side .inline-actions {
+    @apply mt-2 mb-0;
   }
-  .room-summary:hover {
-    @apply border-[#d9c8fd];
+  .selected-details {
+    @apply bg-purple-soft rounded-t-2xl;
   }
-  .room-icon {
-    @apply w-8.5 h-8.5 rounded-lg bg-[#ede5fb] text-[#8056d1] grid;
-    place-items: center;
-    @apply flex-none;
+  .move-tools {
+    @apply flex flex-wrap items-center gap-1.5 mt-3;
   }
-  .room-summary > span:last-child,
-  .owned-item > span:nth-child(2) {
-    @apply min-w-0;
+  .move-tools > span {
+    @apply w-full text-sm font-semibold;
   }
-  .room-summary strong,
-  .owned-item strong {
-    @apply block font-[810] text-[13px] overflow-hidden text-ellipsis whitespace-nowrap;
+  .move-tools .btn {
+    @apply w-11 px-0 text-base;
   }
-  .room-summary small,
-  .owned-item small {
-    @apply block text-muted text-[11.5px] mt-0.5 whitespace-nowrap font-[650];
-  }
-  .capture-buttons {
-    @apply grid grid-cols-[1fr_auto] gap-1.75 mt-2.25;
-  }
-  .capture-buttons .btn {
-    @apply min-h-9.5;
-  }
-  .settings-field {
-    @apply mt-2.5 gap-1 text-[12px];
-  }
-  .settings-field input,
-  .settings-field select {
-    @apply text-[13.5px] min-h-9.25 py-1.75 px-2.25;
+  .empty-plan {
+    @apply flex flex-wrap items-center justify-between gap-2 mb-3;
   }
   .select,
   .input-unit {
@@ -191,24 +131,28 @@
   .input-unit input {
     @apply pr-6.5 font-[820];
   }
-  .owned-list {
-    @apply grid gap-1.5 mt-2.25;
+  .furniture-list {
+    @apply mt-2;
   }
-  .owned-item {
-    @apply w-full bg-transparent bg-none flex gap-2 text-left py-1.25 px-px items-center rounded-[9px];
+  .furniture-list summary {
+    @apply min-h-11 py-3 cursor-pointer font-semibold text-purple-dark;
   }
-  .owned-item:hover {
-    @apply bg-[#faf7ff];
+  .furniture-list ul {
+    @apply m-0 p-0 grid gap-1 list-none;
   }
-  .owned-icon {
-    @apply w-8.25 h-8.25 flex-none grid;
-    place-items: center;
-    @apply rounded-lg text-[#7355a4] bg-[#f1eafa];
+  .plan-item {
+    @apply flex justify-between gap-2 items-center w-full min-h-11 rounded-lg bg-white px-2 py-1 text-left;
   }
-  .owned-icon.chair {
-    @apply bg-[#eaf0e4] text-[#617a55];
+  .plan-item:hover,
+  .plan-item[aria-pressed="true"] {
+    @apply bg-purple-soft;
   }
-
+  .plan-item strong {
+    @apply block wrap-anywhere text-sm;
+  }
+  .plan-item small {
+    @apply block text-muted text-xs;
+  }
   .planner {
     @apply py-0 px-3.75;
   }
@@ -217,9 +161,6 @@
   }
   .planner-heading p {
     @apply text-muted font-[650] text-[12.5px] mt-1 wrap-anywhere;
-  }
-  .planner-heading p b {
-    @apply my-0 mx-0.75 text-[#a095af];
   }
   .view-controls {
     @apply flex gap-2 items-center;
@@ -331,10 +272,6 @@
   .plan-status.neutral {
     @apply bg-[#f3edf9] text-[#745a97];
   }
-  .variants {
-    border-top: 1px solid #eeebf3;
-    @apply pt-3 pr-0 pb-3.75 pl-0;
-  }
   .variants .row-title {
     @apply mt-0 mr-0.5 mb-2.25 ml-0.5;
   }
@@ -405,79 +342,6 @@
     @apply bottom-1 left-3.25 w-2.75 h-1.25;
   }
 
-  .shopping {
-    @apply pb-2;
-  }
-  .budget-summary {
-    @apply mt-3.75 mr-3.75 mb-3 ml-3.75 pt-3.25 pr-3 pb-3 pl-3 rounded-[11px];
-    background: linear-gradient(115deg, #f3edff 15%, #f0e9fc 66%, #f5edff);
-    border: 1px solid #efe5ff;
-  }
-  .budget-summary.over-budget {
-    @apply bg-[#fff0ef] border-[#f6dcd6];
-  }
-  .budget-top,
-  .budget-bottom {
-    @apply flex justify-between items-center gap-1.25 flex-wrap;
-  }
-  .budget-top {
-    @apply text-[#66567e] text-[11.5px] font-[760];
-  }
-  .budget-badge {
-    @apply flex items-center gap-0.75 text-[#427b56] bg-[#e5f3e8];
-    border: 1px solid #dceddf;
-    @apply rounded-xl py-0.5 px-1.5 text-[10px] font-[850] whitespace-nowrap;
-  }
-  .over-budget .budget-badge {
-    @apply bg-[#fff5ee] text-[#a34b3d] border-[#f7ddd2];
-  }
-  .total {
-    @apply block mt-0.75 text-[32px] font-[850] leading-[1.2] tracking-[-.055em] text-[#35204f] wrap-anywhere;
-  }
-  .budget-track {
-    @apply h-1.5 mt-2.5 mr-0 mb-1.5 ml-0 rounded-lg bg-[#e5d9fa] overflow-hidden;
-  }
-  .budget-track i {
-    @apply block min-w-0 h-full bg-[#8b5af0] rounded-lg;
-    transition: width 0.2s;
-  }
-  .over-budget .budget-track i {
-    @apply bg-[#dd7f70];
-  }
-  .budget-bottom {
-    @apply text-[#716281] font-[650] text-[10.8px];
-  }
-  .budget-bottom strong {
-    @apply text-[#6d49a1] font-[825];
-  }
-  .over-budget .budget-bottom strong {
-    @apply text-[#a34b3d];
-  }
-  .shopping-list {
-    @apply my-0 mx-3.75;
-  }
-  .shopping-label {
-    @apply flex justify-between items-center gap-1 mb-0.75;
-  }
-  .small-link {
-    @apply flex items-center gap-0.75 text-purple-dark bg-transparent pt-1.25 pr-0 pb-1.25 pl-1 text-[11.5px] font-extrabold;
-  }
-  .small-link:hover {
-    @apply underline;
-  }
-  .product-row {
-    @apply relative flex items-center;
-    border-bottom: 1px solid #efedf3;
-  }
-  .product-row:last-of-type {
-    border-bottom: 0;
-  }
-  .product-main {
-    @apply flex min-w-0 flex-1 items-center gap-2 py-2 px-0 text-left bg-transparent;
-  }
-  .product-main:hover strong {
-    @apply text-purple-dark;
-  }
   .product-image {
     @apply w-13.75 h-13.25 rounded-lg flex-none;
     display: inline-grid;
@@ -504,32 +368,6 @@
   }
   .product-image img {
     @apply w-full h-full rounded-[inherit] object-cover;
-  }
-  .product-meta {
-    @apply min-w-0 grid gap-0.5;
-  }
-  .product-meta > strong {
-    @apply text-[12px] leading-[1.22] font-[830] overflow-hidden text-ellipsis;
-  }
-  .product-meta > small {
-    @apply text-[10.5px] font-[690] text-[#746b80] whitespace-nowrap overflow-hidden text-ellipsis;
-  }
-  .product-meta > small b {
-    @apply text-[#a699b0] my-0 mx-0.5;
-  }
-  .product-link {
-    @apply h-6.25 w-6.25 ml-0.5 grid;
-    place-items: center;
-    @apply text-[#8b7b9b] rounded-md flex-none;
-  }
-  .product-link:hover {
-    @apply text-purple-dark bg-purple-soft;
-  }
-  .catalog-btn {
-    @apply mt-2.75 mr-3.75 mb-0 ml-3.75 min-h-9.75 w-[calc(100%_-_30px)] text-[#6339bc] bg-[#f9f5ff] border-[#e9defc];
-  }
-  .estimate-btn {
-    @apply mt-1.5 mr-3.75 mb-0 ml-3.75 w-[calc(100%_-_30px)] min-h-8.5 px-0.5;
   }
   .footer {
     @apply min-h-16.75 flex justify-between gap-2.5 items-center text-[#80758f] text-[12px] font-[680];
@@ -787,84 +625,75 @@
     @apply hidden;
   }
 
-  @media (min-width: 1500px) {
-    .workgrid {
-      @apply grid-cols-[258px_minmax(0,_1fr)_311px];
-    }
+  .skip-link {
+    @apply absolute z-10 top-2 left-3 -translate-y-[160%] bg-white rounded-lg px-3 py-2;
+  }
+  .skip-link:focus-visible {
+    @apply translate-y-0;
+  }
+  .editor-links {
+    @apply flex flex-wrap gap-2;
+  }
+  .editor-panel,
+  .variants {
+    @apply p-4;
+  }
+  .editor-panel .btn,
+  .project-head .btn,
+  .editor-links .btn,
+  .plan-side .btn,
+  .plan-side .icon-btn,
+  .variants .btn,
+  .dialog-head .icon-btn {
+    @apply min-h-11 whitespace-normal;
+  }
+  .plan-side .icon-btn,
+  .dialog-head .icon-btn {
+    @apply min-w-11;
+  }
+  .brand {
+    @apply min-h-11;
+  }
+  .brand:hover {
+    @apply no-underline;
+  }
+  .board .icon-btn {
+    @apply w-11 h-11;
+    outline-offset: -3px;
+  }
+  .selected-item-name,
+  .ar-view,
+  .plan-status,
+  .segmented button {
+    @apply min-h-11;
+  }
+  .segmented button {
+    @apply min-w-11;
+  }
+  .notice p {
+    @apply mb-2;
   }
   @media (max-width: 1190px) {
     .top-inner,
     .shell {
       @apply w-[calc(100%_-_42px)];
     }
-    .workgrid {
-      @apply gap-3 grid-cols-[207px_minmax(0,_1fr)_249px];
-    }
-    .panel-heading,
-    .settings-section {
-      @apply px-3;
-    }
-    .planner {
-      @apply px-2.75;
-    }
-    .shopping-list {
-      @apply mx-2.75;
-    }
-    .budget-summary {
-      @apply mx-2.75;
-    }
-    .catalog-btn,
-    .estimate-btn {
-      @apply mx-2.75 w-[calc(100%_-_22px)];
-    }
-    .variant-list {
-      @apply gap-1;
-    }
-    .variant {
-      @apply gap-1.25;
-    }
-    .mini-plan {
-      @apply w-8.5;
-    }
-    .variant strong {
-      @apply text-[11px];
-    }
   }
-  @media (max-width: 980px) {
+  @media (max-width: 840px) {
     .workgrid {
-      @apply grid-cols-[210px_minmax(0,_1fr)];
+      @apply grid-cols-1 grid-rows-none gap-3;
     }
-    .shopping {
-      @apply col-span-full grid grid-cols-[222px_minmax(0,_1fr)_185px] items-start;
-    }
-    .shopping .panel-heading {
-      @apply col-span-full min-h-12.75;
-    }
-    .shopping .budget-summary {
-      @apply col-[1] row-[2_/_4];
-    }
-    .shopping .shopping-list {
-      @apply col-[2] row-[2_/_4] mt-2.5;
-    }
-    .shopping .catalog-btn {
-      @apply col-[3];
-    }
-    .shopping .estimate-btn {
-      @apply col-[3];
-    }
-    .board {
-      @apply h-[clamp(386px,_51vw,_500px)];
+    .plan-side {
+      grid-column: auto;
+      grid-row: auto;
     }
   }
   @media (max-width: 680px) {
-    body {
-      @apply text-[14px];
-    }
     .topbar {
       @apply h-auto;
     }
     .top-inner {
-      @apply w-[calc(100%_-_28px)] grid-cols-[1fr_1fr] grid-rows-[54px_39px];
+      @apply w-[calc(100%_-_28px)] grid-cols-[1fr_1fr] grid-rows-[54px_44px];
     }
     .brand {
       @apply text-[26px] gap-1.75;
@@ -873,217 +702,81 @@
       @apply w-8 h-8 rounded-lg;
     }
     .brand-mark svg {
-      @apply h-5.25 w-5.25;
+      @apply w-5.25 h-5.25;
     }
     .nav {
-      @apply row-[2] col-span-full justify-between gap-3;
+      @apply row-start-2 col-span-full grid grid-cols-3 gap-2;
     }
     .nav-link {
-      @apply text-[12.5px] gap-1.25 px-0.75;
-    }
-    .nav-link svg {
-      @apply w-3.75 h-3.75;
+      @apply justify-center text-sm gap-1 px-0.75;
     }
     .top-actions {
-      @apply row-[1] col-[2] gap-2;
+      @apply row-start-1 col-start-2;
     }
     .save-state {
-      @apply text-[10px] gap-1.25;
-    }
-    .account {
-      @apply h-7.75 w-7.75;
+      @apply text-xs gap-1.25;
     }
     .shell {
       @apply w-[calc(100%_-_24px)];
     }
     .project-head {
-      @apply block pt-4 pr-px pb-3.5 pl-px;
+      @apply flex-wrap items-center gap-3 py-4 px-px;
     }
     .project-head h1 {
-      @apply text-[clamp(28px,_7.6vw,_37px)];
+      @apply text-[clamp(28px,7.6vw,37px)];
     }
     .project-head p {
-      @apply text-[13px] mt-1.5;
-    }
-    .breadcrumb {
-      @apply mb-1.5 text-[11.5px];
-    }
-    .project-actions {
-      @apply mt-3 w-full gap-1.75 p-0;
-    }
-    .project-actions .btn {
-      @apply min-h-9.75 flex-1 text-[12px] px-2;
-    }
-    .workgrid {
-      @apply flex flex-col gap-3;
-    }
-    .workgrid > * {
-      @apply w-full;
+      @apply text-sm mt-1.5;
     }
     .planner {
-      @apply -order-1 px-2;
+      @apply px-2;
     }
     .planner-heading {
-      @apply py-2.25 px-0.5 min-h-13.5 gap-1;
+      @apply flex-wrap py-2 gap-1;
     }
     .planner-heading h2 {
-      @apply text-[16px];
-    }
-    .planner-heading p {
-      @apply text-[10.5px] mt-0.75;
+      @apply text-base;
     }
     .view-controls {
-      @apply gap-1;
-    }
-    .segmented {
-      @apply p-0.5;
-    }
-    .segmented button {
-      @apply min-w-6.75 h-6.5 text-[11px];
+      @apply gap-1.5;
     }
     .ar-view {
-      @apply text-[10.5px] gap-1 min-h-7.75 p-1.25;
-    }
-    .ar-view svg {
-      @apply w-3.5 h-3.5;
+      @apply text-xs gap-1 px-1.5;
     }
     .board {
-      @apply min-h-70 h-[clamp(285px,_85vw,_370px)] bg-size-[14px_14px];
+      @apply min-h-70 h-[clamp(285px,85vw,370px)] bg-size-[14px_14px];
     }
     .board-label {
-      @apply left-1.75 top-1.75 text-[9.5px] py-0.75 px-1.25;
-    }
-    .board-label svg {
-      @apply w-3 h-3;
+      @apply left-1.75 top-1.75 text-xs;
     }
     .canvas-actions {
       @apply right-1.5 top-1.5;
     }
-    .canvas-actions .icon-btn {
-      @apply w-7 h-7;
-    }
     .plan-footer {
-      @apply min-h-9.75 py-1.5 px-px;
+      @apply flex-wrap px-1;
     }
     .legend {
-      @apply text-[9.4px] gap-1.25;
+      @apply text-xs gap-2;
     }
-    .legend span {
-      @apply gap-0.75;
-    }
-    .legend i {
-      @apply w-1.5 h-1.5;
-    }
-    .plan-status {
-      @apply text-[9px] gap-0.75 py-0.75 px-1.25;
-    }
-    .plan-status svg {
-      @apply w-3 h-3;
-    }
-    .variants {
-      @apply pb-2.25;
-    }
-    .variants h3 {
-      @apply text-[12.5px];
-    }
-    .secondary {
-      @apply text-[10.5px];
+    .variants > .row-title {
+      @apply flex-wrap;
     }
     .variant-list {
-      @apply gap-1;
+      @apply grid-cols-1;
     }
     .variant {
-      @apply min-h-12 py-1.25 px-1 grid-cols-[1fr] gap-1 justify-items-start;
+      @apply gap-2.5 px-2.5;
     }
-    .variant strong {
-      @apply p-0 text-[10px];
-    }
+    .variant strong,
     .variant small {
-      @apply text-[9px];
-    }
-    .mini-plan {
-      @apply hidden;
-    }
-    .variant-check {
-      @apply w-2.5 h-2.5;
-    }
-    .settings {
-      @apply grid grid-cols-2;
-    }
-    .settings .panel-heading {
-      @apply col-span-full;
-    }
-    .settings .room-section {
-      border-right: 1px solid #efedf3;
-    }
-    .settings .inventory-section {
-      @apply col-span-full;
-    }
-    .settings .owned-list {
-      @apply grid-cols-2;
-    }
-    .settings-section {
-      @apply py-2.75 px-2;
-    }
-    .room-summary {
-      @apply py-1.25 px-1 gap-1;
-    }
-    .room-icon {
-      @apply w-6.25 h-7.25;
-    }
-    .room-icon svg {
-      @apply w-3.75 h-3.75;
-    }
-    .room-summary small {
-      @apply text-[9.5px];
-    }
-    .capture-buttons {
-      @apply gap-1;
-    }
-    .capture-buttons .btn {
-      @apply min-h-8.5 px-1 gap-1 text-[10.5px];
-    }
-    .capture-buttons .btn svg {
-      @apply w-3.5 h-3.5;
-    }
-    .capture-buttons .square {
-      @apply w-7.5;
-    }
-    .settings-field input,
-    .settings-field select {
-      @apply min-h-8 text-[11.5px];
-    }
-    .settings-field select {
-      @apply pr-5;
-    }
-    .settings-field .select > svg {
-      @apply right-1.25 w-3;
-    }
-    .settings .panel-heading,
-    .shopping .panel-heading {
-      @apply min-h-12.75 py-2;
-    }
-    .panel-heading h2 {
-      @apply text-[17px];
-    }
-    .shopping {
-      @apply block;
-    }
-    .shopping .shopping-list {
-      @apply mt-0;
-    }
-    .shopping .product-meta > strong {
-      @apply text-[13px];
-    }
-    .shopping .product-meta > small {
-      @apply text-[11.5px];
-    }
-    .budget-top,
-    .budget-bottom {
-      @apply text-[12px];
+      @apply text-xs;
     }
     .footer {
-      @apply min-h-13.5 text-[10px];
+      @apply min-h-13.5 text-xs;
+    }
+    dialog[data-full-screen] {
+      @apply m-0 w-full h-dvh max-h-none rounded-none border-0;
+      overscroll-behavior: contain;
     }
     .dialog-head {
       @apply py-2.5 px-3;
@@ -1097,7 +790,7 @@
     .dialog-body input,
     .dialog-body select,
     .dialog-body textarea {
-      @apply text-[16px];
+      @apply text-base;
     }
     .dialog-body .form-grid {
       @apply gap-2;
@@ -1105,17 +798,11 @@
     .dialog-body .btn {
       @apply whitespace-normal;
     }
-    .catalog-grid {
-      @apply grid-cols-[1fr];
-    }
-    .catalog-card {
-      @apply grid grid-cols-[100px_1fr];
-    }
-    .catalog-card .product-image {
-      @apply h-25 self-center;
-    }
-    .dialog-body .estimate-totals strong {
-      @apply text-[15px];
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn,
+    .icon-btn {
+      transition: none;
     }
   }
   @media print {

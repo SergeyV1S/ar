@@ -3,11 +3,8 @@ import { decimal } from "../../../shared/helpers/index.ts";
 import { usePlannerContext } from "../hooks/index.ts";
 import type { PlannerModal } from "../types/index.ts";
 import { ARHelp } from "./ARHelp.tsx";
-import { Catalog } from "./Catalog.tsx";
 import { CheckReport } from "./CheckReport.tsx";
 import { Dialog } from "./Dialog.tsx";
-import { EstimateContent } from "./EstimateContent.tsx";
-import { ExportOptions } from "./ExportOptions.tsx";
 import { ItemEditor } from "./ItemEditor.tsx";
 import { Outline } from "./Outline.tsx";
 import { Privacy } from "./Privacy.tsx";
@@ -22,16 +19,14 @@ const dialogTitles = {
   "add-owned": ["Добавить свою мебель", "plus"],
   "add-buy": ["Добавить к покупке", "bag"],
   item: ["Редактировать мебель", "pencil"],
-  catalog: ["Каталог мебели", "grid"],
-  estimate: ["Смета закупки", "receipt"],
-  export: ["Экспорт проекта", "download"],
   procurement: ["Служебная закупка", "receipt"],
   checks: ["Проверка плана", "checkCircle"],
   projects: ["Проект на устройстве", "folder"],
   privacy: ["Хранение и защита проекта", "shield"],
   "ar-scan": ["AR-обмер комнаты", "scan"],
   "ar-view": ["Просмотр мебели в AR", "cube"],
-  "new-project": ["Новый проект", "folder"]
+  "new-project": ["Новый проект", "folder"],
+  "replan-confirm": ["Подобрать варианты заново", "spark"]
 } as const satisfies Record<PlannerModal["name"], readonly [string, string]>;
 export const PlannerDialog = () => {
   const {
@@ -43,11 +38,7 @@ export const PlannerDialog = () => {
     acceptVoice,
     storeItem,
     removeItem,
-    bought,
-    positions,
-    addCatalogItem,
     inspection,
-    exportData,
     saveProcurement,
     isProtected,
     protect,
@@ -56,10 +47,10 @@ export const PlannerDialog = () => {
     arSupport,
     arError,
     createProject,
-    openProcurement,
-    openExport,
     openProjects,
+    openPrivacy,
     openNewProject,
+    replan,
     backFromARHelp,
     launchSelectedAR,
     dialogItem,
@@ -89,39 +80,6 @@ export const PlannerDialog = () => {
             close={close}
           />
         );
-      case "catalog":
-        return (
-          <Catalog
-            project={project}
-            items={bought}
-            positions={positions}
-            add={addCatalogItem}
-            action={action}
-          />
-        );
-      case "estimate":
-        return (
-          <>
-            <EstimateContent
-              project={project}
-              items={bought}
-              inspection={inspection}
-              positions={positions}
-            />
-            <div className='form-actions'>
-              {project.mode === "office" && (
-                <Button icon='pencil' onClick={openProcurement}>
-                  Поля закупки
-                </Button>
-              )}
-              <Button icon='download' className='primary' onClick={openExport}>
-                Экспорт
-              </Button>
-            </div>
-          </>
-        );
-      case "export":
-        return <ExportOptions project={project} action={action} run={exportData} />;
       case "procurement":
         return <Procurement project={project} save={saveProcurement} close={close} />;
       case "checks":
@@ -151,20 +109,22 @@ export const PlannerDialog = () => {
               {project.room.name} · {decimal(roomArea)} м² · {project.items.length} поз.
             </div>
             <p className='support-text'>
-              Импорт JSON заменит открытый проект. Сохраните копию через «Экспорт», если она
-              понадобится.
+              Импорт JSON заменит открытый проект. Его можно заранее скачать как копию.
             </p>
             <div className='form-actions'>
               <Button icon='plus' className='mr-auto' onClick={openNewProject}>
                 Новый проект
               </Button>
               <Button icon='download' onClick={exportCopy}>
-                Сохранить копию
+                Скачать копию JSON
               </Button>
               <Button icon='upload' className='primary' onClick={chooseImportFile}>
                 Импорт проекта
               </Button>
             </div>
+            <Button icon='shield' onClick={openPrivacy}>
+              Хранение и защита проекта
+            </Button>
           </>
         );
       case "new-project":
@@ -176,7 +136,7 @@ export const PlannerDialog = () => {
             </p>
             <div className='form-actions'>
               <Button icon='download' className='mr-auto' onClick={exportCopy}>
-                Сохранить копию
+                Скачать копию JSON
               </Button>
               <Button onClick={openProjects}>Отмена</Button>
               <Button icon='plus' className='primary' onClick={createProject}>
@@ -185,8 +145,20 @@ export const PlannerDialog = () => {
             </div>
           </>
         );
-      default:
-        return null;
+      case "replan-confirm":
+        return (
+          <>
+            <p className='support-text'>
+              Новый подбор заменит сохранённые положения мебели в текущем способе покупки.
+            </p>
+            <div className='form-actions'>
+              <Button onClick={close}>Отмена</Button>
+              <Button className='primary' onClick={replan}>
+                Подобрать варианты
+              </Button>
+            </div>
+          </>
+        );
     }
   };
   const activeDialog = dialogTitles[modal.name];
@@ -196,7 +168,8 @@ export const PlannerDialog = () => {
       title={activeDialog[0]}
       icon={activeDialog[1]}
       close={close}
-      wide={["room", "catalog", "estimate", "outline"].includes(modal.name)}
+      wide={["room", "outline"].includes(modal.name)}
+      fullScreenOnMobile={["room", "outline", "add-owned", "add-buy", "item"].includes(modal.name)}
     >
       {showContent()}
     </Dialog>

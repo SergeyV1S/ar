@@ -1,1 +1,1 @@
-export const PATHS = { planner: "/" } as const;
+export const PATHS = { planner: "/", catalog: "/catalog", estimate: "/estimate" } as const;

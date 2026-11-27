@@ -8,6 +8,13 @@ import { drawPlan } from "../planning/index.ts";
 import type { Position } from "../types/index.ts";
 import { usePlannerContext } from "./usePlannerContext.ts";
 
+const moveDirections = [
+  { key: "ArrowUp", x: 0, y: -1, label: "Вверх", symbol: "↑" },
+  { key: "ArrowLeft", x: -1, y: 0, label: "Влево", symbol: "←" },
+  { key: "ArrowDown", x: 0, y: 1, label: "Вниз", symbol: "↓" },
+  { key: "ArrowRight", x: 1, y: 0, label: "Вправо", symbol: "→" }
+] as const;
+
 export const usePlanner = () => {
   const {
     project,
@@ -16,6 +23,10 @@ export const usePlanner = () => {
     inspection,
     selected: chosen,
     setSelected: setChosen,
+    view,
+    setView,
+    zoom,
+    setZoom,
     move,
     action
   } = usePlannerContext();
@@ -29,9 +40,7 @@ export const usePlanner = () => {
       scale: number;
       latest: Position | null;
     } | null>(null);
-  const [view, setView] = useState("2d"),
-    [zoom, setZoom] = useState(1),
-    [live, setLive] = useState<{ id: string; pos: Position } | null>(null);
+  const [live, setLive] = useState<{ id: string; pos: Position } | null>(null);
   useLayoutEffect(() => {
     const node = canvas.current;
     if (!node) return;
@@ -48,10 +57,14 @@ export const usePlanner = () => {
     paint();
     const observer = new ResizeObserver(paint);
     observer.observe(node);
+    let active = true;
     document.fonts?.ready.then(() => {
-      if (node.isConnected) paint();
+      if (active) paint();
     });
-    return () => observer.disconnect();
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
   }, [project, items, positions, inspection, view, zoom, chosen, live]);
   const eventPoint = (event: PointerEvent<HTMLCanvasElement>) => {
     const { left, top } = event.currentTarget.getBoundingClientRect();
@@ -100,29 +113,35 @@ export const usePlanner = () => {
     setLive(null);
     if (pointer?.latest && event.type !== "pointercancel") move(pointer.id, pointer.latest);
   };
-  const key = (event: KeyboardEvent<HTMLCanvasElement>) => {
-    const offsets: Record<string, number[]> = {
-      ArrowRight: [1, 0],
-      ArrowLeft: [-1, 0],
-      ArrowDown: [0, 1],
-      ArrowUp: [0, -1]
-    };
-    const offset = offsets[event.key];
-    if (!offset || !chosen || !positions[chosen] || view !== "2d") return;
-    event.preventDefault();
-    const pos = positions[chosen],
-      step = event.shiftKey ? 0.15 : 0.03;
-    move(chosen, {
-      ...pos,
-      x: round(pos.x + offset[0] * step),
-      y: round(pos.y + offset[1] * step)
+  const current = items.find((item) => item.id === chosen);
+  const nudgeItem = (direction: (typeof moveDirections)[number], step: number) => {
+    if (!current) return;
+    const position = positions[current.id];
+    if (!position) return;
+    move(current.id, {
+      ...position,
+      x: round(position.x + direction.x * step),
+      y: round(position.y + direction.y * step)
     });
   };
-  const current = items.find((item) => item.id === chosen);
+  const handleCanvasKey = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    const direction = moveDirections.find((option) => option.key === event.key);
+    if (!direction || !current || !positions[current.id] || view !== "2d") return;
+    event.preventDefault();
+    nudgeItem(direction, event.shiftKey ? 0.15 : 0.03);
+  };
+  const movementControls = moveDirections.map((direction) => {
+    const nudge = () => nudgeItem(direction, 0.03);
+    return { ...direction, nudge };
+  });
+  const itemChoices = items.map((item) => {
+    const select = () => setChosen(item.id);
+    return { item, select };
+  });
 
   const openAR = () => action("ar-view");
-  const zoomIn = () => setZoom(Math.min(2.3, zoom + 0.2));
-  const zoomOut = () => setZoom(Math.max(0.55, zoom - 0.2));
+  const zoomIn = () => setZoom((value) => Math.min(2.3, value + 0.2));
+  const zoomOut = () => setZoom((value) => Math.max(0.55, value - 0.2));
   const resetZoom = () => setZoom(1);
   const editItem = () => {
     if (current) action("item", current.id);
@@ -134,6 +153,11 @@ export const usePlanner = () => {
   };
   const clearSelection = () => setChosen(null);
   const openChecks = () => action("checks");
+  const editRoom = () => action("room");
+  const scanRoom = () => action("ar-scan");
+  const dictate = () => action("voice");
+  const addOwned = () => action("add-owned");
+  const replan = () => action(project.layouts[project.mode] ? "replan-confirm" : "replan");
 
   const viewOptions = (["2d", "3d"] as const).map((mode) => {
     const changeView = () => {
@@ -157,8 +181,10 @@ export const usePlanner = () => {
     start,
     track,
     stop,
-    key,
+    handleCanvasKey,
     current,
+    movementControls,
+    itemChoices,
     planStatus,
     viewOptions,
     variantOptions,
@@ -170,6 +196,11 @@ export const usePlanner = () => {
     editItem,
     rotateItem,
     clearSelection,
-    openChecks
+    openChecks,
+    editRoom,
+    scanRoom,
+    dictate,
+    addOwned,
+    replan
   };
 };

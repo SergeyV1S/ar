@@ -26,7 +26,8 @@ const isImportItem = (item: unknown): item is ImportItem =>
       numeric(item.h, 0.05, 20))) &&
   (item.quantity === undefined ||
     (Number.isSafeInteger(item.quantity) && numeric(item.quantity, 1, Number.MAX_SAFE_INTEGER))) &&
-  (item.owned === true || (hasLabel(modes, item.mode) && numeric(item.price, 0, 1e9)));
+  (item.owned === true ||
+    (hasLabel(modes, item.mode) && (item.price === undefined || numeric(item.price, 0, 1e9))));
 
 const normalizeItem = (item: ImportItem): Item => ({
   id: item.id,
@@ -40,7 +41,7 @@ const normalizeItem = (item: ImportItem): Item => ({
   quantity: typeof item.quantity === "number" ? item.quantity : 1,
   demo: item.demo === true,
   offerReason: String(item.offerReason ?? "").slice(0, 1500),
-  price: numeric(item.price, 0, 1e9) ? item.price : 0,
+  price: numeric(item.price, 0, 1e9) ? item.price : undefined,
   cap: numeric(item.cap, 0, 1e9) ? item.cap : 0,
   access: numeric(item.access, 0, 4) ? item.access : 0,
   url: safeUrl(item.url),

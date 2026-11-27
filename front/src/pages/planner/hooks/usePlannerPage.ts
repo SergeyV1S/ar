@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router";
 
 import { applyVoicePatch, getItemLayoutUpdate, upsertItem } from "../helpers/index.ts";
 import type { readLocal } from "../mock/index.ts";
@@ -19,8 +20,17 @@ import { useProjectFiles } from "./useProjectFiles.ts";
 import { useProjectStorage } from "./useProjectStorage.ts";
 
 export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
-  const [modal, setModal] = useState<PlannerModal | null>(null),
-    [selected, setSelected] = useState<string | null>(null);
+  const { pathname } = useLocation();
+  const [dialog, setDialog] = useState<{ path: string; modal: PlannerModal | null }>({
+    path: pathname,
+    modal: null
+  });
+  if (dialog.path !== pathname) setDialog({ path: pathname, modal: null });
+  const modal = dialog.modal;
+  const setModal = (next: PlannerModal | null) => setDialog({ path: pathname, modal: next });
+  const [search, setSearch] = useSearchParams();
+  const [view, setView] = useState<"2d" | "3d">("2d");
+  const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const notify = useCallback((message: string) => {
@@ -52,6 +62,15 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   } = useProjectStorage(initial, close, notify);
   const { items, mode, room, layouts, variant, passage } = project;
   const allItems = useMemo(() => planItems({ items, mode }), [items, mode]);
+  const queryItem = search.get("item");
+  const selected = allItems.find((item) => item.id === queryItem)?.id ?? null;
+  const setSelected = (id: string | null) => {
+    if (id === queryItem) return;
+    const next = new URLSearchParams(search);
+    if (id === null) next.delete("item");
+    else next.set("item", id);
+    setSearch(next, { replace: true, preventScrollReset: true });
+  };
   const bought = useMemo(
     () => visibleItems({ items, mode }).filter((item) => !item.owned),
     [items, mode]
@@ -65,11 +84,6 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     [room, allItems, positions, passage]
   );
   const action: Action = (name, id) => {
-    if (name === "workspace") {
-      close();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
     if (name === "variant") {
       if (typeof id !== "number" || !variants[id]) return;
       update({ variant: id });
@@ -77,6 +91,10 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       return;
     }
     if (name === "replan") {
+      if (!allItems.length) {
+        notify("Добавьте мебель, чтобы подобрать расстановку.");
+        return;
+      }
       const options = variants.map((_, i) => arrange(project.room, allItems, i, passage));
       const ranks = options.map(
         (option) => inspect(project.room, allItems, option, project.passage).warnings.length
@@ -86,11 +104,8 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
         layouts: { ...project.layouts, [project.mode]: options }
       });
       setSelected(null);
-      notify(
-        allItems.length
-          ? "Варианты обновлены. Выбран вариант с наименьшим числом замечаний."
-          : "Добавьте мебель, чтобы подобрать расстановку."
-      );
+      close();
+      notify("Варианты обновлены. Выбран вариант с наименьшим числом замечаний.");
       return;
     }
     if (name === "ar-view" && !allItems.some((item) => positions[item.id])) {
@@ -190,7 +205,6 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   };
 
   const openARHelp = (mode: ARMode) => setModal({ name: mode === "scan" ? "ar-scan" : "ar-view" });
-  const openExport = () => action("export");
   const clearSelection = () => setSelected(null);
 
   const { arSupport, arError, xrMode, xrState, overlay, launchAR, controlAR, resetARError } =
@@ -216,13 +230,14 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       backup,
       clearSelection,
       close,
-      openExport,
       notify
     });
 
   const openProcurement = () => action("procurement");
   const openProjects = () => action("projects");
+  const openPrivacy = () => action("privacy");
   const openNewProject = () => action("new-project");
+  const replan = () => action("replan");
   const backFromARHelp = () => {
     if (modal?.name === "ar-scan") action("outline");
     else close();
@@ -268,6 +283,10 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     status,
     modal,
     selected,
+    view,
+    setView,
+    zoom,
+    setZoom,
     toast,
     printImage,
     arSupport,
@@ -299,9 +318,10 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     controlAR,
     createProject,
     openProcurement,
-    openExport,
     openProjects,
+    openPrivacy,
     openNewProject,
+    replan,
     backFromARHelp,
     launchSelectedAR,
     dialogItem,

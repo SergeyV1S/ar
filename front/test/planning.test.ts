@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeAR } from "../src/pages/planner/ar/index.ts";
+import { makeCsv } from "../src/pages/planner/helpers/index.ts";
 import { plannerLoader } from "../src/pages/planner/loader.ts";
 import {
   initialProject,
@@ -243,4 +244,28 @@ test("office backups require the original password and retain partial procuremen
   const restored = await unlockLocal(record, password);
   assert.equal(restored.project.procurement.purpose, "Архив");
   assert(procurementMissing(restored.project).length);
+});
+
+test("a project can retain missing prices without treating a free item as unknown", () => {
+  const project = initialProject();
+  const base = project.items.find((item) => !item.owned && item.mode === project.mode);
+  assert(base);
+  const draft = {
+    ...project,
+    items: [
+      { ...base, id: "known", price: 1250, quantity: 2 },
+      { ...base, id: "free", price: 0 },
+      { ...base, id: "unknown", price: undefined }
+    ]
+  };
+  const restored = validateImport(JSON.parse(JSON.stringify(draft)));
+  assert.deepEqual(
+    restored.items.map((item) => item.price),
+    [1250, 0, undefined]
+  );
+  assert.equal(purchaseTotal(restored.items), 2500);
+  const csv = makeCsv(restored, restored.items, {});
+  assert.match(csv, /"Сумма известных цен";"2500"/);
+  assert.match(csv, /"Предварительная разница";"77500"/);
+  assert.match(csv, /"Цена не указана/);
 });

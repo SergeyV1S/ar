@@ -104,3 +104,12 @@ export const resizeRoom = (room: Room, width: number, depth: number) => {
 
 export const purchaseTotal = (items: Item[]) =>
   items.reduce((sum, item) => sum + lineTotal(item), 0);
+
+export const getPurchaseBudget = (budget: number, items: Item[]) => {
+  const total = purchaseTotal(items);
+  return {
+    total,
+    difference: budget - total,
+    hasUnknownPrices: items.some((item) => item.price === undefined)
+  };
+};

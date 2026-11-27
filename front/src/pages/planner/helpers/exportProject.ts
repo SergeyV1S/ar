@@ -1,11 +1,11 @@
 import { decimal } from "../../../shared/helpers/index.ts";
 import {
   checkLabel,
+  getPurchaseBudget,
   lineTotal,
   modes,
   procurementFields,
   purchaseIssues,
-  purchaseTotal,
   sourceLabel,
   visibleItems
 } from "../mock/index.ts";
@@ -34,32 +34,36 @@ export const makeCsv = (project: Project, bought: Item[], positions: Positions) 
     "Проверка",
     "Примечания"
   ];
-  const rows = items.map((item) => [
-    item.name,
-    item.owned ? "Есть у пользователя" : "К покупке",
-    item.kind === "service" ? "" : decimal(item.w, 2),
-    item.kind === "service" ? "" : decimal(item.d, 2),
-    item.kind === "service" ? "" : decimal(item.h, 2),
-    item.kind === "service" ? "Услуга" : item.material,
-    item.owned ? 0 : item.price,
-    item.quantity ?? 1,
-    item.owned ? 0 : lineTotal(item),
-    item.cap || "",
-    item.seller ?? "",
-    item.sku ?? "",
-    item.details ?? "",
-    item.url ?? "",
-    item.availability ?? "",
-    sourceLabel[item.source],
-    checkLabel[item.verified],
-    [
-      ...(item.owned ? [] : purchaseIssues(project, item)),
-      ...(item.demo ? ["Демонстрационное предложение"] : []),
-      ...(item.offerReason ? [item.offerReason] : []),
-      ...(item.kind === "service" || positions[item.id] ? [] : ["Не размещено"])
-    ].join(", ")
-  ]);
-  const total = purchaseTotal(bought);
+  const rows = items.map((item) => {
+    const amount = item.price === undefined ? "" : lineTotal(item);
+    return [
+      item.name,
+      item.owned ? "Есть у пользователя" : "К покупке",
+      item.kind === "service" ? "" : decimal(item.w, 2),
+      item.kind === "service" ? "" : decimal(item.d, 2),
+      item.kind === "service" ? "" : decimal(item.h, 2),
+      item.kind === "service" ? "Услуга" : item.material,
+      item.owned ? 0 : item.price,
+      item.quantity ?? 1,
+      item.owned ? 0 : amount,
+      item.cap || "",
+      item.seller ?? "",
+      item.sku ?? "",
+      item.details ?? "",
+      item.url ?? "",
+      item.availability ?? "",
+      sourceLabel[item.source],
+      checkLabel[item.verified],
+      [
+        ...(item.owned ? [] : purchaseIssues(project, item)),
+        ...(!item.owned && item.price === undefined ? ["Цена не указана"] : []),
+        ...(item.demo ? ["Демонстрационное предложение"] : []),
+        ...(item.offerReason ? [item.offerReason] : []),
+        ...(item.kind === "service" || positions[item.id] ? [] : ["Не размещено"])
+      ].join(", ")
+    ];
+  });
+  const { total, difference, hasUnknownPrices } = getPurchaseBudget(project.budget, bought);
   const csvField = (value: unknown) => {
     const entry = String(value ?? "");
     const safe =
@@ -74,8 +78,8 @@ export const makeCsv = (project: Project, bought: Item[], positions: Positions) 
     ["Способ закупки", modes[project.mode]],
     ["Вариант", variants[project.variant].title],
     ["Бюджет", project.budget],
-    ["Итого", total],
-    ["Разница", project.budget - total]
+    [hasUnknownPrices ? "Сумма известных цен" : "Итого", total],
+    [hasUnknownPrices ? "Предварительная разница" : "Разница", difference]
   ];
   if (project.mode === "office")
     lines.push(
