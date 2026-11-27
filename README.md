@@ -8,7 +8,7 @@
 docker compose up --build -d
 ```
 
-Откройте [http://localhost:4178](http://localhost:4178). Для доступа с телефона установите `METRIKA_BIND` в IPv4-адрес нужного сетевого интерфейса компьютера перед запуском Compose. Для разработки доступны `npm ci`, `npm run dev`, `npm test` и `npm run build`.
+Откройте [http://localhost:4178](http://localhost:4178). Для доступа с телефона установите `METRIKA_BIND` в IPv4-адрес нужного сетевого интерфейса компьютера перед запуском Compose. Команды для разработки запускаются из `front/`: `yarn install --frozen-lockfile`, `yarn dev`, `yarn typecheck`, `yarn lint`, `yarn test` и `yarn build`.
 
 ## AR
 
