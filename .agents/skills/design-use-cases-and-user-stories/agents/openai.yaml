@@ -1,0 +1,17 @@
+interface:
+  display_name: design use cases and user stories
+  short_description: Проектируй, уточняй и проверяй логику системы по требованиям
+    в виде Use Case (вариантов использования), User Story (пользовательских историй)
+    и Acceptance Criteria (критериев приёмки). Применяй для анализа акторов, целей,
+    основного, альтернативных и исключительных потоков, подготовки историй по INVEST,
+    критериев Given/When/Then, таблиц решений, чек-листов, трассировки и согласования
+    пробелов с пользователем по материалам wiegers_sa_reference.md.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

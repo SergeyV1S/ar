@@ -1,0 +1,85 @@
+@layer components {
+  .icon-btn {
+    @apply w-9 h-9 flex-none;
+    border: 1px solid var(--color-border);
+    @apply rounded-[9px] bg-white text-[#645870];
+    display: inline-grid;
+    place-items: center;
+    @apply p-0;
+    transition:
+      background 0.16s,
+      color 0.16s,
+      border-color 0.16s;
+  }
+  .icon-btn:hover {
+    @apply bg-[#f5efff] text-purple-dark border-[#ded1fc] no-underline;
+  }
+  .btn {
+    @apply min-h-10 inline-flex items-center justify-center gap-2;
+    border: 1px solid #e5e0ed;
+    @apply rounded-[9px] py-2 px-3.5 text-[#3b304b] bg-white font-[750] text-[13.5px] leading-[1.2] whitespace-nowrap;
+    transition:
+      background 0.16s,
+      border-color 0.16s,
+      color 0.16s,
+      box-shadow 0.16s;
+  }
+  .btn:hover:not(:disabled) {
+    @apply no-underline border-[#cbb7f5] bg-[#f9f6ff] text-purple-dark;
+  }
+  .btn.primary {
+    @apply bg-purple text-white border-purple shadow-[0_2px_3px_#6235c52a];
+  }
+  .btn.primary:hover:not(:disabled) {
+    @apply bg-purple-dark text-white border-purple-dark;
+  }
+  .btn.ar-soft {
+    @apply bg-purple-soft border-[#eee5ff] text-[#6436cb];
+  }
+  .btn.square {
+    @apply w-10 p-0 text-[#726482];
+  }
+  .btn.danger {
+    @apply text-red;
+  }
+  .btn.danger:hover:not(:disabled) {
+    @apply bg-[#fff1ee] border-[#e8b7af] text-red;
+  }
+  .icon-btn.small {
+    @apply w-6.5 h-6.5 border-transparent bg-transparent;
+  }
+  .icon-btn.small svg {
+    @apply w-3.75 h-3.75;
+  }
+  .icon-btn.small:hover,
+  .icon-btn.small.add-icon {
+    @apply bg-purple-soft text-purple-dark;
+  }
+  .field {
+    @apply grid gap-1.25 text-[13px] text-[#544960] font-[720];
+  }
+  .field > span:first-child {
+    @apply wrap-anywhere;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    @apply w-full text-ink py-2.25 px-2.5 rounded-lg;
+    border: 1px solid #e8e3ee;
+    @apply bg-white text-[14px] font-[680] min-h-9.75;
+  }
+  .field textarea {
+    resize: vertical;
+  }
+  .field small {
+    @apply text-[12px] font-semibold text-muted;
+  }
+  .field input:hover,
+  .field select:hover,
+  .field textarea:hover {
+    @apply border-[#d8c9ee];
+  }
+  .select select {
+    @apply appearance-none pr-7.25;
+  }
+}

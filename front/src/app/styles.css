@@ -1,0 +1,122 @@
+@layer theme, base, components, utilities;
+/* Retain the existing browser defaults for native controls, dialogs, and print. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source("../");
+@import "../shared/components/styles.css";
+@import "../pages/planner/styles.css";
+@import "../pages/catalog/styles.css";
+@import "../pages/estimate/styles.css";
+
+@theme {
+  --color-ink: #241b32;
+  --color-muted: #6e677b;
+  --color-border: #eae7f0;
+  --color-surface: #fff;
+  --color-purple: #7243e8;
+  --color-purple-dark: #5e32ca;
+  --color-purple-soft: #f2ecff;
+  --color-green: #347550;
+  --color-red: #a6473b;
+}
+
+@layer base {
+  :root {
+    font-family: "Manrope Variable", "Segoe UI", Arial, sans-serif;
+    @apply text-[#241b32] bg-[#f7f7fa];
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    color-scheme: light;
+  }
+
+  *,
+  *::before,
+  *::after {
+    @apply box-border;
+  }
+  body {
+    @apply m-0 min-w-80 text-[15px] leading-[1.45];
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    @apply cursor-pointer text-inherit;
+  }
+  button:disabled {
+    @apply cursor-not-allowed opacity-53;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    outline-offset: 3px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-purple);
+  }
+  a {
+    @apply text-purple-dark no-underline;
+  }
+  a:hover {
+    @apply underline;
+  }
+  h1,
+  h2,
+  h3,
+  p {
+    @apply m-0;
+  }
+  h2,
+  h3 {
+    @apply leading-[1.2];
+  }
+  svg {
+    @apply inline-block flex-none align-middle;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    @apply max-w-full;
+  }
+  button {
+    border: 0;
+  }
+  [hidden] {
+    display: none !important;
+  }
+
+  dialog {
+    @apply w-[min(560px,_calc(100%_-_28px))];
+    max-width: none;
+    @apply p-0 text-ink;
+    border: 1px solid var(--color-border);
+    @apply rounded-[18px] max-h-[min(calc(100dvh_-_28px),_900px)] bg-white shadow-[0_18px_65px_#21133c3c];
+  }
+  dialog::backdrop {
+    @apply bg-[#20153566];
+    backdrop-filter: blur(3px);
+  }
+  table {
+    @apply w-full border-collapse text-left text-[12px];
+  }
+  th {
+    @apply bg-[#f8f5fc] font-[850] text-[#58496c];
+  }
+  th,
+  td {
+    @apply align-top p-2;
+    border-bottom: 1px solid #eeeaf4;
+  }
+  td small {
+    @apply block text-[#6c6278] text-[10.5px] wrap-anywhere;
+  }
+}

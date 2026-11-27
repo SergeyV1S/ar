@@ -1,0 +1,73 @@
+@layer components {
+  .estimate-layout {
+    @apply grid grid-cols-[minmax(0,1fr)_17rem] gap-4 items-start;
+  }
+  .export-panel .option-list {
+    @apply mt-3;
+  }
+  .export-panel .option-list > button {
+    @apply min-h-11;
+  }
+  .estimate-layout table,
+  .estimate-totals {
+    font-variant-numeric: tabular-nums;
+  }
+  .estimate-layout td {
+    @apply wrap-anywhere;
+  }
+  .estimate-price-note {
+    @apply mb-3;
+  }
+  .estimate-edit,
+  .estimate-link {
+    @apply mt-1;
+  }
+  .estimate-link {
+    @apply flex items-center min-h-11 w-fit underline;
+  }
+  .estimate-edit.btn {
+    @apply px-2;
+  }
+  .estimate-layout td[data-label="Сумма"] {
+    @apply min-w-16;
+  }
+  @media (max-width: 1040px) {
+    .estimate-layout {
+      @apply grid-cols-1;
+    }
+  }
+  @media screen and (max-width: 760px) {
+    .estimate-layout .estimate-totals {
+      @apply grid-cols-1;
+    }
+    .estimate-layout .estimate-totals > div {
+      @apply flex flex-wrap justify-between items-baseline gap-2;
+    }
+    .estimate-layout .estimate-rows thead {
+      @apply sr-only;
+    }
+    .estimate-layout table,
+    .estimate-layout tbody {
+      @apply block;
+    }
+    .estimate-layout tbody {
+      @apply grid gap-3;
+    }
+    .estimate-layout tr {
+      @apply block border border-solid border-border rounded-xl p-3;
+    }
+    .estimate-layout td {
+      @apply block border-0 px-0 py-1.5 text-sm;
+    }
+    .estimate-layout td[data-label]::before {
+      content: attr(data-label) ": ";
+      @apply font-bold;
+    }
+    .estimate-layout .estimate-item > strong {
+      @apply text-base;
+    }
+    .estimate-edit {
+      @apply flex w-fit;
+    }
+  }
+}
