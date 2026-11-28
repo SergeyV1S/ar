@@ -1,15 +1,12 @@
 import { newId } from "../../../shared/helpers/index.ts";
+import { pointIn } from "../planning/index.ts";
 import { createLiveFurnitureDetector } from "../recognition/index.ts";
 import type { ScanLayout } from "./geometry.ts";
 import type { ObjectMeasurement } from "./objectMeasurement.ts";
-import {
-  combineMeasurements,
-  depthGridSize,
-  measureObject,
-  measurementsMatch
-} from "./objectMeasurement.ts";
+import { combineMeasurements, measureObject, measurementsMatch } from "./objectMeasurement.ts";
 import type { CameraPose } from "./projection.ts";
-import { cameraImagePoint, getCameraRotation } from "./projection.ts";
+import { getCameraRotation } from "./projection.ts";
+import { restrictRoomFrame } from "./roomImage.ts";
 import { getDepth, readDepth } from "./tracking.ts";
 
 type Track = { id: string; samples: ObjectMeasurement[]; lastFrame: number; confirmed: boolean };
@@ -106,16 +103,9 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
       projection: view.projectionMatrix.slice(),
       rotation
     };
-    const depth = new Float32Array(depthGridSize ** 2);
     const info = getDepth(frame, view);
-    if (info) {
-      for (let i = 0; i < depth.length; i++) {
-        const u = (i % depthGridSize) / (depthGridSize - 1);
-        const v = Math.floor(i / depthGridSize) / (depthGridSize - 1);
-        const [cameraU, cameraV] = cameraImagePoint(rotation, u, v);
-        depth[i] = readDepth(info, cameraU, cameraV) ?? 0;
-      }
-    }
+    const depth = restrictRoomFrame(image, layout, camera, (u, v) => readDepth(info, u, v));
+    if (!depth) return;
     const request = process;
     isDetecting = true;
     void Promise.resolve()
@@ -131,7 +121,7 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
           .filter((object) => object !== null);
         for (const { id, measurement } of request(objects)) {
           if (process !== request) break;
-          publish(id, measurement);
+          if (pointIn(measurement.center, layout.points)) publish(id, measurement);
         }
       })
       .catch(() => {

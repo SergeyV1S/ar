@@ -51,6 +51,8 @@ export const measureObject = (
   const u = x + w / 2;
   const floor = layout.origin[1];
   const samples: { point: Point; height: number; depth: number; central: boolean }[] = [];
+  let outsideDepth = 0;
+  let insideDepth = 0;
   for (let gy = 0; gy < depthGridSize; gy++) {
     const v = gy / (depthGridSize - 1);
     if (v < y + h * 0.1 || v > y + h * 0.91) continue;
@@ -62,11 +64,17 @@ export const measureObject = (
       const world = projectDepth(camera, sx, v, value);
       const point = roomPoint(layout, world);
       const height = world[1] - floor;
-      if (height < 0.08 || height > Math.max(1.5, typical.h * 2) || !pointIn(point, layout.points))
-        continue;
-      samples.push({ point, height, depth: value, central: Math.abs(sx - u) < w * 0.26 });
+      const inside = pointIn(point, layout.points);
+      const central = Math.abs(sx - u) < w * 0.26;
+      if (central) {
+        if (inside) insideDepth++;
+        else outsideDepth++;
+      }
+      if (!inside || height < 0.08 || height > Math.max(1.5, typical.h * 2)) continue;
+      samples.push({ point, height, depth: value, central });
     }
   }
+  if (outsideDepth > insideDepth) return null;
 
   const central = samples.filter((sample) => sample.central);
   const near = percentile(
@@ -77,15 +85,16 @@ export const measureObject = (
     (sample) => sample.depth >= near - 0.22 && sample.depth <= near + typical.d * 0.75
   );
   const measured = foreground.length >= 7;
-  const foot = projectToFloor(camera, u, y + h, floor);
-  if (!measured && (clipped || !foot)) return null;
+  const worldFoot = projectToFloor(camera, u, y + h, floor);
+  const foot = worldFoot && roomPoint(layout, worldFoot);
+  if (!measured && (clipped || !foot || !pointIn(foot, layout.points))) return null;
 
   const eye = roomPoint(layout, cameraOrigin(camera.transform));
   const spans = [0, 1].map((axis) => {
     const values = foreground.map(({ point }) => point[axis]);
     return [percentile(values, 0.06), percentile(values, 0.94)];
   });
-  const face = foot ? roomPoint(layout, foot) : [0, 0];
+  const face = foot ?? [0, 0];
   if (measured) {
     face[0] = (spans[0][0] + spans[0][1]) / 2;
     face[1] = (spans[1][0] + spans[1][1]) / 2;
@@ -96,7 +105,7 @@ export const measureObject = (
   if (cameraDistance < 0.25 || cameraDistance > 7) return null;
   const opticalDistance = measured
     ? near
-    : (foot ?? []).reduce(
+    : (worldFoot ?? []).reduce(
         (sum, coordinate, axis) =>
           sum + (camera.transform[12 + axis] - coordinate) * camera.transform[8 + axis],
         0

@@ -11,6 +11,7 @@ import {
   viewRay
 } from "../src/pages/planner/ar/projection.ts";
 import type { CameraPose } from "../src/pages/planner/ar/projection.ts";
+import { restrictRoomFrame } from "../src/pages/planner/ar/roomImage.ts";
 import {
   getItemLayoutUpdate,
   scaleRoomStroke,
@@ -99,6 +100,62 @@ test("sideways AR frames use the same rays for corrected detections and raw dept
   const expected = viewRay(pose, 0.3, 0.6);
   const actual = viewRay(rotated, 0.3, 0.6);
   assert(expected.every((value, axis) => Math.abs(value - actual[axis]) < 1e-6));
+});
+
+const cameraImage = () => ({
+  width: 2,
+  height: 1,
+  data: new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 255, 255])
+});
+
+test("the inference frame masks camera pixels in the recess of a concave room", () => {
+  const layout = getScanLayout([
+    [0, 0, 0],
+    [5, 0, 0],
+    [5, 0, 2],
+    [2, 0, 2],
+    [2, 0, 5],
+    [0, 0, 5]
+  ]);
+  assert(layout);
+  const image = cameraImage();
+  const depth = restrictRoomFrame(
+    image,
+    layout,
+    { ...camera(1.8, 1.45, 4, 0), rotation: 90 },
+    (u) => (u < 0.5 ? 1.25 : 1.5)
+  );
+  assert(depth);
+  assert.deepEqual([...image.data], [255, 0, 0, 255, 114, 114, 114, 255]);
+  assert.equal(depth[0], 1.25);
+  assert.equal(depth.at(-1), 1.5);
+});
+
+test("without depth, only rays that reach the room contribute to the inference frame", () => {
+  const image = cameraImage();
+  assert(restrictRoomFrame(image, room(), camera(5.5, 1.45, 4, 0), () => null));
+  assert.deepEqual([...image.data], [255, 0, 0, 255, 114, 114, 114, 255]);
+  assert.equal(
+    restrictRoomFrame(cameraImage(), room(), camera(2, 1.45, -1, 0), () => null),
+    null
+  );
+});
+
+test("a frame showing only points beyond the room is skipped even when the camera is inside", () => {
+  assert.equal(restrictRoomFrame(cameraImage(), room(), camera(2, 1.45, 4, 0), () => 6), null);
+});
+
+test("an in-room floor estimate cannot override depth placing a detection beyond the wall", () => {
+  const pose = camera(2, 1.45, 4, 0.32);
+  const match: FurnitureMatch = {
+    kind: "stool",
+    title: "Стул",
+    score: 0.8,
+    box: [32, 30, 35, 55]
+  };
+  const depth = new Float32Array(depthGridSize ** 2);
+  assert(measureObject(room(), pose, depth, match)?.estimated);
+  assert.equal(measureObject(room(), pose, depth.fill(6), match), null);
 });
 
 test("an edge-clipped table needs depth to produce an approximate measurement", () => {
