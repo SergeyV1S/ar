@@ -20,7 +20,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "types": ["vite/client", "node", "webxr", "dom-speech-recognition"],
+    "types": ["vite/client", "node", "webxr"],
     "ignoreDeprecations": "6.0"
   },
   "include": ["src", "test", "scripts", "*.config.ts"],
