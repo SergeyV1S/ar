@@ -49,6 +49,25 @@ test("transcribes a recording through Groq and returns the text", async (t) => {
   assert.deepEqual(await response.json(), { text: "Комната 4 на 3." });
 });
 
+test("forwards a WAV upload to Groq with a WAV filename", async (t) => {
+  const upload = await openTranscriptions(t, {
+    groqApiKey: "test-key",
+    fetchFromGroq: async (input, init) => {
+      const form = await new Request(input, init).formData();
+      const file = form.get("file");
+      assert.ok(file instanceof File);
+      assert.equal(file.name, "recording.wav");
+      assert.equal(file.type, "audio/wav");
+      assert.deepEqual(new Uint8Array(await file.arrayBuffer()), audioBytes());
+      return Response.json({ text: "Бюджет 80 тысяч." });
+    }
+  });
+
+  const response = await upload(audio("audio/wav"));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { text: "Бюджет 80 тысяч." });
+});
+
 test("rejects invalid uploads without contacting Groq", async (t) => {
   let contactedGroq = false;
   const upload = await openTranscriptions(t, {

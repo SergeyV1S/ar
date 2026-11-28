@@ -10,4 +10,4 @@ export {
   getThumbnailClass
 } from "./view.ts";
 export { applyVoicePatch, getItemLayoutUpdate, upsertItem } from "./projectEdits.ts";
-export { getRecordingType, getTranscriptionError } from "./voice.ts";
+export { getTranscriptionError, NO_SPEECH_MESSAGE } from "./voice.ts";
