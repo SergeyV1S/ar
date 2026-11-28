@@ -2,6 +2,7 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 
 import type { ImagePickerProps } from "../components/index.ts";
+import { encodeRoomPhoto } from "../helpers/roomPhoto.ts";
 
 export const useImagePicker = ({ onPhoto }: ImagePickerProps) => {
   const [error, setError] = useState("");
@@ -22,7 +23,7 @@ export const useImagePicker = ({ onPhoto }: ImagePickerProps) => {
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, image.width, image.height);
       ctx.drawImage(bitmap, 0, 0, image.width, image.height);
-      onPhoto(image.toDataURL("image/jpeg", 0.72));
+      onPhoto(encodeRoomPhoto(image));
       setError("");
     } catch (failure) {
       setError(

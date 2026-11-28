@@ -8,3 +8,8 @@ export const photoFrom = (value: unknown, hosts: RegExp) => {
     return;
   }
 };
+
+export const avitoPhoto = (value: unknown) => photoFrom(value, /^(?:[\w-]+\.)*avito\.st$/i);
+export const divanPhoto = (value: unknown) => photoFrom(
+  value, /^(?:cdn\.servicecdn\.ru|(?:[\w-]+\.)*divan\.ru)$/i
+);

@@ -43,6 +43,7 @@ type AppOptions = {
   groqTimeoutMs?: number;
   gigaChatKey?: string;
   fetchFromGiga?: typeof fetch;
+  fetchCatalogPhoto?: typeof fetch;
   avitoMcpUrl?: string;
 };
 
@@ -53,12 +54,13 @@ export const createApp = ({
   groqTimeoutMs = 30_000,
   gigaChatKey,
   fetchFromGiga,
+  fetchCatalogPhoto,
   avitoMcpUrl
 }: AppOptions = {}) => {
   const app = express();
   const giga = gigaChatKey && createGigaChat(gigaChatKey, fetchFromGiga);
   app.disable("x-powered-by");
-  app.use("/api/planner", createPlannerRouter(giga || undefined));
+  app.use("/api/planner", createPlannerRouter(giga || undefined, fetchCatalogPhoto));
   app.use("/api/catalog/avito", createAvitoRouter(avitoMcpUrl));
   app.use("/api/catalog", createCatalogRouter(fetchFromDivan));
 

@@ -1,4 +1,5 @@
 import { catalogPhotoUrl, isFurnitureWish, isLayoutAdvice, isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
+import { isRoomPhoto } from "../helpers/roomPhoto.ts";
 import { dimensions, maxOutlinePoints, normalize, validPolygon } from "../planning/index.ts";
 import type { Item, Project, ProjectWish } from "../types/index.ts";
 import { materials, modes, procurementFields, sourceLabel, types } from "./catalog.ts";
@@ -159,6 +160,7 @@ export const validateImport = (input: unknown): Project => {
     room: {
       name: room.name.trim().slice(0, 80) || "Комната",
       points,
+      photo: isRoomPhoto(room.photo) ? room.photo : undefined,
       source: hasLabel(sourceLabel, room.source) ? room.source : "import",
       verified: room.verified === "checked" ? "checked" : "review",
       openings: openings

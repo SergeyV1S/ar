@@ -6,7 +6,7 @@ export const getPlanningContext = (
   project: Project, items: Item[], positions: Positions, phrase: string
 ): PlannerContextInput => ({
   phrase,
-  room: project.room,
+  room: { points: project.room.points, openings: project.room.openings },
   passage: project.passage,
   items: items.map(({ id, name, kind, owned, material, w, d, h }) => ({
     id, name, kind, owned, material, w, d, h, position: positions[id]

@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 
 import { GigaChatError, record } from "./gigachat.ts";
 import type { createGigaChat } from "./gigachat.ts";
+import { createVisualizationHandler } from "./visualization.ts";
 
 const categories = ["chair", "armchair", "sofa", "table", "wardrobe", "cabinet", "pouf",
   "bed", "dresser", "shelving", "other"] as const;
@@ -176,8 +177,10 @@ const readLayouts = (output: string, input: PlanContext) => {
   }) };
 };
 
-export const createPlannerRouter = (chat?: ReturnType<typeof createGigaChat>) => {
+export const createPlannerRouter = (chat?: ReturnType<typeof createGigaChat>, download = fetch) => {
   const router = Router();
+  router.post("/visualizations", express.json({ limit: "3mb" }),
+    createVisualizationHandler(chat, (plan) => analysisInput(plan, true), download));
   router.use(express.json({ limit: "64kb" }));
   const run = (instruction: string, read: (output: string, input: PlanContext) => object,
     forLayouts = false): RequestHandler => async (request, response) => {

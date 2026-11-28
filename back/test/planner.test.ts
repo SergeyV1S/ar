@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { Server } from "node:http";
 import { test } from "node:test";
+import sharp from "sharp";
 
 import { createApp } from "../src/app.ts";
 
@@ -11,6 +12,109 @@ const origin = async (server: Server) => {
   assert(address && typeof address === "object");
   return `http://127.0.0.1:${address.port}`;
 };
+
+test("retries individual Ultra stages and deletes temporary visuals", async (t) => {
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(24)]);
+  const avif = await sharp({
+    create: { width: 20, height: 20, channels: 3, background: "#39c" }
+  }).avif().toBuffer();
+  const roomPhoto = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+  const ids = [1, 2, 3].map((value) => `10000000-0000-4000-8000-00000000000${value}`);
+  const catalogPhoto = "https://cdn.servicecdn.ru/chair.jpg";
+  const position = { x: 1, y: 0.4, r: 37 };
+  const deleted = new Set<string>();
+  let uploads = 0;
+  let downloads = 0;
+  let requests = 0;
+  let uploadInterrupted = false;
+  let descriptionThrottled = false;
+  let missingImage = false;
+  const server = createServer(createApp({
+    gigaChatKey: "fixture",
+    fetchCatalogPhoto: async (url) => {
+      downloads++;
+      assert.equal(url, catalogPhoto);
+      return new Response(Uint8Array.from(avif), { headers: { "Content-Type": "image/avif" } });
+    },
+    fetchFromGiga: async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      if (path.endsWith("/oauth"))
+        return Response.json({ access_token: "token", expires_at: Date.now() + 300_000 });
+      if (path === "/v1/files") {
+        if (!uploadInterrupted) {
+          uploadInterrupted = true;
+          throw new TypeError("fetch failed", { cause: { code: "EAI_AGAIN" } });
+        }
+        assert(init?.body instanceof FormData);
+        assert.equal(init.body.get("purpose"), "general");
+        const photo = init.body.get("file");
+        assert(photo instanceof Blob);
+        assert.equal(photo.type, "image/jpeg");
+        return Response.json({ id: ids[uploads++] });
+      }
+      if (path.endsWith("/delete")) {
+        deleted.add(path.split("/")[3]);
+        return Response.json({});
+      }
+      if (path.endsWith("/content")) {
+        assert.equal(path, `/v1/files/${ids[2]}/content`);
+        return new Response(jpeg);
+      }
+      assert.equal(path, "/v1/chat/completions");
+      const request = JSON.parse(String(init?.body));
+      assert.equal(request.model, "GigaChat-3-Ultra");
+      requests++;
+      if (request.function_call === undefined) {
+        if (!descriptionThrottled) {
+          descriptionThrottled = true;
+          return Response.json({}, { status: 429, headers: { "Retry-After": "0" } });
+        }
+        const attachments = request.messages.flatMap((message: { attachments?: string[] }) => message.attachments ?? []);
+        assert.deepEqual(new Set(attachments), new Set(ids.slice(0, 2)));
+        const sceneText = request.messages.at(-1).content;
+        assert(!sceneText.includes(roomPhoto) && !sceneText.includes(catalogPhoto));
+        const scene = JSON.parse(sceneText.slice(sceneText.indexOf("{")));
+        assert.equal(scene.items.length, 1);
+        assert.deepEqual(scene.items[0].position, position);
+        return Response.json({ choices: [{ message: { content: "Синий стул у окна" } }] });
+      }
+      assert.equal(request.function_call, "auto");
+      assert.equal(request.messages.length, 1);
+      assert.match(request.messages[0].content, /Синий стул у окна/);
+      if (!missingImage) {
+        missingImage = true;
+        return Response.json({ choices: [{ message: { content: "Не удалось создать изображение" } }] });
+      }
+      return Response.json({ choices: [{ message: { content: `<img src="${ids[2]}" fuse="true"/>` } }] });
+    }
+  }));
+  t.after(() => server.close());
+  const url = `${await origin(server)}/api/planner/visualizations`;
+  const plan = {
+    room: { points: [[0, 0], [5, 0], [5, 4], [0, 4]], openings: [] },
+    items: [{ id: "chair", name: "Стул", position }, { id: "unplaced", name: "Стол" }]
+  };
+  const send = (body: object) => fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  const invalid = await send({ plan, roomPhoto: "https://example.com/room.jpg" });
+  assert.equal(invalid.status, 400);
+  await invalid.body?.cancel();
+  assert.equal(uploads, 0);
+  const response = await send({ plan, roomPhoto, references: [
+    { itemIds: ["chair"], photo: catalogPhoto },
+    { itemIds: ["chair"], photo: "https://example.com/invalid.jpg" },
+    { itemIds: ["unplaced"], photo: "https://c90.img.avito.st/example.jpg" }
+  ] });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Content-Type"), "image/jpeg");
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), jpeg);
+  assert.equal(requests, 4);
+  assert.equal(uploads, 2);
+  assert.equal(downloads, 1);
+  assert.deepEqual(deleted, new Set(ids));
+});
 
 test("sends the current plan to Ultra and keeps only evidenced budget, size and replacement", async (t) => {
   const phrase = "Замени мой диван тканевым шириной до 2 м. Нужен стол 50 на 50.";

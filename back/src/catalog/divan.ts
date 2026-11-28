@@ -2,7 +2,7 @@ import { load } from "cheerio";
 import type { CheerioAPI } from "cheerio";
 
 import { getPublishedDimensions } from "./publicProduct.ts";
-import { photoFrom } from "./photo.ts";
+import { divanPhoto } from "./photo.ts";
 
 const STORE = "https://www.divan.ru";
 const CITIES_PATH = "/category/stulya";
@@ -274,9 +274,8 @@ const getProduct = ($: CheerioAPI, path: string) => {
     );
   const name = normalizeText(product.name);
   const images = Array.isArray(product.image) ? product.image : [product.image];
-  const photo = images.map((image: unknown) => photoFrom(
-    typeof image === "string" ? image : record(image).url,
-    /^(?:cdn\.servicecdn\.ru|(?:[\w-]+\.)*divan\.ru)$/i
+  const photo = images.map((image: unknown) => divanPhoto(
+    typeof image === "string" ? image : record(image).url
   )).find(Boolean);
   return {
     conditionalPromotion,

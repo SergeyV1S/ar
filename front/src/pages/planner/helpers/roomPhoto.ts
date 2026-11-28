@@ -12,13 +12,3 @@ export const encodeRoomPhoto = (canvas: HTMLCanvasElement) => {
   }
   throw new Error("Не удалось сохранить фотографию. Попробуйте другое фото.");
 };
-
-export const encodeRoomFrame = (image: ImageData) => {
-  const canvas = document.createElement("canvas");
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Сохранение кадра недоступно.");
-  context.putImageData(image, 0, 0);
-  return encodeRoomPhoto(canvas);
-};

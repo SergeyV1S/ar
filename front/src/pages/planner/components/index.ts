@@ -19,3 +19,4 @@ export type { VoiceProps } from "./Voice.tsx";
 export type { XRControlsProps } from "./XRControls.tsx";
 
 export { RetailCatalog } from "./RetailCatalog.tsx";
+export { ImagePicker } from "./ImagePicker.tsx";

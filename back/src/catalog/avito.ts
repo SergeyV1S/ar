@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { photoFrom } from "./photo.ts";
+import { avitoPhoto } from "./photo.ts";
 
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {};
@@ -19,7 +19,6 @@ const titleByCategory = new Map<string, RegExp>([
   ["shelving", /стеллаж|этажерк|полк/iu]
 ]);
 const rental = /(?:^|[^а-яё])(?:аренд[ауы]|прокат|напрокат|сдам|сда[её]тся|посуточно|за сутки|₽\s*\/\s*(?:сут|час|день))/iu;
-const avitoPhoto = (value: unknown) => photoFrom(value, /^(?:[\w-]+\.)*avito\.st$/i);
 
 const listingUrl = (value: unknown) => {
   if (typeof value !== "string" || value.length > 500) return;

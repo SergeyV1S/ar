@@ -22,6 +22,7 @@ export type Room = {
   source: string;
   verified: string;
   openings: Opening[];
+  photo?: string;
 };
 export type Item = {
   id: string;
@@ -111,7 +112,13 @@ type DialogName =
 export type PlannerModal = { name: DialogName; id?: string | number };
 export type Action = (name: DialogName | "variant" | "replan", id?: string | number) => void;
 export type ScanFeature = { type: string; points: Point[] };
-export type ScanResult = { points: Point[]; openings: Opening[]; skipped: number; positions?: Positions };
+export type ScanResult = {
+  points: Point[];
+  openings: Opening[];
+  skipped: number;
+  positions?: Positions;
+  photo?: string;
+};
 export type XRState = {
   text?: string;
   kind?: string;
