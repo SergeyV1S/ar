@@ -3,7 +3,6 @@ export { getItemPath } from "./links.ts";
 export {
   getARAvailabilityMessage,
   getARCollectLabel,
-  getARHeading,
   getOpeningWidth,
   getCatalogError,
   getPassageMessage,

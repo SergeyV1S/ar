@@ -9,8 +9,7 @@ import type {
   Project,
   Room
 } from "../types/index.ts";
-import { bounds, corners, dimensions, itemFootprint, wallFeature } from "./geometry.ts";
-import { localMeshPoints, meshTriangles, planMeshPoints } from "./scannedMesh.ts";
+import { bounds, corners, dimensions, wallFeature } from "./geometry.ts";
 
 type Paint = string | CanvasGradient | CanvasPattern;
 type Projection = (point: Point, z?: number) => Point;
@@ -163,6 +162,7 @@ const furniture = (
   c.shadowColor = "rgba(64,45,43,.28)";
   c.shadowBlur = 9;
   c.shadowOffsetY = 4;
+<<<<<<< HEAD
   if (item.arMesh) {
     c.shadowColor = "transparent";
     const top = localMeshPoints(item).map(([x, , z]) => [x * scale, z * scale]);
@@ -176,6 +176,9 @@ const furniture = (
       "#7c6b68"
     );
   } else if (item.kind === "sofa" || item.kind === "chair" || item.kind === "stool") {
+=======
+  if (item.kind === "sofa" || item.kind === "chair") {
+>>>>>>> parent of 340b4d0 (ar update)
     const couch = item.kind === "sofa";
     shape(c, 0, 0, w, h, h * 0.18, couch ? "#c7b8a6" : "#909a7e");
     c.shadowColor = "transparent";
@@ -504,41 +507,10 @@ const iso = (
   const targets: Target[] = [];
   [...entries]
     .sort((a, b) => a.box.x + a.box.y - b.box.x - b.box.y)
-    .forEach(({ item, box, pos }) => {
+    .forEach(({ item, box }) => {
       const base = corners(box);
       const color = palette[item.kind] ?? palette.other;
       const z = item.h;
-      if (item.arMesh) {
-        const surface = planMeshPoints(item, pos);
-        const faces = meshTriangles(surface, item.arMesh.indices)
-          .map((triangle) => ({
-            triangle,
-            depth: triangle.reduce((sum, [x, y]) => sum + x + y, 0)
-          }))
-          .sort((a, b) => a.depth - b.depth);
-        for (const { triangle } of faces) {
-          fill(
-            c,
-            triangle.map(([x, y, height]) => to([x, y], height)),
-            color
-          );
-        }
-        const polygon = base.map((point) => to(point, z));
-        if (selected === item.id) fill(c, polygon, "transparent", purple);
-        targets.push({ item, polygon, box });
-        return;
-      }
-      if (item.arFootprint) {
-        const outline = itemFootprint(item, pos);
-        outline
-          .map((point, index) => [point, outline[(index + 1) % outline.length]])
-          .sort(([a, b], [c, d]) => a[0] + a[1] + b[0] + b[1] - c[0] - c[1] - d[0] - d[1])
-          .forEach(([a, b]) => fill(c, [to(a), to(b), to(b, z), to(a, z)], color, "#7c6b68"));
-        const top = outline.map((point) => to(point, z));
-        fill(c, top, color, selected === item.id ? purple : "#8e7d73");
-        targets.push({ item, polygon: top, box });
-        return;
-      }
       fill(c, [to(base[1]), to(base[2]), to(base[2], z), to(base[1], z)], color, "#7c6b68");
       fill(c, [to(base[2]), to(base[3]), to(base[3], z), to(base[2], z)], color, "#8e7e73");
       const front = [to(base[2]), to(base[3]), to(base[3], z), to(base[2], z)];

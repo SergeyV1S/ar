@@ -2,14 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  createARStarterItems,
+  aimAtFloor,
   createArrangement,
+  createARStarterItems,
   getItemTarget
 } from "../src/pages/planner/ar/arrangement.ts";
-import { furnitureMesh } from "../src/pages/planner/ar/furniture.ts";
 import { getScanLayout } from "../src/pages/planner/ar/geometry.ts";
-import { finishItemOutline, measureItemHeight } from "../src/pages/planner/ar/itemTrace.ts";
-import { aimAtFloor } from "../src/pages/planner/ar/projection.ts";
 import { createViewAnchor } from "../src/pages/planner/ar/viewAnchor.ts";
 import { getARLayoutUpdate } from "../src/pages/planner/helpers/index.ts";
 import { initialProject, positionsFor, validateImport } from "../src/pages/planner/mock/index.ts";
@@ -66,79 +64,8 @@ test("saving the AR layout persists only placed starter items and keeps their co
   const starter = createARStarterItems(3);
   const positions = { [starter[1].id]: { x: 1.4, y: 1.6, r: 270 } };
   const saved = validateImport({ ...project, ...getARLayoutUpdate(project, positions, starter) });
-  assert.deepEqual(
-    saved.items.map(({ id }) => id),
-    [starter[1].id]
-  );
+  assert.deepEqual(saved.items.map(({ id }) => id), [starter[1].id]);
   assert.deepEqual(positionsFor(saved), positions);
-});
-
-test("tracing replaces an existing chair with its own measured volume and survives import", () => {
-  const layout = getScanLayout([
-    [0, 0, 0],
-    [5, 0, 0],
-    [5, 0, 4],
-    [0, 0, 4]
-  ]);
-  assert(layout);
-  const footprint = finishItemOutline(layout, [
-    [2, 0, 2],
-    [3, 0, 2],
-    [3, 0, 2.4],
-    [2.5, 0, 2.4],
-    [2.5, 0, 2.8],
-    [2, 0, 2.8]
-  ]);
-  assert(footprint);
-  assert.equal(footprint.w, 1);
-  assert.equal(footprint.d, 0.8);
-  assert.equal(footprint.arFootprint.length, 6);
-
-  const project = initialProject();
-  const chair = project.items.find((item) => item.id === "chair");
-  assert(chair);
-  const arrangement = createArrangement([chair]);
-  const original = { x: 1, y: 1, r: 90 };
-  arrangement.select(chair.id);
-  arrangement.place(original);
-  arrangement.select(chair.id);
-  arrangement.reshape(
-    {
-      ...chair,
-      w: footprint.w,
-      d: footprint.d,
-      h: 0.94,
-      arFootprint: footprint.arFootprint
-    },
-    footprint.position
-  );
-  const saved = validateImport({
-    ...project,
-    ...getARLayoutUpdate(project, arrangement.positions(), arrangement.itemsForSave)
-  });
-  assert.equal(saved.items.length, project.items.length);
-  const revised = saved.items.find((item) => item.id === chair.id);
-  assert(revised);
-  assert.deepEqual(revised.arFootprint, footprint.arFootprint);
-  const mesh = furnitureMesh([revised], arrangement.positions());
-  const heights = Array.from(mesh.solid).filter((_, index) => index % 7 === 1);
-  assert.deepEqual([round(Math.min(...heights)), round(Math.max(...heights))], [0, 0.94]);
-  arrangement.undo();
-  assert.deepEqual(arrangement.positions()[chair.id], original);
-  arrangement.select(chair.id);
-  assert.equal(arrangement.selected?.arFootprint, undefined);
-});
-
-test("the height reticle measures above the traced floor and rejects rays aimed away", () => {
-  const pose = new Float32Array(16);
-  pose[9] = 0.3;
-  pose[10] = 0.953939;
-  pose[12] = 2.5;
-  pose[13] = 1.5;
-  pose[14] = 4;
-  assert.equal(measureItemHeight(pose, [2.5, 0, 2], 0.45), 0.87);
-  pose[10] = -0.953939;
-  assert.equal(measureItemHeight(pose, [2.5, 0, 2], 0.45), null);
 });
 
 test("AR preview keeps its last anchored pose and releases the anchor when reset", async (t) => {

@@ -23,15 +23,16 @@ const loadModel = async () => {
   return load({ base: "lite_mobilenet_v2", modelUrl });
 };
 
-export const identifyFurnitureInFrame = async (image: HTMLImageElement | ImageData) => {
+export const identifyFurniture = async (uri: string) => {
+  const image = new Image();
+  image.src = uri;
+  await image.decode();
   if (!model)
     model = loadModel().catch((error) => {
       model = null;
       throw error;
     });
   const detector = await model;
-  const width = "naturalWidth" in image ? image.naturalWidth : image.width;
-  const height = "naturalHeight" in image ? image.naturalHeight : image.height;
   const detected = await detector.detect(image, 20, 0.45);
   return detected.flatMap(({ class: key, score, bbox }) => {
     if (!Object.hasOwn(mapping, key)) return [];
@@ -42,18 +43,11 @@ export const identifyFurnitureInFrame = async (image: HTMLImageElement | ImageDa
         title,
         score,
         box: bbox.map(
-          (value, i) => (100 * value) / (i % 2 === 0 ? width : height)
+          (value, i) => (100 * value) / (i % 2 === 0 ? image.naturalWidth : image.naturalHeight)
         )
       }
     ];
   });
-};
-
-export const identifyFurniture = async (uri: string) => {
-  const image = new Image();
-  image.src = uri;
-  await image.decode();
-  return identifyFurnitureInFrame(image);
 };
 
 export type FurnitureMatch = Awaited<ReturnType<typeof identifyFurniture>>[number];

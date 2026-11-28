@@ -1,7 +1,6 @@
-import { bounds, localMeshPoints, meshTriangles } from "../planning/index.ts";
+import { bounds } from "../planning/index.ts";
 import type { Item, Point, Positions } from "../types/index.ts";
-import { createMesh, rgb, triangulate } from "./mesh.ts";
-import type { MeshBuilder, Rgb } from "./mesh.ts";
+import { createMesh, rgb } from "./mesh.ts";
 import type { Mesh } from "./renderer.ts";
 
 const palette: Record<string, string> = {
@@ -23,7 +22,7 @@ const sofa = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number,
   const backDepth = Math.min(d * 0.24, 0.28);
   const legHeight = Math.min(h * 0.11, 0.14);
   m.box(0, legHeight, 0, w, h * 0.2, d, color);
-  m.box(0, legHeight + h * 0.2, 0, w, h - legHeight - h * 0.2, backDepth, color);
+  m.box(0, legHeight + h * 0.2, 0, w, h * 0.62, backDepth, color);
   m.box(0, legHeight + h * 0.24, backDepth, arm, h * 0.36, d - backDepth, color);
   m.box(w - arm, legHeight + h * 0.24, backDepth, arm, h * 0.36, d - backDepth, color);
   const seats = Math.max(1, Math.round(w / 0.72));
@@ -45,37 +44,35 @@ const sofa = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number,
   m.box(w * 0.32, legHeight + h * 0.36, backDepth + 0.03, w * 0.36, h * 0.2, d * 0.18, cushion);
 };
 
-const chair = (
-  m: ReturnType<typeof createMesh>,
-  w: number,
-  h: number,
-  d: number,
-  dye: number[]
-) => {
+const chair = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number, dye: number[]) => {
   const color = dye as [number, number, number];
   const legHeight = Math.min(h * 0.42, 0.44);
   m.box(0, legHeight, 0, w, h * 0.09, d, color);
-  m.box(0, legHeight + h * 0.09, 0, w, h - legHeight - h * 0.09, Math.min(d * 0.18, 0.1), color);
+  m.box(0, legHeight + h * 0.09, 0, w, h * 0.42, Math.min(d * 0.18, 0.1), color);
   for (const x of [w * 0.08, w * 0.92])
     for (const z of [d * 0.1, d * 0.9])
       m.cylinder(x, 0, z, Math.min(w, d) * 0.035, Math.min(w, d) * 0.035, legHeight, wood, 8);
 };
 
-const table = (
-  m: ReturnType<typeof createMesh>,
-  w: number,
-  h: number,
-  d: number,
-  dye: number[]
-) => {
+const table = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number, dye: number[]) => {
   const color = dye as [number, number, number];
   const top = Math.max(h * 0.07, 0.035);
   const columns = w > 1.1 ? 4 : 3;
   m.cylinder(w / 2, h - top, d / 2, w / 2, d / 2, top, color, 32);
-  m.cylinder(w / 2, h - top - 0.012, d / 2, w / 2 - 0.02, d / 2 - 0.02, 0.012, wood, 32);
+  m.cylinder(
+    w / 2,
+    h - top - 0.012,
+    d / 2,
+    w / 2 - 0.02,
+    d / 2 - 0.02,
+    0.012,
+    wood,
+    32
+  );
   if (w > 1.1) {
     for (const x of [w * 0.14, w * 0.86])
-      for (const z of [d * 0.2, d * 0.8]) m.cylinder(x, 0, z, 0.026, 0.026, h - top, wood, 10);
+      for (const z of [d * 0.2, d * 0.8])
+        m.cylinder(x, 0, z, 0.026, 0.026, h - top, wood, 10);
   } else {
     for (let i = 0; i < columns; i++) {
       const angle = (i * Math.PI * 2) / columns;
@@ -93,13 +90,7 @@ const table = (
   }
 };
 
-const cabinet = (
-  m: ReturnType<typeof createMesh>,
-  w: number,
-  h: number,
-  d: number,
-  dye: number[]
-) => {
+const cabinet = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number, dye: number[]) => {
   const color = dye as [number, number, number];
   const plinth = Math.min(h * 0.06, 0.08);
   m.box(0, plinth, 0, w, h - plinth, d, color);
@@ -116,43 +107,21 @@ const cabinet = (
 const pouf = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number, dye: number[]) => {
   const color = dye as [number, number, number];
   m.cylinder(w / 2, 0.012, d / 2, w / 2, d / 2, h - 0.012, color, 28);
-  m.cylinder(w / 2, h - 0.02, d / 2, (w / 2) * 0.96, (d / 2) * 0.96, 0.02, color, 28);
-  m.cylinder(w / 2, 0.02, d / 2, (w / 2) * 0.93, (d / 2) * 0.93, 0.006, cushion, 28);
+  m.cylinder(w / 2, h - 0.02, d / 2, w / 2 * 0.96, (d / 2) * 0.96, 0.02, color, 28);
+  m.cylinder(w / 2, 0.02, d / 2, w / 2 * 0.93, (d / 2) * 0.93, 0.006, cushion, 28);
 };
 
-const generic = (
-  m: ReturnType<typeof createMesh>,
-  w: number,
-  h: number,
-  d: number,
-  dye: number[]
-) => {
+const generic = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number, dye: number[]) => {
   const color = dye as [number, number, number];
   m.box(0, 0, 0, w, h, d, color);
   m.box(-0.004, h, -0.004, w + 0.008, 0.008, d + 0.008, darkWood);
-};
-
-export const itemVolume = (
-  m: MeshBuilder,
-  base: Point[],
-  height: number,
-  color: Rgb,
-  alpha = 1
-) => {
-  const top = base.map(([x, y, z]) => [x, y + height, z]);
-  for (const [a, b, c] of triangulate(base.map(([x, , z]) => [x, z]))) {
-    m.tri(top[a], top[c], top[b], color, alpha);
-  }
-  base.forEach((point, i) => {
-    const next = (i + 1) % base.length;
-    m.quad(point, base[next], top[next], top[i], color, alpha);
-  });
 };
 
 const shapeOf = (item: Item) => {
   const dye = rgb(palette[item.kind] ?? palette.other) as [number, number, number];
   const { w, d, h } = item;
   const m = createMesh();
+<<<<<<< HEAD
   if (item.arMesh) {
     meshTriangles(localMeshPoints(item), item.arMesh.indices).forEach(([a, b, c]) =>
       m.tri(a, b, c, dye)
@@ -166,6 +135,10 @@ const shapeOf = (item: Item) => {
     );
   else if (item.kind === "sofa") sofa(m, w, h, d, dye);
   else if (item.kind === "chair" || item.kind === "stool") chair(m, w, h, d, dye);
+=======
+  if (item.kind === "sofa") sofa(m, w, h, d, dye);
+  else if (item.kind === "chair") chair(m, w, h, d, dye);
+>>>>>>> parent of 340b4d0 (ar update)
   else if (item.kind === "table") table(m, w, h, d, dye);
   else if (item.kind === "cabinet") cabinet(m, w, h, d, dye);
   else if (item.kind === "pouf") pouf(m, w, h, d, dye);

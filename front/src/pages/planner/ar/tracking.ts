@@ -1,7 +1,5 @@
 import type { Point } from "../types/index.ts";
-import { readCenterDepth } from "./depth.ts";
 import { smoothPoint } from "./geometry.ts";
-import { projectDepth } from "./projection.ts";
 
 export type TrackedHit = {
   point: Point;
@@ -23,6 +21,36 @@ const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+};
+
+const unproject = (view: XRView, depth: number, ndcX: number, ndcY: number): Point | null => {
+  const projection = view.projectionMatrix;
+  if (projection.length < 16 || !Number.isFinite(depth) || depth <= 0.05) return null;
+  const x = (2 * ndcX) / projection[0];
+  const y = (2 * ndcY) / projection[5];
+  const length = Math.hypot(x, y, 1);
+  const local = [(x / length) * depth, (y / length) * depth, (-1 / length) * depth];
+  const m = view.transform.matrix;
+  return [
+    m[0] * local[0] + m[4] * local[1] + m[8] * local[2] + m[12],
+    m[1] * local[0] + m[5] * local[1] + m[9] * local[2] + m[13],
+    m[2] * local[0] + m[6] * local[1] + m[10] * local[2] + m[14]
+  ];
+};
+
+const depthAtCenter = (frame: XRFrame, view: XRView) => {
+  try {
+    const info = frame.getDepthInformation(view);
+    if (!info) return null;
+    const horizontal = 0.5;
+    const vertical = 0.5;
+    const row = Math.min(info.height - 1, Math.max(0, Math.round(vertical * info.height)));
+    const column = Math.min(info.width - 1, Math.max(0, Math.round(horizontal * info.width)));
+    const value = info.getDepthInMeters(column, row);
+    return Number.isFinite(value) && value > 0.25 && value < 9 ? value : null;
+  } catch {
+    return null;
+  }
 };
 
 export const createTracker = async ({
@@ -72,10 +100,9 @@ export const createTracker = async ({
       }
     }
     if (!candidates.length && view) {
-      const depth = readCenterDepth(frame, view);
-      if (depth !== null) {
-        const camera = { transform: view.transform.matrix, projection: view.projectionMatrix };
-        const point = projectDepth(camera, 0.5, 0.5, depth);
+      const depth = depthAtCenter(frame, view);
+      const point = depth === null ? null : unproject(view, depth, 0, 0);
+      if (point) {
         const weight = score(point, false, cameraHeight);
         if (weight > 0) candidates.push({ point, weight, floor: false });
       }
