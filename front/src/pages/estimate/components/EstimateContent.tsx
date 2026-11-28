@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { Thumbnail } from "@/pages/planner/components";
 import { getItemPath } from "@/pages/planner/helpers/index.ts";
 import {
   checkLabel,
@@ -9,7 +10,7 @@ import {
   sourceLabel
 } from "@/pages/planner/mock/index.ts";
 import type { Action, Inspection, Item, Positions, Project } from "@/pages/planner/types/index.ts";
-import { Button } from "@/shared/components/index.ts";
+import { Button, IconButton } from "@/shared/components/index.ts";
 import { PATHS } from "@/shared/constants/index.ts";
 import { money, safeUrl } from "@/shared/helpers/index.ts";
 
@@ -49,6 +50,33 @@ export const EstimateContent = (props: EstimateContentProps) => {
         <p className='notice estimate-price-note'>
           В итог включены только позиции с указанными ценами.
         </p>
+      )}
+      {!print && items.length > 0 && (
+        <div className='estimate-cards'>
+          {rows.map(({ item, issues, editItem, onPlan }) => (
+            <article key={item.id}>
+              <div className='estimate-card-head'>
+                <Thumbnail item={item} />
+                <div><h3>{item.name}</h3><p>{[item.seller, item.kind !== "service" && itemSize(item)].filter(Boolean).join(" · ")}</p>
+                  <strong>{item.price === undefined ? "Цена не указана" : money(lineTotal(item))}</strong>
+                  <small>{item.quantity ?? 1} шт.</small>
+                </div>
+                {editItem && <IconButton icon='pencil' label={`Редактировать позицию ${item.name}`} onClick={editItem} />}
+              </div>
+              {issues.length > 0 && <p className='form-error'>{issues.join(", ")}</p>}
+              <details><summary>Подробности</summary>
+                <p>{item.demo && "Демонстрационное предложение · "}{[item.material, item.sku, item.catalogCity, item.availability].filter(Boolean).join(" · ")}</p>
+                <p>Цена за единицу · {item.price === undefined ? "Не указана" : money(item.price)}</p>
+                {item.cap !== undefined && item.cap > 0 && <p>Лимит позиции · {money(item.cap)}</p>}
+                <p>{sourceLabel[item.source]} · {checkLabel[item.verified]}</p>
+                {item.offerReason && <p>{item.offerReason}</p>}
+                {item.details && <p>{item.details}</p>}
+                {item.url && <a href={item.url} rel='noreferrer' target='_blank'>Открыть у продавца</a>}
+                {onPlan && <Link className='estimate-link' to={getItemPath(PATHS.planner, item.id)}>Показать на плане</Link>}
+              </details>
+            </article>
+          ))}
+        </div>
       )}
       <div className='estimate-rows'>
         <table role='table' aria-label='Позиции сметы'>

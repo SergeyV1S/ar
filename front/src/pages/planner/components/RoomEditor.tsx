@@ -48,7 +48,7 @@ export const RoomEditor = (props: RoomEditorProps) => {
   const openingFields = (
     <>
       <div className='row-title form-section-title'>
-        <h3>Двери, окна и розетки</h3>
+        {!guided && <h3>Двери, окна и розетки</h3>}
         <Button icon='plus' onClick={add}>
           Добавить
         </Button>
@@ -62,8 +62,16 @@ export const RoomEditor = (props: RoomEditorProps) => {
           { opening, remove, changeType, changeWall, changeOffset, changeWidth, changeHinge },
           index
         ) => (
-          <fieldset className='opening' key={opening.id}>
-            <legend>
+          <details
+            className='opening-entry'
+            key={opening.id}
+            open={project.room.openings.every((saved) => saved.id !== opening.id) || undefined}
+            onInvalid={revealOpeningFields}
+          >
+            <summary><Icon name={opening.type} /><strong>{featureTypes[opening.type]} {index + 1}</strong>
+              <small>Стена {opening.wall + 1}</small><Icon name='down' size={16} /></summary>
+            <fieldset className='opening'>
+            <legend className='sr-only'>
               {featureTypes[opening.type]} {index + 1}
             </legend>
             <IconButton
@@ -125,6 +133,7 @@ export const RoomEditor = (props: RoomEditorProps) => {
               )}
             </div>
           </fieldset>
+          </details>
         )
       )}
     </>
@@ -136,12 +145,7 @@ export const RoomEditor = (props: RoomEditorProps) => {
       autoComplete='off'
       onSubmit={submit}
     >
-      {guided ? (
-        <div className='guided-measure-options'>
-          {measureButtons}
-          <p>Или введите размеры вручную</p>
-        </div>
-      ) : measureButtons}
+      {guided ? <div className='guided-measure-options'>{measureButtons} </div> : measureButtons}
       <Field label='Название комнаты'>
         <input name='name' required maxLength={80} defaultValue={project.room.name} />
       </Field>

@@ -134,7 +134,7 @@ export const PlannerDialog = () => {
               </Button>
             </div>
             <div
-              className='mt-3 border-t border-border pt-3'
+              className='mt-3 pt-3'
               role='group'
               aria-label='Файл проекта'
             >

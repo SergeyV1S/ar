@@ -1,10 +1,12 @@
-import { Outlet, ScrollRestoration } from "react-router";
+import { NavLink, Outlet, ScrollRestoration } from "react-router";
 
 import { EstimateContent } from "@/pages/estimate/components/index.ts";
 import { Icon } from "@/shared/components/index.ts";
+import { PATHS } from "@/shared/constants/index.ts";
 import { decimal } from "@/shared/helpers/index.ts";
 
 import { Header, Locked, PlannerDialog, Privacy, XRControls } from "./components/index.ts";
+import { getItemPath } from "./helpers/index.ts";
 import { usePlannerContext, usePlannerLayout } from "./hooks/index.ts";
 import { checkLabel, modes, sourceLabel } from "./mock/index.ts";
 import { variants } from "./planning/index.ts";
@@ -15,6 +17,7 @@ export const PlannerLayout = () => {
     project,
     locked,
     status,
+    selected,
     positions,
     inspection,
     bought,
@@ -82,6 +85,22 @@ export const PlannerLayout = () => {
           </span>
         </footer>
       </main>
+      <nav className='nav' aria-label='Основное меню' hidden={Boolean(xrMode)}>
+        <div className='nav-inner'>
+          <NavLink end to={getItemPath(PATHS.planner, selected)} className='nav-link'>
+            <Icon name='layout' size={22} />
+            План
+          </NavLink>
+          <NavLink to={PATHS.catalog} className='nav-link'>
+            <Icon name='grid' size={22} />
+            Каталог
+          </NavLink>
+          <NavLink to={PATHS.estimate} className='nav-link'>
+            <Icon name='receipt' size={22} />
+            Смета
+          </NavLink>
+        </div>
+      </nav>
       <ScrollRestoration />
       <PlannerDialog />
       <input

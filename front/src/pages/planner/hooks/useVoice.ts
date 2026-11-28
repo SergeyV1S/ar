@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { postPlannerAnalysis, postSpeechTranscriptions } from "@/shared/api/requests";
 import type { PlanAnalysis } from "@/shared/helpers";
@@ -45,6 +45,7 @@ const cancelSession = (session: VoiceSession) => {
 };
 
 export const useVoice = ({ project, apply, wishes }: VoiceProps) => {
+  const phraseId = useId();
   const [transcript, setTranscript] = useState<Transcript>({ text: wishes ? project.brief?.phrase ?? "" : "" });
   const [stage, setStage] = useState<VoiceStage>("idle");
   const [message, setMessage] = useState("");
@@ -217,6 +218,7 @@ export const useVoice = ({ project, apply, wishes }: VoiceProps) => {
   };
 
   return {
+    phraseId,
     phrase,
     message,
     canRecord,

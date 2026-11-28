@@ -2,8 +2,8 @@ export const PLANNER_STEP = { room: "room", furniture: "furniture", wishes: "wis
 
 export const PLANNER_STEPS = [
   { id: PLANNER_STEP.room, title: "Комната" },
-  { id: PLANNER_STEP.furniture, title: "Своя мебель" },
-  { id: PLANNER_STEP.wishes, title: "Подбор мебели" },
+  { id: PLANNER_STEP.furniture, title: "Мебель" },
+  { id: PLANNER_STEP.wishes, title: "Подбор" },
   { id: PLANNER_STEP.layout, title: "Расстановка" }
 ] as const;
 

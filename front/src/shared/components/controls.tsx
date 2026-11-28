@@ -16,6 +16,7 @@ const icons: Record<string, string> = {
   ruler: "M3 20v-7L15 2l6 6L9 20zM8 11l3 3m0-6 3 3m0-6 3 3",
   scan: "M8 4H5a1 1 0 0 0-1 1v3m12-4h3a1 1 0 0 1 1 1v3M4 16v3a1 1 0 0 0 1 1h3m8 0h3a1 1 0 0 0 1-1v-3M3 12h18m-14-2v4m10-4v4",
   mic: "M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0zm-3 6v1a6 6 0 0 0 12 0v-1m-6 7v3m-3 0h6",
+  stop: "M7 7h10v10H7z",
   plus: "M12 5v14M5 12h14",
   minus: "M5 12h14",
   cube: "m12 3 9 5v8l-9 5-9-5V8zm-9 5 9 5 9-5m-9 5v8",
@@ -26,6 +27,8 @@ const icons: Record<string, string> = {
   checkCircle: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0zM7.5 12l3 3 6-6",
   alert:
     "M10.5 4.2a1.7 1.7 0 0 1 3 0l7.2 13a1.7 1.7 0 0 1-1.5 2.5H4.8a1.7 1.7 0 0 1-1.5-2.5zM12 9v4m0 3h.01",
+  table: "M3 8h18v3H3zm2 3v9m14-9v9",
+  cabinet: "M4 4h16v15H4zm8 0v15M6 19v2m12-2v2M9 10v3m6-3v3",
   sofa: "M6 12v-2a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v2m-12 6v2m12-2v2M4 12a2 2 0 0 1 2 2v1h12v-1a2 2 0 1 1 4 0v4H2v-4a2 2 0 0 1 2-2z",
   chair: "M7 13V8a5 5 0 0 1 10 0v5m-10 6-1 2m11-2 1 2M5 16a2 2 0 1 1 4 0h6a2 2 0 1 1 4 0v3H5z",
   external: "M13 5h6v6m0-6-8 8m6 1v5H5V7h5",

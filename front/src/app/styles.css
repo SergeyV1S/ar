@@ -12,6 +12,7 @@
   --color-muted: #6e677b;
   --color-border: #eae7f0;
   --color-surface: #fff;
+  --color-control: #efedf4;
   --color-purple: #7243e8;
   --color-purple-dark: #5e32ca;
   --color-purple-soft: #f2ecff;
@@ -98,7 +99,7 @@
     @apply w-[min(560px,_calc(100%_-_28px))];
     max-width: none;
     @apply p-0 text-ink;
-    border: 1px solid var(--color-border);
+    border: 0;
     @apply rounded-[18px] max-h-[min(calc(100dvh_-_28px),_900px)] bg-white shadow-[0_18px_65px_#21133c3c];
   }
   dialog::backdrop {

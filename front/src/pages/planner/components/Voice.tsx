@@ -1,4 +1,4 @@
-import { Button, Field, Icon } from "../../../shared/components/index.ts";
+import { Button, Icon, IconButton } from "../../../shared/components/index.ts";
 import { money } from "../../../shared/helpers/index.ts";
 import type { PlanAnalysis } from "../../../shared/helpers/index.ts";
 import { useVoice } from "../hooks/index.ts";
@@ -7,11 +7,16 @@ import type { Item, Positions, Project, VoicePatch } from "../types/index.ts";
 export type VoiceProps = {
   project: Project;
   apply: (patch: VoicePatch) => void;
-  wishes?: { items: Item[]; positions: Positions; save: (phrase: string, analysis: PlanAnalysis) => void };
+  wishes?: {
+    items: Item[];
+    positions: Positions;
+    save: (phrase: string, analysis: PlanAnalysis) => void;
+  };
 };
 
 export const Voice = (props: VoiceProps) => {
   const {
+    phraseId,
     phrase,
     message,
     canRecord,
@@ -31,45 +36,47 @@ export const Voice = (props: VoiceProps) => {
   } = useVoice(props);
   return (
     <>
-      <p className='support-text'>
-        {props.wishes
-          ? "Например: «Замени мой диван тканевым, шириной до 2 м. Добавь два деревянных стула»."
-          : "Например: «Комната 4 на 3»."}
-      </p>
-      {canRecord ? (
-        <>
-          <Button
-            icon='mic'
-            className='ar-soft'
-            disabled={isBusy && !isRecording}
-            onClick={toggleRecording}
-          >
-            {buttonLabel}
-          </Button>
-          <span className='sr-only' role='status'>
-            {analyzing ? "Анализируем пожелания" : isBusy && buttonLabel}
-          </span>
-          <p className='support-text'>
-            {props.wishes
-              ? "После записи проверьте текст. При анализе GigaChat учтёт мебель и её положение на плане."
-              : "Можно поправить текст после распознавания."}
-          </p>
-        </>
-      ) : (
+      {!canRecord && (
         <p className='notice'>
           Запись с микрофона недоступна. Можно ввести текст или использовать диктовку клавиатуры.
         </p>
       )}
-      <Field className='mt-3' label={props.wishes ? "Пожелания к мебели" : "Размеры комнаты"}>
-        <textarea
-          rows={4}
-          value={phrase}
-          readOnly={isBusy}
-          onChange={changePhrase}
-          maxLength={4000}
-          placeholder={props.wishes ? "Что добавить, заменить или переставить?" : "Комната 4 на 3…"}
-        />
-      </Field>
+      <div className='field mt-3'>
+        <label htmlFor={phraseId}>{props.wishes ? "Пожелания к мебели" : "Размеры комнаты"}</label>
+        <div className='voice-composer'>
+          <textarea
+            id={phraseId}
+            rows={props.wishes ? 3 : 2}
+            value={phrase}
+            readOnly={isBusy}
+            onChange={changePhrase}
+            maxLength={4000}
+            placeholder={
+              props.wishes ? "Что добавить, заменить или переставить?" : "Комната 4 на 3…"
+            }
+          />
+          {canRecord && (
+            <IconButton
+              className='voice-mic'
+              icon={isRecording ? "stop" : "mic"}
+              label={buttonLabel}
+              data-recording={isRecording || undefined}
+              disabled={isBusy && !isRecording}
+              onClick={toggleRecording}
+            />
+          )}
+        </div>
+      </div>
+      <div className='voice-status' role='status'>
+        {isRecording && "Идёт запись"}
+        {analyzing && "Анализируем пожелания"}
+        {isBusy && !isRecording && !analyzing && buttonLabel}
+      </div>
+      {canRecord && props.wishes && (
+        <p className='support-text'>
+          После записи проверьте текст. При анализе GigaChat учтёт мебель и её положение на плане.
+        </p>
+      )}
       {isDraft && <p className='support-text'>Черновик распознавания</p>}
       {message && (
         <p className='form-error' role='alert'>
@@ -106,7 +113,12 @@ export const Voice = (props: VoiceProps) => {
       )}
       <div className='form-actions'>
         {props.wishes && !analysis && (
-          <Button icon='spark' className='primary' disabled={!phrase.trim() || isBusy} onClick={analyze}>
+          <Button
+            icon='spark'
+            className='primary'
+            disabled={!phrase.trim() || isBusy}
+            onClick={analyze}
+          >
             {analyzing ? "Анализируем…" : "Проанализировать пожелания"}
           </Button>
         )}
@@ -116,7 +128,12 @@ export const Voice = (props: VoiceProps) => {
           </Button>
         )}
         {!props.wishes && (
-          <Button icon='check' className='primary' disabled={!notes.length || isBusy} onClick={applyVoice}>
+          <Button
+            icon='check'
+            className='primary'
+            disabled={!notes.length || isBusy}
+            onClick={applyVoice}
+          >
             {hasPurchase ? "Проверить условия подбора" : "Применить"}
           </Button>
         )}

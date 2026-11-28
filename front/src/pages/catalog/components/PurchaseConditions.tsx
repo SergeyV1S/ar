@@ -1,5 +1,6 @@
 import { materials, modes } from "@/pages/planner/mock/index.ts";
-import { Field, Select } from "@/shared/components/index.ts";
+import { money } from "@/shared/helpers";
+import { Field, Icon, Select } from "@/shared/components/index.ts";
 
 import { usePurchaseConditions } from "../hooks/index.ts";
 
@@ -8,7 +9,7 @@ export const PurchaseConditions = () => {
     usePurchaseConditions();
   return (
     <details className='panel editor-panel purchase-settings'>
-      <summary>Условия подбора</summary>
+      <summary><Icon name='sliders' /> Условия подбора <small>{project.budget === undefined ? "Без бюджета" : money(project.budget)}</small><Icon name='down' size={16} /></summary>
       <div className='purchase-conditions'>
         <Field label='Способ покупки'>
           <Select name='purchase-mode' value={project.mode} onChange={changeMode}>

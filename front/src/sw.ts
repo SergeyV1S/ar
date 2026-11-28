@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 export {};
 declare const self: ServiceWorkerGlobalScope;
-const CACHE = "metrika-offline-v4";
+const CACHE = "metrika-offline-v5";
 const SCOPE = self.registration.scope;
 const entry = new URL("./", SCOPE);
 const modelDirectory = new URL("models/furniture/", entry);
@@ -19,7 +19,9 @@ self.addEventListener("install", (event) => {
           "./icon.svg",
           "./app.webmanifest",
           "./catalog-furniture.png",
-          "./planner-living-room.webp"
+          "./studio-room.webp",
+          "./studio-catalog.webp",
+          "./studio-estimate.webp"
         ].map((asset) => new URL(asset, entry).href)
       );
       for (const match of html.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g))

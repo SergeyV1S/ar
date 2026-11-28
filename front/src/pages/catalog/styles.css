@@ -93,3 +93,12 @@
     }
   }
 }
+
+@layer components {
+  .catalog-layout:not(:has(.catalog-context)) { grid-template-columns: 1fr; }
+  .catalog-results > .row-title { margin-bottom: 12px; }
+  .catalog-results .support-text { margin: 0; }
+  .catalog-results .editor-links > .btn { background: transparent; padding-inline: 0; }
+  .catalog-results h2 { font-size: 1.25rem; }
+  .purchase-settings { padding-block: 4px; }
+}

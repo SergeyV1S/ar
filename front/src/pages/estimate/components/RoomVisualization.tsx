@@ -8,7 +8,7 @@ export const RoomVisualization = () => {
     useRoomVisualization();
 
   return (
-    <section className='mt-5 min-w-0 border-t border-border pt-4' aria-labelledby='room-visualization'>
+    <section className='mt-5 min-w-0 pt-4' aria-labelledby='room-visualization'>
       <h3 id='room-visualization'>Визуализация комнаты</h3>
       <p className='support-text my-2'>
         Примерный вид текущей расстановки. GigaChat получает фото и данные плана при запуске.

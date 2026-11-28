@@ -1,4 +1,4 @@
-import { Button, Field, Select } from "../../../shared/components/index.ts";
+import { Button, Field, IconButton, Select } from "../../../shared/components/index.ts";
 import { useOutline } from "../hooks/index.ts";
 import type { Item, Positions, Room, RoomProps } from "../types/index.ts";
 import { AngleInput } from "./AngleInput.tsx";
@@ -10,7 +10,7 @@ export type OutlineProps = Omit<RoomProps, "save"> & {
 };
 
 export const Outline = (props: OutlineProps) => {
-  const { project, close } = props;
+  const { close } = props;
   const {
     canvas,
     outline,
@@ -48,7 +48,24 @@ export const Outline = (props: OutlineProps) => {
           ? "Выберите мебель из проекта или протяните рамку нового предмета. Предметы можно перетаскивать."
           : "Обведите комнату одним движением или отметьте углы. Затем укажите ширину и длину комнаты."}
       </p>
-      {!room && <ImagePicker onPhoto={changePhoto} label='Загрузить план или фото' />}
+      {!room && (
+        <div className='outline-toolbar'>
+          <span className='secondary'>Углов: {outline.length}</span>
+          <IconButton
+            icon='rotate'
+            label='Отменить штрих'
+            disabled={!outline.length}
+            onClick={undoPoint}
+          />
+          <IconButton
+            icon='trash'
+            label='Очистить контур'
+            disabled={!outline.length}
+            onClick={clear}
+          />
+          <ImagePicker onPhoto={changePhoto} label='Загрузить план или фото' popover />
+        </div>
+      )}
       <canvas
         ref={canvas}
         className='outline-canvas'
@@ -112,17 +129,6 @@ export const Outline = (props: OutlineProps) => {
         </>
       ) : (
         <>
-          <div className='row-title'>
-            <span className='secondary'>Углов: {outline.length}</span>
-            <div className='inline-actions'>
-              <Button icon='rotate' disabled={!outline.length} onClick={undoPoint}>
-                Отменить штрих
-              </Button>
-              <Button disabled={!outline.length} onClick={clear}>
-                Очистить
-              </Button>
-            </div>
-          </div>
           <div className='form-grid mt-3'>
             <Field label='Ширина по контуру, м'>
               <input
@@ -147,15 +153,10 @@ export const Outline = (props: OutlineProps) => {
               />
             </Field>
           </div>
-          <Button icon='plus' onClick={continueToFurniture} disabled={outline.length < 3}>
+          <Button className='mt-3' icon='plus' onClick={continueToFurniture} disabled={outline.length < 3}>
             Перейти к мебели
           </Button>
         </>
-      )}
-      {project.room.openings.length > 0 && (
-        <p className='support-text'>
-          Укажите проёмы и розетки заново после сохранения нового контура.
-        </p>
       )}
       {error && (
         <p className='form-error' role='alert'>

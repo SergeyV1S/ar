@@ -1,14 +1,17 @@
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import type { ImagePickerProps } from "../components/index.ts";
 import { encodeRoomPhoto } from "../helpers/roomPhoto.ts";
 
 export const useImagePicker = ({ onPhoto }: ImagePickerProps) => {
+  const pickerId = useId();
+  const picker = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const load = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    picker.current?.hidePopover();
     let bitmap;
     try {
       if (!file.type.startsWith("image/") || file.size > 24 * 1024 * 1024)
@@ -35,5 +38,5 @@ export const useImagePicker = ({ onPhoto }: ImagePickerProps) => {
     }
   };
 
-  return { error, load };
+  return { error, load, picker, pickerId };
 };

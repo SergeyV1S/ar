@@ -18,7 +18,7 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
   const { action, saveRoom, close, toast } = usePlannerContext();
   const { project, current, itemChoices, positions, addOwned, variantOptions, replan, openChecks } =
     planner;
-  const { step, heading, onRoomSaved, goToRoom, goToFurniture, goToWishes, goToLayout } = workflow;
+  const { step, heading, onRoomSaved, goToRoom, goToWishes } = workflow;
   const { openWishes, items, proposingLayouts } = planner;
 
   return (
@@ -94,9 +94,7 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
             <Button icon='mic' className='primary' onClick={openWishes}>
               {project.brief ? "Изменить пожелания" : "Ввести пожелания"}
             </Button>
-            <Link className='btn' to={PATHS.catalog}>
-              <Icon name='grid' /> Каталог
-            </Link>
+
           </div>
           {project.brief && (
             <>
@@ -116,10 +114,7 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
               </ul>
             </>
           )}
-          <div className='editor-links planner-step-actions'>
-            <Button onClick={goToFurniture}>К своей мебели</Button>
-            <Button className='primary' onClick={goToLayout}>К расстановке</Button>
-          </div>
+
         </>
       )}
       {step === PLANNER_STEP.layout && (

@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-import { Button, Field, IconButton, Select } from "../../../shared/components/index.ts";
+import { Button, Field, Icon, IconButton, Select } from "../../../shared/components/index.ts";
 import type { ARController } from "../ar/index.ts";
 import { useXRControls } from "../hooks/index.ts";
 import type { ARMode, Item, XRState } from "../types/index.ts";
@@ -37,6 +37,7 @@ export const XRControls = (props: XRControlsProps) => {
     canRotate,
     canRemove,
     tracing,
+    reviewing,
     snap,
     changeKind,
     changeItem,
@@ -77,26 +78,61 @@ export const XRControls = (props: XRControlsProps) => {
         </div>
       )}
       <div className='xr-hud'>
-        {rows.length > 0 && (
-          <dl className='xr-metrics'>
-            {rows.map((row) => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd>{row.value}</dd>
-              </div>
-            ))}
-          </dl>
+        {(rows.length > 0 || reviewing) && (
+          <div className='xr-measurements'>
+            {rows.length > 0 && (
+              <dl className='xr-metrics'>
+                {rows.map((row) => (
+                  <div key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {reviewing && (
+              <IconButton
+                icon='rotate'
+                label='Отменить'
+                className='xr-undo'
+                onClick={undo}
+                disabled={!canUndo}
+              />
+            )}
+          </div>
         )}
         {state.measurement && <p className='mb-2 text-xs'>{state.measurement}</p>}
-        {scan && state.closed && !state.arranging && !tracing && !state.finding && (
-          <Field label='Проёмы и розетки'>
-            <Select value={state.kind ?? "corner"} onChange={changeKind}>
-              <option value='corner'>Только стены</option>
-              <option value='door'>Края двери</option>
-              <option value='window'>Края окна</option>
-              <option value='socket'>Розетку</option>
-            </Select>
-          </Field>
+        {reviewing && (
+          <div className='xr-review-tools'>
+            <Field label='Проёмы и розетки'>
+              <Select value={state.kind ?? "corner"} onChange={changeKind}>
+                <option value='corner'>Только стены</option>
+                <option value='door'>Края двери</option>
+                <option value='window'>Края окна</option>
+                <option value='socket'>Розетку</option>
+              </Select>
+            </Field>
+            <details className='xr-furniture'>
+              <summary className='btn'>
+                <Icon name='sofa' />
+                Мебель
+                <Icon name='down' size={14} />
+              </summary>
+              <div className='xr-furniture-actions'>
+                <Button icon='scan' onClick={findObjects}>
+                  Распознать мебель
+                </Button>
+                <Button icon='pencil' onClick={trace}>
+                  Выделить предмет вручную
+                </Button>
+                {furniture.length > 0 && (
+                  <Button icon='layout' onClick={arrange}>
+                    Расставить мебель
+                  </Button>
+                )}
+              </div>
+            </details>
+          </div>
         )}
         {showItems && (
           <Field label='Предмет мебели'>
@@ -124,28 +160,18 @@ export const XRControls = (props: XRControlsProps) => {
               {snap ? "Привязка вкл." : "Привязка выкл."}
             </Button>
           )}
-          <Button icon='rotate' onClick={undo} disabled={!canUndo}>
-            {scan ? "Отменить" : "Сбросить"}
-          </Button>
+          {!reviewing && (
+            <Button icon='rotate' onClick={undo} disabled={!canUndo}>
+              {scan ? "Отменить" : "Сбросить"}
+            </Button>
+          )}
           {canRemove && <Button onClick={removeItem}>Убрать с плана</Button>}
           {canClose && <Button onClick={closeOutline}>Замкнуть контур</Button>}
           {scan && state.closed && (
             <>
-              {!state.arranging && !tracing && (
-                <Button onClick={findObjects}>
-                  {state.finding ? "Завершить поиск" : "Распознать мебель"}
-                </Button>
-              )}
-              {!state.arranging && !state.finding && (
-                <Button onClick={trace}>
-                  {tracing ? "Выйти из выделения" : "Выделить предмет вручную"}
-                </Button>
-              )}
-              {furniture.length > 0 && !tracing && !state.finding && (
-                <Button onClick={arrange}>
-                  {state.arranging ? "К обмеру" : "Расставить мебель"}
-                </Button>
-              )}
+              {state.finding && <Button onClick={findObjects}>Завершить поиск</Button>}
+              {tracing && <Button onClick={trace}>Выйти из выделения</Button>}
+              {state.arranging && <Button onClick={arrange}>К обмеру</Button>}
               <Button
                 icon='check'
                 className={showCollect ? undefined : "primary xr-primary"}

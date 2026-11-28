@@ -21,6 +21,7 @@ export const useXRControls = ({ mode, state, control }: XRControlsProps) => {
   const removeItem = () => control("removeItem");
   const collectLabel = getARCollectLabel(mode, state);
   const tracing = state.traceStep !== undefined;
+  const reviewing = scan && state.closed && !state.arranging && !tracing && !state.finding;
   const showCollect =
     !state.finding &&
     (state.arranging
@@ -44,6 +45,7 @@ export const useXRControls = ({ mode, state, control }: XRControlsProps) => {
     canRotate,
     canRemove,
     tracing,
+    reviewing,
     snap: state.snap !== false,
     changeKind,
     changeItem,

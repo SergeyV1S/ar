@@ -1,8 +1,5 @@
-import { Link } from "react-router";
-
 import { ProjectHeader } from "@/pages/planner/components/index.ts";
 import { usePlannerContext } from "@/pages/planner/hooks/index.ts";
-import { PATHS } from "@/shared/constants/index.ts";
 
 import { EstimateContent, ExportOptions, RoomVisualization } from "./components/index.ts";
 
@@ -11,14 +8,7 @@ export const EstimatePage = () => {
 
   return (
     <div className='planner-flow'>
-      <ProjectHeader title='Смета' description={project.room.name} illustrated={false}>
-          <Link className='btn' to={PATHS.planner}>
-            Вернуться к плану
-          </Link>
-          <Link className='btn' to={PATHS.catalog}>
-            К каталогу
-          </Link>
-      </ProjectHeader>
+      <ProjectHeader cover='studio-estimate' title='Смета' description={project.room.name} />
       <div className='estimate-layout'>
         <section className='panel editor-panel' aria-label='Смета покупок'>
           <EstimateContent

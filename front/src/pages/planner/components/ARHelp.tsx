@@ -31,7 +31,7 @@ export const ARHelp = ({
           {error}
         </p>
       )}
-      <div className='form-actions'>
+      <div className={scan ? "form-actions ar-scan-actions" : "form-actions"}>
         {scan ? (
           <Button icon='camera' onClick={back}>
             Ручная разметка

@@ -16,9 +16,10 @@ export const RetailCatalog = ({ showHeading = true }: { showHeading?: boolean })
   } = useCatalogPanel();
   return (
     <div className='grid gap-4'>
+      {!conditions && !offerCards.length && !showHeading && <p className='support-text'>Укажите, какую мебель ищете, чтобы получить предложения для комнаты.</p>}
       <div className='row-title'>
         {showHeading && <h2>Подбор на Divan.ru</h2>}
-        <Button icon='spark' onClick={openCatalogSearch}>
+        <Button icon='spark' className='primary' onClick={openCatalogSearch}>
           {conditions ? "Изменить условия" : "Подобрать мебель"}
         </Button>
       </div>

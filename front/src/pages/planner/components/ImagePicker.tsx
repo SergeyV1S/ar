@@ -1,17 +1,18 @@
-import { Icon } from "../../../shared/components/index.ts";
+import { Icon, IconButton } from "../../../shared/components/index.ts";
 import { useImagePicker } from "../hooks/index.ts";
 
 export type ImagePickerProps = {
   onPhoto: (photo: string) => void;
   label?: string;
   camera?: boolean;
+  popover?: boolean;
 };
 
 export const ImagePicker = (props: ImagePickerProps) => {
-  const { label = "Добавить фото", camera = true } = props;
-  const { error, load } = useImagePicker(props);
-  return (
-    <div className='flex flex-wrap gap-2 mt-1.5 mr-0 mb-3 ml-0'>
+  const { label = "Добавить фото", camera = true, popover } = props;
+  const { error, load, picker, pickerId } = useImagePicker(props);
+  const actions = (
+    <>
       <label className='btn file-btn'>
         <Icon name='upload' />
         {label}
@@ -24,8 +25,20 @@ export const ImagePicker = (props: ImagePickerProps) => {
           <input type='file' accept='image/*' capture='environment' onChange={load} />
         </label>
       )}
+    </>
+  );
+  return (
+    <div className={popover ? "contents" : "flex flex-wrap gap-2 mt-1.5 mb-3"}>
+      {popover ? (
+        <>
+          <IconButton icon='more' label='Источники плана' popoverTarget={pickerId} />
+          <div className='image-picker-popover' popover='auto' ref={picker} id={pickerId}>
+            {actions}
+          </div>
+        </>
+      ) : actions}
       {error && (
-        <p className='form-error' role='alert'>
+        <p className='form-error basis-full' role='alert'>
           {error}
         </p>
       )}
