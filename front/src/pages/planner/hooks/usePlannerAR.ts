@@ -51,8 +51,9 @@ export const usePlannerAR = ({
     if (pending.current || controller.current) return;
     const attempt = new AbortController();
     pending.current = attempt;
+    const newItemLimit = Math.max(0, 60 - project.items.length);
     const starterItems =
-      mode === "scan" && !allItems.length ? createARStarterItems(60 - project.items.length) : [];
+      mode === "scan" && !allItems.length ? createARStarterItems(newItemLimit) : [];
     const items = starterItems.length ? starterItems : allItems;
     flushSync(() => {
       setXrMode(mode);
@@ -69,14 +70,16 @@ export const usePlannerAR = ({
         mode,
         overlay: root,
         items,
+        starterIds: starterItems.map(({ id }) => id),
+        newItemLimit,
         positions,
         roomPoints: project.room.points,
         onState: (state) => {
           if (!attempt.signal.aborted) setXrState(state);
         },
-        onScan: (data) => {
+        onScan: (data, scannedItems) => {
           if (attempt.signal.aborted) return;
-          saveScan(data, starterItems);
+          saveScan(data, [...starterItems, ...scannedItems]);
         },
         onEnd: () => {
           ended = true;

@@ -1,3 +1,5 @@
+import { createProgram } from "./webgl.ts";
+
 const vertexShader = `
 attribute vec3 vertex;
 attribute vec4 tint;
@@ -5,6 +7,7 @@ uniform mat4 projection;
 uniform mat4 camera;
 uniform vec4 frame;
 uniform float sine;
+uniform mediump float pointSize;
 varying vec4 color;
 varying float distance;
 void main() {
@@ -17,6 +20,7 @@ void main() {
   color = tint;
   distance = length(eye.xyz);
   gl_Position = projection * eye;
+  gl_PointSize = max(1.0, pointSize);
 }`;
 
 const fragmentShader = `
@@ -24,7 +28,9 @@ precision mediump float;
 varying vec4 color;
 varying float distance;
 uniform float opacity;
+uniform mediump float pointSize;
 void main() {
+  if (pointSize > 0.0 && length(gl_PointCoord - vec2(0.5)) > 0.5) discard;
   float fade = clamp(1.0 - distance / 32.0, 0.52, 1.0);
   gl_FragColor = vec4(color.rgb * fade, color.a * opacity);
 }`;
@@ -34,65 +40,45 @@ export type Mesh = { solid: Float32Array; glass: Float32Array };
 const stride = 7 * 4;
 
 export const createRenderer = (gl: WebGLRenderingContext) => {
-  const compile = (kind: number, source: string) => {
-    const shader = gl.createShader(kind);
-    if (!shader) throw new Error("Не удалось создать шейдер.");
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      const log = gl.getShaderInfoLog(shader) ?? "";
-      gl.deleteShader(shader);
-      throw new Error(`Не удалось подготовить 3D-графику. ${log}`);
-    }
-    return shader;
-  };
-  const program = gl.createProgram();
-  if (!program) throw new Error("Не удалось создать 3D-программу.");
-  const vertex = compile(gl.VERTEX_SHADER, vertexShader);
-  const fragment = compile(gl.FRAGMENT_SHADER, fragmentShader);
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-    throw new Error("Не удалось запустить 3D-графику.");
+  const program = createProgram(gl, vertexShader, fragmentShader);
   gl.useProgram(program);
 
   const position = gl.getAttribLocation(program, "vertex");
   const tint = gl.getAttribLocation(program, "tint");
-  gl.enableVertexAttribArray(position);
-  gl.enableVertexAttribArray(tint);
   const projection = gl.getUniformLocation(program, "projection");
   const camera = gl.getUniformLocation(program, "camera");
   const frame = gl.getUniformLocation(program, "frame");
   const sine = gl.getUniformLocation(program, "sine");
   const opacity = gl.getUniformLocation(program, "opacity");
+  const pointSize = gl.getUniformLocation(program, "pointSize");
   gl.uniform1f(opacity, 1);
   const buffer = gl.createBuffer();
   if (!buffer) throw new Error("Не удалось выделить буфер 3D-графики.");
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.vertexAttribPointer(position, 3, gl.FLOAT, false, stride, 0);
-  gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 12);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
   gl.clearColor(0, 0, 0, 0);
 
-  const upload = (data: Float32Array) => {
+  const upload = (data: Float32Array, mode: number = gl.TRIANGLES) => {
     if (!data.length) return;
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STREAM_DRAW);
-    gl.drawArrays(gl.TRIANGLES, 0, data.length / 7);
+    gl.drawArrays(mode, 0, data.length / 7);
   };
-  const translucent = (mesh: Mesh) => {
-    if (!mesh.glass.length) return;
+  const enableBlend = () => {
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.depthMask(false);
+  };
+  const disableBlend = () => {
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  };
+  const translucent = (mesh: Mesh) => {
+    if (!mesh.glass.length) return;
+    enableBlend();
     gl.uniform1f(opacity, 0.7);
     upload(mesh.glass);
     gl.uniform1f(opacity, 1);
-    gl.depthMask(true);
-    gl.disable(gl.BLEND);
+    disableBlend();
   };
   const place = (origin: [number, number, number], angle: number) => {
     gl.uniform4f(frame, origin[0], origin[1], origin[2], Math.cos(angle));
@@ -106,12 +92,27 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
     },
     clear(framebuffer: WebGLFramebuffer | null) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.enableVertexAttribArray(tint);
+      gl.vertexAttribPointer(position, 3, gl.FLOAT, false, stride, 0);
+      gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 12);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
     drawScene(mesh: Mesh) {
       place([0, 0, 0], 0);
       if (mesh.solid.length) upload(mesh.solid);
       translucent(mesh);
+    },
+    drawPoints(data: Float32Array, size: number) {
+      if (!data.length) return;
+      place([0, 0, 0], 0);
+      enableBlend();
+      gl.uniform1f(pointSize, size);
+      upload(data, gl.POINTS);
+      gl.uniform1f(pointSize, 0);
+      disableBlend();
     },
     drawPlaced(
       mesh: Mesh,

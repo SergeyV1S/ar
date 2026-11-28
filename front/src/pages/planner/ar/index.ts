@@ -8,13 +8,18 @@ import type {
   ScanResult,
   XRState
 } from "../types/index.ts";
-import { aimAtFloor, createArrangement, getItemTarget } from "./arrangement.ts";
-import { furnitureMesh } from "./furniture.ts";
+import { createARItem, createArrangement, getItemTarget } from "./arrangement.ts";
+import { createARCamera } from "./camera.ts";
+import { furnitureMesh, itemVolume } from "./furniture.ts";
 import { getScanLayout, getScanResult, getWallTarget } from "./geometry.ts";
 import { getInstructions } from "./getInstructions.ts";
+import type { TracedFootprint } from "./itemTrace.ts";
+import { canTracePoint, finishItemOutline, traceHeightAt } from "./itemTrace.ts";
 import { createMesh, rgb } from "./mesh.ts";
+import { aimAtFloor } from "./projection.ts";
 import type { Mesh } from "./renderer.ts";
 import { createRenderer } from "./renderer.ts";
+import { createFurnitureScanner } from "./scanner.ts";
 import {
   cornerPosts,
   featureMarks,
@@ -52,10 +57,12 @@ export type ARStartOptions = {
   mode: ARMode;
   overlay: HTMLDivElement;
   items: Item[];
+  starterIds: string[];
+  newItemLimit: number;
   positions: Positions;
   roomPoints: Point[];
   onState: (state: XRState) => void;
-  onScan: (result: ScanResult) => void;
+  onScan: (result: ScanResult, scannedItems: Item[]) => void;
   onEnd: () => void;
 };
 
@@ -63,6 +70,8 @@ export const startAR = async ({
   mode,
   overlay,
   items,
+  starterIds,
+  newItemLimit,
   positions,
   roomPoints,
   onState,
@@ -72,12 +81,18 @@ export const startAR = async ({
   if (!globalThis.isSecureContext || !navigator.xr) throw new Error(arHelp);
   const session = await navigator.xr.requestSession("immersive-ar", {
     requiredFeatures: ["hit-test", "dom-overlay"],
-    optionalFeatures: ["depth-sensing", "anchors", "plane-detection"],
+    optionalFeatures: [
+      "depth-sensing",
+      "anchors",
+      "plane-detection",
+      ...(mode === "scan" ? ["camera-access"] : [])
+    ],
     domOverlay: { root: overlay },
     depthSensing: {
       usagePreference: ["cpu-optimized"],
       dataFormatPreference: ["luminance-alpha", "float32"],
-      depthTypeRequest: ["smooth"]
+      depthTypeRequest: ["smooth"],
+      matchDepthView: true
     }
   });
   const canvas = document.createElement("canvas");
@@ -100,16 +115,25 @@ export const startAR = async ({
       session.requestReferenceSpace("local")
     ]);
     const renderer = createRenderer(gl);
+    const scanner = createFurnitureScanner(
+      mode === "scan" ? createARCamera(session, gl) : null,
+      newItemLimit,
+      mode === "scan" && session.depthUsage === "cpu-optimized"
+    );
     const viewAnchor = createViewAnchor(space);
     const model = mode === "view" ? furnitureMesh(items, positions) : emptyMesh;
     const room = dimensions(roomPoints);
     const modelPivot: [number, number] = [room.w / 2, room.d / 2];
     const planMesh = createMesh();
     if (mode === "view") {
-      floorPatch(planMesh, roomPoints.map(([x, z]) => [x, 0, z]), 0);
+      floorPatch(
+        planMesh,
+        roomPoints.map(([x, z]) => [x, 0, z]),
+        0
+      );
     }
     const plan = planMesh.finish();
-    const furniture = createArrangement(items);
+    const furniture = createArrangement(items, starterIds, newItemLimit);
     const accent = rgb("#9b67ff"),
       accentSoft = rgb("#c4a9ff"),
       greenSoft = rgb("#9df0c6"),
@@ -125,6 +149,8 @@ export const startAR = async ({
     let confidence = 0;
     let scanLayout: ReturnType<typeof getScanLayout> = null;
     let arranging = false;
+    let trace: { points: Point[]; item?: Item; footprint?: TracedFootprint } | null = null;
+    let traceHeight: number | null = null;
     const corners: Point[] = [];
     const features: ScanFeature[] = [];
     const pending: Point[] = [];
@@ -165,13 +191,28 @@ export const startAR = async ({
     const drawingWall = () => mode === "scan" && !scanLayout && corners.length > 0;
     const wallTarget = () => (hit && drawingWall() ? getWallTarget(corners, hit, snap) : null);
     const furnitureTarget = () =>
-      arranging && scanLayout && hit && furniture.selected
+      arranging &&
+      !trace &&
+      scanLayout &&
+      hit &&
+      furniture.selected &&
+      furniture.canPlace(furniture.selected.id)
         ? getItemTarget(scanLayout, furniture.selected, hit, furniture.rotation)
         : null;
+    const tracePoint = () =>
+      trace && scanLayout && hit && canTracePoint(scanLayout, trace.points, hit) ? hit : null;
+    const canTraceItem = () =>
+      arranging &&
+      (furniture.selected ? furniture.canPlace(furniture.selected.id) : furniture.canAdd());
+    const canConfirmTrace = () => {
+      if (!trace) return false;
+      return trace.footprint ? traceHeight !== null : tracePoint() !== null;
+    };
     const resetTracking = () => {
       active.reset();
       hit = null;
       confidence = 0;
+      traceHeight = null;
     };
     const help = (message?: string) => {
       const now = performance.now();
@@ -183,11 +224,12 @@ export const startAR = async ({
       const target = wallTarget();
       const hasHit = hit !== null && confidence >= 0.45;
       const closed = scanLayout !== null;
+      const ready = arranging
+        ? furnitureTarget()?.valid === true
+        : hasHit && (!drawingWall() || target !== null) && (!closed || kind !== "corner");
       const state: XRState = {
         kind,
-        ready: arranging
-          ? furnitureTarget()?.valid === true
-          : hasHit && (!drawingWall() || target !== null) && (!closed || kind !== "corner"),
+        ready: !scanner.active && (trace ? canConfirmTrace() : ready),
         count: corners.length,
         closed,
         closing: hasHit && target?.closes === true,
@@ -199,14 +241,61 @@ export const startAR = async ({
         snap,
         arranging,
         itemId: furniture.selected?.id,
-        placedIds: furniture.placedIds
+        placedIds: furniture.placedIds,
+        detectedItems: [...furniture.detectedItems],
+        manualItems: [...furniture.manualItems],
+        canTraceItem: canTraceItem(),
+        canUndoPlacement: furniture.canUndo,
+        depthAvailable: scanner.available,
+        canFindFurniture:
+          closed && scanner.available && newItemLimit > 0 && !furniture.detectedItems.length,
+        searchingFurniture: scanner.active,
+        analyzingFurniture: scanner.hasAnalyzed,
+        hasDepthPoints: scanner.cloud.length > 0 || scanner.highlights.length > 0,
+        tracingItem: trace
+          ? {
+              count: trace.points.length,
+              heightStep: Boolean(trace.footprint),
+              height: traceHeight ?? undefined
+            }
+          : undefined,
+        foundFurnitureCount: scanner.foundCount
       };
-      state.text = (now < noticeUntil && notice) || getInstructions(mode, origin, state, pending.length);
+      state.text =
+        (now < noticeUntil && notice) || getInstructions(mode, origin, state, pending.length);
       const signature = JSON.stringify(state);
       lastState = now;
       if (signature === lastSignature) return;
       lastSignature = signature;
       onState(state);
+    };
+
+    const findFurniture = () => {
+      if (!scanLayout || arranging || furniture.detectedItems.length) return;
+      if (pending.length) {
+        help("Отметьте второй край проёма или отмените незавершённую отметку.");
+        return;
+      }
+      if (scanner.start(scanLayout)) {
+        resetTracking();
+        help("");
+      }
+    };
+    const finishFurnitureSearch = () => {
+      if (!scanner.active) return;
+      const entries = scanner.finish();
+      if (entries.length) {
+        furniture.addDetected(entries);
+        arranging = true;
+        help("Проверьте отсканированные объекты перед сохранением.");
+      } else
+        help("Пока не удалось построить модели. Обойдите объекты ближе или обведите их вручную.");
+      resetTracking();
+    };
+    const skipFurnitureSearch = () => {
+      scanner.cancel();
+      resetTracking();
+      help("");
     };
 
     const closeOutline = () => {
@@ -220,9 +309,71 @@ export const startAR = async ({
       resetTracking();
       sceneDirty = true;
       help("");
+      findFurniture();
+    };
+
+    const startItemTrace = () => {
+      if (!scanLayout || !canTraceItem()) return;
+      trace = { points: [], item: furniture.selected };
+      resetTracking();
+      help("");
+    };
+    const closeItemOutline = () => {
+      if (!trace || !scanLayout) return;
+      const footprint = finishItemOutline(scanLayout, trace.points);
+      if (!footprint) {
+        help("Отметьте контур основания по порядку, без пересечений.");
+        return;
+      }
+      trace.footprint = footprint;
+      resetTracking();
+      help("");
+    };
+    const cancelItemTrace = () => {
+      trace = null;
+      resetTracking();
+      help("");
+    };
+    const collectTrace = () => {
+      if (!trace) return;
+      const { footprint, item } = trace;
+      if (footprint) {
+        if (traceHeight === null) return;
+        const dimensions = { w: footprint.w, d: footprint.d, h: traceHeight };
+        const model = {
+          ...dimensions,
+          arFootprint: footprint.arFootprint,
+          arMesh: undefined,
+          source: "xr",
+          verified: "review"
+        };
+        if (item) furniture.reshape({ ...item, ...model }, footprint.position);
+        else
+          furniture.addManual(
+            {
+              ...createARItem({ ...dimensions, name: "Обведённый объект", kind: "other" }),
+              ...model
+            },
+            footprint.position
+          );
+        trace = null;
+        resetTracking();
+        help("Форма и размеры предмета обновлены.");
+        return;
+      }
+      const point = tracePoint();
+      if (!point) return;
+      trace.points.push(point);
+      resetTracking();
+      help("");
     };
 
     const collect = () => {
+      if (scanner.active) return;
+      if (trace) {
+        collectTrace();
+        return;
+      }
       if (arranging) {
         const target = furnitureTarget();
         if (!target?.valid) return;
@@ -268,7 +419,8 @@ export const startAR = async ({
         return;
       }
       pending.push(point);
-      if (kind === "socket" || pending.length === 2) features.push({ type: kind, points: pending.splice(0) });
+      if (kind === "socket" || pending.length === 2)
+        features.push({ type: kind, points: pending.splice(0) });
       resetTracking();
       sceneDirty = true;
       help("");
@@ -280,21 +432,34 @@ export const startAR = async ({
     overlay.addEventListener("beforexrselect", click);
     session.addEventListener("select", collect);
 
-    const frameLoop = (_time: number, frame: XRFrame) => {
+    const frameLoop = (time: number, frame: XRFrame) => {
       if (ended) return;
       session.requestAnimationFrame(frameLoop);
       const pose = frame.getViewerPose(space),
         layer = session.renderState.baseLayer;
       if (!pose) {
-        if (hit) {
+        if (hit || traceHeight !== null) {
           hit = null;
           confidence = 0;
+          traceHeight = null;
           help("");
         }
         return;
       }
       const firstView = pose.views[0];
-      if (arranging && scanLayout && firstView) {
+      if (mode === "scan" && firstView && layer) scanner.update(time, frame, firstView);
+      if (scanner.active) {
+        hit = null;
+        confidence = 0;
+      } else if (trace?.footprint && scanLayout && firstView) {
+        const height = traceHeightAt(scanLayout, trace.footprint, frame, firstView);
+        traceHeight =
+          height !== null && traceHeight !== null
+            ? round(traceHeight * 0.65 + height * 0.35)
+            : height;
+        hit = null;
+        confidence = 0;
+      } else if (arranging && scanLayout && firstView) {
         hit = aimAtFloor(firstView.transform.matrix, scanLayout.origin[1]);
         confidence = hit ? 1 : 0;
       } else {
@@ -325,7 +490,20 @@ export const startAR = async ({
       const floor = frameLevel() ?? hit?.[1] ?? 0;
       const target = wallTarget();
       const preview = furnitureTarget();
-      if (arranging && hit && furniture.selected) {
+      if (trace) {
+        const { points, footprint } = trace;
+        points.forEach((point, index) => {
+          const next = points[index + 1];
+          if (next) liveMesh.beam(point, next, 0.009, greenSoft);
+          marker(liveMesh, point, greenSoft, 0.028);
+        });
+        const last = points.at(-1);
+        const next = footprint ? points[0] : tracePoint();
+        if (last && next) liveMesh.beam(last, next, 0.009, greenSoft);
+        if (footprint && traceHeight !== null) {
+          itemVolume(liveMesh, points, traceHeight, greenSoft, 0.34);
+        } else if (next && !footprint) marker(liveMesh, next, greenSoft, 0.032);
+      } else if (arranging && hit && furniture.selected) {
         marker(liveMesh, hit, preview?.valid ? green : red, 0.06);
       } else if (target && ready) {
         const last = corners[corners.length - 1];
@@ -346,6 +524,8 @@ export const startAR = async ({
         gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
         renderer.view(view);
         renderer.drawScene(scene);
+        renderer.drawPoints(scanner.cloud, 3);
+        renderer.drawPoints(scanner.highlights, 5);
         renderer.drawScene(live);
         if (anchoredView) {
           const { origin, angle } = anchoredView;
@@ -376,6 +556,7 @@ export const startAR = async ({
       "end",
       () => {
         ended = true;
+        scanner.dispose();
         viewAnchor.set();
         active.cancel();
         overlay.removeEventListener("beforexrselect", click);
@@ -392,8 +573,22 @@ export const startAR = async ({
     return {
       collect,
       closeOutline,
+      findFurniture,
+      finishFurnitureSearch,
+      skipFurnitureSearch,
+      startItemTrace,
+      closeItemOutline,
+      cancelItemTrace,
       arrange: () => {
-        if (!scanLayout || !items.length) return;
+        if (
+          !scanLayout ||
+          scanner.active ||
+          (!items.length &&
+            !furniture.detectedItems.length &&
+            !furniture.manualItems.length &&
+            !furniture.canAdd())
+        )
+          return;
         if (pending.length) {
           help("Отметьте второй край проёма или отмените незавершённую отметку.");
           return;
@@ -408,9 +603,14 @@ export const startAR = async ({
         furniture.select(id);
         help("");
       },
+      removePlacement: () => {
+        if (!arranging) return;
+        furniture.remove();
+        help("");
+      },
       exit: () => session.end(),
       kind: (next?: string) => {
-        if (!scanLayout || arranging) return;
+        if (!scanLayout || arranging || scanner.active) return;
         kind = next ?? "corner";
         pending.length = 0;
         resetTracking();
@@ -431,7 +631,10 @@ export const startAR = async ({
         help(`Поворот модели: ${rotation}°.`);
       },
       undo: () => {
-        if (arranging) furniture.undo();
+        if (scanner.active) return;
+        if (trace?.footprint) trace.footprint = undefined;
+        else if (trace) trace.points.pop();
+        else if (arranging) furniture.undo();
         else if (mode === "view") {
           origin = null;
           orientation = null;
@@ -445,6 +648,7 @@ export const startAR = async ({
             return;
           }
           scanLayout = null;
+          furniture.clearDetected();
           kind = "corner";
         } else corners.pop();
         resetTracking();
@@ -452,13 +656,16 @@ export const startAR = async ({
         help("");
       },
       save: async () => {
-        if (!scanLayout) return;
+        if (!scanLayout || scanner.active || trace) return;
         if (pending.length) {
           help("Отметьте второй край проёма или отмените незавершённую точку.");
           return;
         }
         const result = getScanResult(scanLayout, features);
-        onScan({ ...result, positions: furniture.placedIds.length ? furniture.positions() : undefined });
+        onScan(
+          { ...result, positions: furniture.placedIds.length ? furniture.positions() : undefined },
+          furniture.itemsForSave
+        );
         await session.end();
       }
     };

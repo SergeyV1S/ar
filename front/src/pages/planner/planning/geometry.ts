@@ -10,6 +10,8 @@ import type {
 } from "../types/index.ts";
 
 export const maxOutlinePoints = 64;
+export const maxItemOutlinePoints = 12;
+export const minItemOutlineArea = 0.01;
 
 export const variants = [
   { title: "Уютная гостиная", note: "Центр отдыха", style: "lounge" },
@@ -56,7 +58,7 @@ export const normalizeWithOrigin = (points: Point[]) => {
 
 export const normalize = (points: Point[]) => normalizeWithOrigin(points).points;
 
-const segmentDistance = (p: Point, a: Point, b: Point) => {
+export const segmentDistance = (p: Point, a: Point, b: Point) => {
   const dx = b[0] - a[0],
     dy = b[1] - a[1];
   const t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);
@@ -69,8 +71,9 @@ const crosses = (a: Point, b: Point, c: Point, d: Point) => {
   return turn(a, b, c) * turn(a, b, d) < -1e-10 && turn(c, d, a) * turn(c, d, b) < -1e-10;
 };
 
-export const validPolygon = (points: Point[]) => {
-  if (points.length < 3 || points.length > maxOutlinePoints || area(points) < 0.45) return false;
+export const validPolygon = (points: Point[], minimumArea = 0.45) => {
+  if (points.length < 3 || points.length > maxOutlinePoints || area(points) < minimumArea)
+    return false;
   return points.every((a, i) => {
     const b = points[(i + 1) % points.length];
     return (
@@ -113,12 +116,30 @@ export const corners = ({ x, y, w, d }: Box) => {
   ];
 };
 
-export const fits = (box: Box, room: Point[]) => {
-  const footprint = corners(box);
+export const polygonFits = (footprint: Point[], room: Point[]) => {
   if (!footprint.every((point) => pointIn(point, room))) return false;
   return footprint.every((a, i) =>
-    room.every((b, j) => !crosses(a, footprint[(i + 1) % 4], b, room[(j + 1) % room.length]))
+    room.every(
+      (b, j) => !crosses(a, footprint[(i + 1) % footprint.length], b, room[(j + 1) % room.length])
+    )
   );
+};
+
+export const fits = (box: Box, room: Point[]) => polygonFits(corners(box), room);
+
+export const itemFootprint = (item: Item, position: Position) => {
+  const box = bounds(item, position);
+  if (!item.arFootprint) return corners(box);
+  const angle = (position.r * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const cx = box.x + box.w / 2;
+  const cz = box.y + box.d / 2;
+  return item.arFootprint.map(([u, v]) => {
+    const x = (u - 0.5) * item.w;
+    const z = (v - 0.5) * item.d;
+    return [cx + x * cos - z * sin, cz + x * sin + z * cos];
+  });
 };
 
 const overlap = (a: Box, b: Box) => {

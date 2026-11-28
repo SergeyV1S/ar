@@ -30,7 +30,13 @@ export const getItemLayoutUpdate = (project: Project, item: Item, redraw: boolea
   return { layouts: { ...project.layouts, [project.mode]: {} } };
 };
 
-export const getARLayoutUpdate = (project: Project, positions: Positions, starterItems: Item[]) => ({
-  items: [...project.items, ...starterItems.filter((item) => Object.hasOwn(positions, item.id))],
+export const getARLayoutUpdate = (
+  project: Project,
+  positions: Positions,
+  starterItems: Item[]
+) => ({
+  items: starterItems
+    .filter((item) => Object.hasOwn(positions, item.id))
+    .reduce(upsertItem, project.items),
   layouts: { [project.mode]: { [project.variant]: positions } }
 });

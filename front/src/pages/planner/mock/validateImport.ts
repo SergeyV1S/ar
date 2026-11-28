@@ -1,5 +1,15 @@
 import { isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
-import { dimensions, maxOutlinePoints, normalize, validPolygon } from "../planning/index.ts";
+import {
+  dimensions,
+  maxItemOutlinePoints,
+  maxMeshTriangles,
+  maxMeshVertices,
+  maxOutlinePoints,
+  meshCoordinateScale,
+  minItemOutlineArea,
+  normalize,
+  validPolygon
+} from "../planning/index.ts";
 import type { Item, Project } from "../types/index.ts";
 import { materials, modes, procurementFields, sourceLabel, types } from "./catalog.ts";
 
@@ -11,6 +21,40 @@ const hasLabel = (labels: Record<string, string>, value: unknown): value is stri
 const isPoint = (value: unknown): value is number[] =>
   Array.isArray(value) && value.length === 2 && value.every((v: unknown) => numeric(v, -35, 35));
 type ImportItem = Record<string, unknown> & Pick<Item, "id" | "name" | "kind" | "w" | "d" | "h">;
+const itemFootprint = (item: ImportItem) => {
+  const points = item.arFootprint;
+  if (!Array.isArray(points) || points.length > maxItemOutlinePoints || !points.every(isPoint))
+    return;
+  if (!points.every(([x, z]) => numeric(x, 0, 1) && numeric(z, 0, 1))) return;
+  if (
+    validPolygon(
+      points.map(([x, z]) => [x * item.w, z * item.d]),
+      minItemOutlineArea
+    )
+  )
+    return points;
+};
+const itemMesh = (item: ImportItem) => {
+  const { vertices, indices } = record(item.arMesh);
+  if (
+    !Array.isArray(vertices) ||
+    vertices.length < 9 ||
+    vertices.length > maxMeshVertices * 3 ||
+    vertices.length % 3 !== 0 ||
+    !vertices.every(
+      (value: unknown) => numeric(value, 0, meshCoordinateScale) && Number.isInteger(value)
+    ) ||
+    !Array.isArray(indices) ||
+    indices.length < 3 ||
+    indices.length > maxMeshTriangles * 3 ||
+    indices.length % 3 !== 0 ||
+    !indices.every(
+      (value: unknown) => numeric(value, 0, vertices.length / 3 - 1) && Number.isInteger(value)
+    )
+  )
+    return;
+  return { vertices, indices };
+};
 const isImportItem = (item: unknown): item is ImportItem =>
   isRecord(item) &&
   typeof item.id === "string" &&
@@ -38,6 +82,8 @@ const normalizeItem = (item: ImportItem): Item => ({
   w: item.w,
   d: item.d,
   h: item.h,
+  arFootprint: itemFootprint(item),
+  arMesh: itemMesh(item),
   quantity: typeof item.quantity === "number" ? item.quantity : 1,
   demo: item.demo === true,
   offerReason: String(item.offerReason ?? "").slice(0, 1500),

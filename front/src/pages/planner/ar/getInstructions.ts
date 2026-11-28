@@ -4,7 +4,20 @@ import { maxCorners } from "./geometry.ts";
 export const getInstructions = (
   mode: ARMode,
   origin: Point | null,
-  { positioned, kind, count = 0, ready, closed, closing, arranging, itemId }: XRState,
+  {
+    positioned,
+    kind,
+    count = 0,
+    ready,
+    closed,
+    closing,
+    arranging,
+    itemId,
+    searchingFurniture,
+    analyzingFurniture,
+    detectedItems,
+    tracingItem
+  }: XRState,
   pending: number
 ) => {
   if (mode === "view") {
@@ -13,8 +26,20 @@ export const getInstructions = (
     if (origin) return "Отметьте вторую точку вдоль стены вправо от начала плана.";
     return "Наведите прицел на угол пола, соответствующий началу плана.";
   }
+  if (tracingItem) {
+    if (tracingItem.heightStep) return "Наведите прицел на верх предмета и зафиксируйте высоту.";
+    return "Отметьте углы основания по порядку. Затем задайте высоту предмета.";
+  }
+  if (searchingFurniture) {
+    return analyzingFurniture
+      ? "Обойдите объекты с нескольких сторон. Бирюзовые точки отмечают отсканированную поверхность."
+      : "Наведите камеру на предмет и медленно двигайтесь, пока не появятся точки глубины.";
+  }
   if (arranging) {
-    if (!itemId) return "Выберите предмет. Чтобы передвинуть мебель, выберите её снова.";
+    if (!itemId && detectedItems?.length) {
+      return "Выберите найденный предмет, чтобы поправить положение или обвести его.";
+    }
+    if (!itemId) return "Выберите предмет для расстановки или обведите новый объект.";
     if (!ready) return "Наведите прицел на свободное место внутри контура, где поместится предмет.";
     return "Подтвердите положение или поверните предмет.";
   }

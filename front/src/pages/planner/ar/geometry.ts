@@ -128,8 +128,19 @@ export const analyzeScan = (corners: Point[], features: ScanFeature[]): ScanResu
   return layout && getScanResult(layout, features);
 };
 
+export type ScanLayout = NonNullable<ReturnType<typeof getScanLayout>>;
+
+export const toPlan = ({ origin, frame }: ScanLayout, point: Point) =>
+  toRoom({ ...frame, x: origin[0], z: origin[2] }, point);
+
+export const toWorld = ({ origin, frame }: ScanLayout, x: number, z: number): Point => [
+  origin[0] + x * frame.cos - z * frame.sin,
+  origin[1],
+  origin[2] + x * frame.sin + z * frame.cos
+];
+
 export const getScanResult = (
-  { raw, points, frame }: NonNullable<ReturnType<typeof getScanLayout>>,
+  { raw, points, frame }: ScanLayout,
   features: ScanFeature[]
 ): ScanResult => {
   const openings: Opening[] = [];

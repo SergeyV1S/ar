@@ -17,6 +17,7 @@ export type Room = {
   verified: string;
   openings: Opening[];
 };
+export type ScannedMesh = { vertices: number[]; indices: number[] };
 export type Item = {
   id: string;
   name: string;
@@ -24,6 +25,8 @@ export type Item = {
   w: number;
   d: number;
   h: number;
+  arFootprint?: Point[];
+  arMesh?: ScannedMesh;
   owned: boolean;
   source: string;
   verified: string;
@@ -103,6 +106,17 @@ export type XRState = {
   arranging?: boolean;
   itemId?: string;
   placedIds?: string[];
+  detectedItems?: Item[];
+  canUndoPlacement?: boolean;
+  canFindFurniture?: boolean;
+  depthAvailable?: boolean;
+  searchingFurniture?: boolean;
+  analyzingFurniture?: boolean;
+  hasDepthPoints?: boolean;
+  manualItems?: Item[];
+  canTraceItem?: boolean;
+  tracingItem?: { count: number; heightStep: boolean; height?: number };
+  foundFurnitureCount?: number;
 };
 export type ARMode = "scan" | "view";
 export type ExportFormat = "pdf" | "csv" | "json";

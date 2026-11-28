@@ -361,7 +361,7 @@ test("preview and confirmed walls have vertical faces and only close on request"
   assert.equal(mesh.glass.length, 3 * face.glass.length);
 });
 
-test("AR rendering clears the XR framebuffer while it is bound", () => {
+test("AR rendering clears the XR framebuffer and uploads the depth cloud as GL points", () => {
   const framebuffer = {};
   const commands: unknown[][] = [];
   const noop = () => {};
@@ -384,20 +384,29 @@ test("AR rendering clears the XR framebuffer while it is bound", () => {
     bindBuffer: noop,
     vertexAttribPointer: noop,
     enable: noop,
+    disable: noop,
+    blendFuncSeparate: noop,
+    depthMask: noop,
+    bufferData: noop,
+    uniform4f: noop,
     depthFunc: noop,
     clearColor: noop,
     FRAMEBUFFER: 0x8d40,
     COLOR_BUFFER_BIT: 0x4000,
     DEPTH_BUFFER_BIT: 0x0100,
+    POINTS: 0,
     bindFramebuffer: (target: number, buffer: WebGLFramebuffer | null) => commands.push(["bind", target, buffer]),
-    clear: (mask: number) => commands.push(["clear", mask])
+    clear: (mask: number) => commands.push(["clear", mask]),
+    drawArrays: (mode: number, first: number, count: number) => commands.push(["draw", mode, first, count])
   };
   // This fake implements the WebGL methods used to initialize the renderer and clear the frame.
   const renderer = createRenderer(gl as unknown as WebGLRenderingContext);
   renderer.clear(framebuffer);
+  renderer.drawPoints(new Float32Array(7), 3);
   assert.deepEqual(commands, [
     ["bind", gl.FRAMEBUFFER, framebuffer],
-    ["clear", gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT]
+    ["clear", gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT],
+    ["draw", gl.POINTS, 0, 1]
   ]);
 });
 

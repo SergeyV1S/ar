@@ -25,8 +25,9 @@ export const getOpeningWidth = (
 
 export const getARCollectLabel = (
   mode: ARMode | null,
-  { positioned, count, kind, closing, arranging, itemId, placedIds }: XRState
+  { positioned, count, kind, closing, arranging, itemId, placedIds, tracingItem }: XRState
 ) => {
+  if (tracingItem) return tracingItem.heightStep ? "Зафиксировать высоту" : "Отметить угол основания";
   if (mode === "scan") {
     if (arranging) {
       return itemId && placedIds?.includes(itemId) ? "Переместить сюда" : "Поставить сюда";
@@ -38,6 +39,13 @@ export const getARCollectLabel = (
   }
   if (positioned) return "Разместить заново";
   return "Отметить точку";
+};
+
+export const getARHeading = (mode: ARMode | null, state: XRState) => {
+  if (state.tracingItem) return "Обмер предмета";
+  if (state.searchingFurniture) return "Сканирование объектов";
+  if (mode === "scan" && !state.arranging) return "Обмер комнаты";
+  return "Расстановка в AR";
 };
 
 export const getPassageMessage = (inspection: Inspection, passage: number) => {
