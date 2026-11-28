@@ -602,6 +602,8 @@
     @apply w-[min(570px,_calc(100%_-_20px))];
     border: 1px solid #c9addd56;
     @apply rounded-[15px] p-3 bg-[#251932e8] pointer-events-auto;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 48px #1a0f26a6;
   }
   .xr-head {
     @apply flex items-start gap-2.25;
@@ -609,17 +611,75 @@
   .xr-head p {
     @apply text-[13px] mt-0.75 mr-0 mb-1.75 ml-0 text-[#eee2ff];
   }
+  .xr-head .xr-exit {
+    @apply ml-auto bg-transparent border-0 text-white min-w-9.5 min-h-9.5;
+  }
+  .xr-head .xr-exit:hover {
+    @apply bg-[#ffffff1f] text-white;
+  }
   .xr-hud .field {
     @apply text-white mt-0.75 mr-0 mb-1.75 ml-0;
   }
   .xr-hud .select {
     @apply max-w-55;
   }
+  .xr-hud .select select {
+    @apply bg-[#3a2a4d] text-white border-[#6b5584];
+  }
   .xr-actions {
     @apply flex gap-1.5 flex-wrap;
   }
   .xr-actions .btn {
-    @apply px-2 min-h-8.75 text-[12px];
+    @apply px-2 min-h-8.75 text-[12px] bg-[#ffffff14] text-white border-[#ffffff2b];
+  }
+  .xr-actions .btn:hover:not(:disabled) {
+    @apply bg-[#ffffff26] text-white border-[#ffffff45];
+  }
+  .xr-actions .btn.primary {
+    @apply bg-purple text-white border-[#b18cff];
+  }
+  .xr-actions .btn.xr-toggle.on {
+    @apply bg-[#67d6a230] text-[#a5f3cd] border-[#67d6a270];
+  }
+  .xr-metrics {
+    @apply flex flex-wrap gap-1.5 mb-2;
+  }
+  .xr-metrics > div {
+    @apply rounded-[8px] px-2 py-1 bg-[#ffffff12];
+  }
+  .xr-metrics dt {
+    @apply text-[10px] uppercase tracking-[0.08em] text-[#c6b4e4];
+  }
+  .xr-metrics dd {
+    @apply text-[13px] font-[760] text-white;
+  }
+  .xr-meter {
+    @apply absolute top-[max(14px,_env(safe-area-inset-top))] left-1/2 w-[min(420px,_calc(100%_-_24px))];
+    transform: translateX(-50%);
+    @apply h-1.5 rounded-full bg-[#1d1229a6] overflow-hidden;
+  }
+  .xr-meter-bar {
+    @apply block h-full rounded-full;
+    background: linear-gradient(90deg, #9b67ff, #67d6a2);
+    transition: width 0.22s ease-out;
+  }
+  .xr-meter-label {
+    @apply flex items-center justify-center gap-1 text-[11px] font-[700] mt-1.5 text-[#ece3ff];
+    text-shadow: 0 1px 4px #1a0f26cc;
+  }
+  .xr-reticle {
+    @apply absolute inset-0 flex items-center justify-center pointer-events-none;
+  }
+  .xr-reticle i {
+    @apply block w-3.5 h-3.5 rounded-full border-2 border-[#ffffffa6];
+    transition:
+      transform 0.14s ease-out,
+      border-color 0.14s;
+  }
+  .xr-reticle i.locked {
+    @apply border-[#67d6a2];
+    transform: scale(1.5);
+    box-shadow: 0 0 0 6px #67d6a229;
   }
   #print-view {
     @apply hidden;

@@ -6,6 +6,7 @@ export {
   dimensions,
   distance,
   inspect,
+  maxOutlinePoints,
   normalize,
   pointIn,
   rect,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeAR } from "../src/pages/planner/ar/index.ts";
+import { snapCorner } from "../src/pages/planner/ar/geometry.ts";
 import { makeCsv } from "../src/pages/planner/helpers/index.ts";
 import { plannerLoader } from "../src/pages/planner/loader.ts";
 import {
@@ -22,6 +23,7 @@ import {
   dimensions,
   inspect,
   rect,
+  round,
   validPolygon
 } from "../src/pages/planner/planning/index.ts";
 import type { Point } from "../src/pages/planner/types/index.ts";
@@ -268,4 +270,80 @@ test("a project can retain missing prices without treating a free item as unknow
   assert.match(csv, /"Сумма известных цен";"2500"/);
   assert.match(csv, /"Предварительная разница";"77500"/);
   assert.match(csv, /"Цена не указана/);
+});
+
+test("scan straightens slightly skewed walls and drops redundant corners", () => {
+  const angle = 0.37;
+  const world = ([x, z]: Point) => [
+    x * Math.cos(angle) - z * Math.sin(angle),
+    0,
+    x * Math.sin(angle) + z * Math.cos(angle)
+  ];
+  const corners = [
+    [0, 0],
+    [4, 0.03],
+    [4.04, 3],
+    [2, 3.05],
+    [0.02, 2.97]
+  ].map(world);
+  const result = analyzeAR(corners, []);
+  assert(result);
+  const extent = dimensions(result.points);
+  assert(Math.abs(extent.w - 4) < 0.06 && Math.abs(extent.d - 3) < 0.06);
+  assert.equal(result.points.length, 4);
+  assert(Math.abs(area(result.points) - 12) < 0.12);
+});
+
+test("closing on the first corner keeps the outline and reports both wall sizes", () => {
+  const corners: Point[] = [
+    [0, 0, 0],
+    [4, 0, 0],
+    [4, 0, 3],
+    [0, 0, 3]
+  ];
+  const result = analyzeAR(corners, []);
+  assert(result);
+  assert.equal(result.points.length, 4);
+  const repeated = analyzeAR(
+    [
+      [0, 0, 0],
+      [4, 0, 0],
+      [4, 0, 3],
+      [0.01, 0, 0.01]
+    ],
+    []
+  );
+  assert.equal(repeated, null);
+});
+
+test("square snapping aligns a corner to the previous wall direction", () => {
+  const snapped = snapCorner([3.02, 0, 2.01], [0, 0, 2], true);
+  assert.equal(round(snapped[2]), 2);
+  const free = snapCorner([3.02, 0, 2.01], [0, 0, 2], false);
+  assert.equal(round(free[0]), 3.02);
+});
+
+test("a socket and a window on the same wall are not deduplicated", () => {
+  const world = ([x, z]: Point, y = 0) => [x, y, z];
+  const result = analyzeAR(
+    [
+      world([0, 0]),
+      world([4, 0]),
+      world([4, 3]),
+      world([0, 3])
+    ],
+    [
+      { type: "window", points: [world([1, 0]), world([2.4, 0])] },
+      { type: "window", points: [world([1.05, 0]), world([2.42, 0])] },
+      { type: "socket", points: [world([3.4, 0], 0.2)] }
+    ]
+  );
+  assert(result);
+  assert.deepEqual(
+    result.openings.map(({ type, width }) => [type, width]),
+    [
+      ["window", 1.4],
+      ["socket", 0.08]
+    ]
+  );
 });

@@ -9,6 +9,8 @@ import type {
   Room
 } from "../types/index.ts";
 
+export const maxOutlinePoints = 64;
+
 export const variants = [
   { title: "Уютная гостиная", note: "Центр отдыха", style: "lounge" },
   { title: "Свободный центр", note: "Больше пространства", style: "space" },
@@ -63,7 +65,7 @@ const crosses = (a: Point, b: Point, c: Point, d: Point) => {
 };
 
 export const validPolygon = (points: Point[]) => {
-  if (points.length < 3 || points.length > 32 || area(points) < 0.45) return false;
+  if (points.length < 3 || points.length > maxOutlinePoints || area(points) < 0.45) return false;
   return points.every((a, i) => {
     const b = points[(i + 1) % points.length];
     return (

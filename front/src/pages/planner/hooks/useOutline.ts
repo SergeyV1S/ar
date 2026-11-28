@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { readNumber } from "../../../shared/helpers/index.ts";
 import type { OutlineProps } from "../components/index.ts";
-import { dimensions, normalize, validPolygon } from "../planning/index.ts";
+import { dimensions, maxOutlinePoints, normalize, validPolygon } from "../planning/index.ts";
 import { canvasContext } from "../planning/index.ts";
 import type { Point } from "../types/index.ts";
 
@@ -67,7 +67,7 @@ export const useOutline = ({ project, save }: OutlineProps) => {
     const bounds = event.currentTarget.getBoundingClientRect(),
       [x, y, w, h] = target.current;
     const p = [(event.clientX - bounds.left - x) / w, (event.clientY - bounds.top - y) / h];
-    if (p.some((v) => v < 0 || v > 1) || points.length >= 32) return;
+    if (p.some((v) => v < 0 || v > 1) || points.length >= maxOutlinePoints) return;
     setError("");
     setPoints([...points, p]);
   };

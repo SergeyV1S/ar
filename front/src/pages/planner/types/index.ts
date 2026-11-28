@@ -93,6 +93,12 @@ export type XRState = {
   ready?: boolean;
   count?: number;
   positioned?: boolean;
+  confidence?: number;
+  surface?: string;
+  area?: number;
+  perimeter?: number;
+  rotation?: number;
+  snap?: boolean;
 };
 export type ARMode = "scan" | "view";
 export type ExportFormat = "pdf" | "csv" | "json";

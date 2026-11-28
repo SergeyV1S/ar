@@ -1,5 +1,5 @@
 import { isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
-import { dimensions, normalize, validPolygon } from "../planning/index.ts";
+import { dimensions, maxOutlinePoints, normalize, validPolygon } from "../planning/index.ts";
 import type { Item, Project } from "../types/index.ts";
 import { materials, modes, procurementFields, sourceLabel, types } from "./catalog.ts";
 
@@ -102,7 +102,7 @@ export const validateImport = (input: unknown): Project => {
     raw.version !== 1 ||
     typeof room.name !== "string" ||
     !Array.isArray(room.points) ||
-    rawPoints.length > 32 ||
+    rawPoints.length > maxOutlinePoints ||
     !rawPoints.every(isPoint) ||
     !validPolygon(rawPoints) ||
     !Array.isArray(raw.items) ||
