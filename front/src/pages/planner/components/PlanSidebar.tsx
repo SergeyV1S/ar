@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Button, Icon, IconButton } from "@/shared/components/index.ts";
 import { PATHS } from "@/shared/constants/index.ts";
 
-import { PLANNER_STEP, getItemPath } from "../helpers/index.ts";
+import { PLANNER_STEP, getItemPath, getWishPath, getWishPurchases } from "../helpers/index.ts";
 import { usePlannerContext } from "../hooks/index.ts";
 import type { usePlanner, usePlannerSteps } from "../hooks/index.ts";
 import { itemSize } from "../mock/index.ts";
@@ -17,7 +17,8 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
   const { action, saveRoom, close, toast } = usePlannerContext();
   const { project, current, itemChoices, positions, addOwned, variantOptions, replan, openChecks } =
     planner;
-  const { step, heading, onRoomSaved, goToRoom, goToLayout } = workflow;
+  const { step, heading, onRoomSaved, goToRoom, goToFurniture, goToWishes, goToLayout } = workflow;
+  const { openWishes, layoutReason } = planner;
 
   return (
     <section
@@ -46,15 +47,11 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
           <h2 id='planner-step-title' ref={heading} tabIndex={-1}>
             Мебель на плане
           </h2>
-          <p className='planner-step-intro'>Добавьте свою мебель или подберите новую в каталоге.</p>
+          <p className='planner-step-intro'>Добавьте имеющуюся мебель и перетащите её на нужное место на плане.</p>
           <div className='editor-links'>
             <Button icon='plus' onClick={addOwned}>
               Добавить свою мебель
             </Button>
-            <Link className='btn' to={getItemPath(PATHS.catalog, current?.id ?? null)}>
-              <Icon name='grid' />
-              Открыть каталог
-            </Link>
           </div>
           {itemChoices.length > 0 ? (
             <ul className='planner-furniture-list' aria-label='Предметы в проекте'>
@@ -80,9 +77,47 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
           )}
           <div className='editor-links planner-step-actions'>
             <Button onClick={goToRoom}>Назад к комнате</Button>
-            <Button className='primary' onClick={goToLayout}>
-              К расстановке
+            <Button className='primary' onClick={goToWishes}>
+              К подбору мебели
             </Button>
+          </div>
+        </>
+      )}
+      {step === PLANNER_STEP.wishes && (
+        <>
+          <h2 id='planner-step-title' ref={heading} tabIndex={-1}>Подбор мебели</h2>
+          <p className='planner-step-intro'>
+            Опишите голосом или текстом, какую мебель добавить, заменить или переставить.
+          </p>
+          <div className='editor-links'>
+            <Button icon='mic' className='primary' onClick={openWishes}>
+              {project.brief ? "Изменить пожелания" : "Ввести пожелания"}
+            </Button>
+            <Link className='btn' to={PATHS.catalog}>
+              <Icon name='grid' /> Каталог
+            </Link>
+          </div>
+          {project.brief && (
+            <>
+              <p className='support-text'>{project.brief.summary}</p>
+              <ul className='planner-furniture-list' aria-label='Список покупок'>
+                {project.brief.wishes.map((wish) => (
+                  <li key={wish.id}>
+                    <Link className='plan-item' to={getWishPath(PATHS.catalog, wish.id)}>
+                      <span className='min-w-0'>
+                        <strong>{wish.name}</strong>
+                        <small>{wish.material ? `${wish.material} · ` : ""}{wish.quantity} шт.</small>
+                      </span>
+                      <small>{`Выбрано ${getWishPurchases(project, wish).length} из ${wish.quantity}`}</small>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <div className='editor-links planner-step-actions'>
+            <Button onClick={goToFurniture}>К своей мебели</Button>
+            <Button className='primary' onClick={goToLayout}>К расстановке</Button>
           </div>
         </>
       )}
@@ -94,8 +129,11 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
           <p className='planner-step-intro'>
             Сравните варианты и проверьте проход от двери к центру комнаты.
           </p>
+          {layoutReason && (
+            <p className='notice'>{layoutReason}</p>
+          )}
           <div className='variant-list' role='group' aria-label='Выбор расстановки'>
-            {variantOptions.map(({ title, note, style, index, chooseVariant }) => (
+            {variantOptions.map(({ title, note, style, index, chooseVariant, check, recommended }) => (
               <button
                 key={style}
                 type='button'
@@ -111,6 +149,9 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
                 <span>
                   <strong>{title}</strong>
                   <small>{note}</small>
+                  {recommended && <small>Рекомендуемый вариант</small>}
+                  {check && check.unplaced > 0 && <small>Без места: {check.unplaced}</small>}
+                  {check && check.warnings > 0 && <small>Замечаний: {check.warnings}</small>}
                 </span>
               </button>
             ))}

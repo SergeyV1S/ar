@@ -2,6 +2,7 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { useLoaderData, useRevalidator, useSearchParams } from "react-router";
 
+import { wishForItem } from "@/pages/planner/helpers";
 import { usePlannerContext } from "@/pages/planner/hooks/index.ts";
 import {
   getPurchaseBudget,
@@ -20,6 +21,8 @@ export const useCatalogPage = () => {
   const [search, setSearch] = useSearchParams();
   const fitOnly = search.get("fit") !== "all";
   const selectedItem = allItems.find((item) => item.id === selected);
+  const savedWish = project.brief?.wishes.find(({ id }) => id === search.get("wish"));
+  const wish = savedWish ?? (selectedItem && project.mode !== "office" ? wishForItem(selectedItem) : undefined);
   const { difference, hasUnknownPrices } = getPurchaseBudget(project.budget, bought);
 
   const filterOffers = (event: ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +33,7 @@ export const useCatalogPage = () => {
   };
   const addManually = () => action("add-buy");
 
-  return { data, fitOnly, selectedItem, difference, hasUnknownPrices, filterOffers, addManually };
+  return { data, fitOnly, selectedItem, wish, difference, hasUnknownPrices, filterOffers, addManually };
 };
 
 export const useCatalogResults = (catalog: readonly Item[], fitOnly: boolean) => {

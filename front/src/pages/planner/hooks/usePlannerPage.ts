@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
 import type { CatalogCity } from "@/shared/api/requests";
+import type { PlanAnalysis } from "@/shared/helpers";
 
 import { getReplacementCriteria, isLegacyRetailOffer } from "../helpers/catalogSelection.ts";
-import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, upsertItem } from "../helpers/index.ts";
+import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, makeProjectBrief, upsertItem } from "../helpers/index.ts";
 import type { readLocal } from "../mock/index.ts";
 import { initialProject, planItems, positionsFor, visibleItems } from "../mock/index.ts";
 import { area, arrange, clamp, dimensions, inspect, rect, variants } from "../planning/index.ts";
+import { isCatalogCategory } from "../types/index.ts";
 import type {
   ARMode,
   Action,
@@ -102,7 +104,9 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   const openCatalogSearch = () => openCatalogDraft(retail.search);
   const replaceCatalogItem = (id: string) => {
     const item = project.items.find((item) => item.id === id && isLegacyRetailOffer(item));
-    if (item) openCatalogDraft({ ...getReplacementCriteria(item), replaceId: id });
+    if (!item) return;
+    const criteria = getReplacementCriteria(item);
+    if (isCatalogCategory(criteria.category)) openCatalogDraft({ ...criteria, replaceId: id });
   };
   const confirmCatalogSearch = (search: CatalogSearch, city: CatalogCity) => {
     retail.start(search, city);
@@ -273,6 +277,14 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       ? "Подбор Divan.ru доступен в режиме «Новая покупка»."
       : "Голосовой ввод применён. Проверьте размеры на плане.");
   };
+  const acceptWishes = (phrase: string, analysis: PlanAnalysis) => {
+    update({
+      brief: makeProjectBrief(project.brief, phrase, analysis),
+      ...(analysis.budget === undefined ? {} : { budget: analysis.budget })
+    });
+    close();
+    notify("Пожелания сохранены.");
+  };
 
   const openARHelp = (mode: ARMode) => setModal({ name: mode === "scan" ? "ar-scan" : "ar-view" });
   const clearSelection = () => setSelected(null);
@@ -386,6 +398,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     storeItem,
     removeItem,
     acceptVoice,
+    acceptWishes,
     protect,
     lock,
     unlock,

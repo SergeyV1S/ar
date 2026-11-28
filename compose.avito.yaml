@@ -1,0 +1,23 @@
+services:
+  back:
+    environment:
+      AVITO_MCP_URL: http://avito-mcp:8793/mcp
+    depends_on:
+      - avito-mcp
+  avito-mcp:
+    build: ./avito
+    init: true
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      AVITO_MCP_TRANSPORT: streamable-http
+      AVITO_MCP_HTTP_HOST: 0.0.0.0
+      AVITO_MCP_HTTP_PORT: 8793
+      AVITO_MCP_ALLOWED_HOSTS: avito-mcp:8793
+      AVITO_MCP_CHROME_ARGS: --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1200,760
+    ports:
+      - "127.0.0.1:${AVITO_BROWSER_PORT:-6080}:6080"
+    volumes:
+      - avito-profile:/data
+volumes:
+  avito-profile:

@@ -15,6 +15,9 @@ const categories = {
   wardrobe: "shkafy",
   cabinet: "tumby",
   pouf: "pufy",
+  bed: "krovati",
+  dresser: "komody",
+  shelving: "stellazhi",
 } as const;
 type Category = keyof typeof categories;
 
@@ -27,6 +30,13 @@ type Listing = {
   stock?: number;
 };
 type Page = { entries: Listing[]; next: boolean; checkedAt: string };
+type CatalogFilters = {
+  maxPrice?: number;
+  maxWidth?: number;
+  maxDepth?: number;
+  maxHeight?: number;
+  material?: string;
+};
 
 const record = (value: unknown): Record<string, unknown> => {
   if (value && typeof value === "object" && !Array.isArray(value))
@@ -261,15 +271,17 @@ const getProduct = ($: CheerioAPI, path: string) => {
         !$(node).children().length &&
         /^(?:без|по) промокод[ау]/iu.test(normalizeText($(node).text())),
     );
+  const name = normalizeText(product.name);
   return {
     conditionalPromotion,
     sku: product.sku,
-    name: normalizeText(product.name),
+    name,
     w,
     d,
     h,
     materials: materials
-      .filter(([, pattern]) => pattern.test(materialText))
+      .filter(([label, pattern]) => pattern.test(materialText) ||
+        ((label === "Ткань" || label === "Букле") && pattern.test(name)))
       .map(([name]) => name),
   };
 };
@@ -330,6 +342,7 @@ export const createDivanCatalog = (fetchFromDivan: typeof fetch) => {
     city: string,
     category: Category,
     cursor: { page: number; offset: number },
+    filters: CatalogFilters = {},
   ) => {
     if (!(await cities()).some(({ id }) => id === city)) return;
     const prefix = city === "moscow" ? "" : `/${city}`;
@@ -348,7 +361,8 @@ export const createDivanCatalog = (fetchFromDivan: typeof fetch) => {
     const batch = listing.entries.slice(
       cursor.offset,
       cursor.offset + BATCH_SIZE,
-    );
+    ).filter(({ price, priceWithoutPromotion }) =>
+      filters.maxPrice === undefined || Math.min(price, priceWithoutPromotion) <= filters.maxPrice);
     const results = await Promise.allSettled(
       batch.map(
         async ({
@@ -362,10 +376,18 @@ export const createDivanCatalog = (fetchFromDivan: typeof fetch) => {
           );
           if (!details) return;
           const { conditionalPromotion, ...variant } = details;
+          const actualPrice = conditionalPromotion ? priceWithoutPromotion : price;
+          if (
+            (filters.maxPrice !== undefined && actualPrice > filters.maxPrice) ||
+            (filters.maxWidth !== undefined && variant.w > filters.maxWidth) ||
+            (filters.maxDepth !== undefined && variant.d > filters.maxDepth) ||
+            (filters.maxHeight !== undefined && variant.h > filters.maxHeight) ||
+            (filters.material && !variant.materials.some((material) => material === filters.material))
+          ) return;
           return {
             ...entry,
             ...variant,
-            price: conditionalPromotion ? priceWithoutPromotion : price,
+            price: actualPrice,
             url: new URL(productPath, STORE).href,
             checkedAt: listing.checkedAt,
           };
@@ -407,5 +429,19 @@ export const readCatalogQuery = (query: Record<string, unknown>) => {
   const offset = Number(match[2]);
   if (page > 1000 || offset % BATCH_SIZE !== 0) return;
   // The own-property check above guarantees the category map contains this key.
-  return { city, category: category as Category, cursor: { page, offset } };
+  const filters: CatalogFilters = {};
+  for (const key of ["maxPrice", "maxWidth", "maxDepth", "maxHeight"] as const) {
+    const value = query[key];
+    if (value === undefined) continue;
+    if (typeof value !== "string" || !/^\d+(?:\.\d+)?$/.test(value)) return;
+    const parsed = Number(value);
+    if (parsed < 0 || parsed > (key === "maxPrice" ? 1e9 : 20)) return;
+    filters[key] = parsed;
+  }
+  if (query.material !== undefined) {
+    if (typeof query.material !== "string" || !query.material.trim() || query.material.length > 45)
+      return;
+    filters.material = query.material;
+  }
+  return { city, category: category as Category, cursor: { page, offset }, filters };
 };

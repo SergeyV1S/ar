@@ -80,7 +80,7 @@ export const useProjectFiles = ({
   };
 
   const exportData = async (format: ExportFormat) => {
-    if (format !== "json" && project.mode === "office" && procurementMissing(project).length) {
+    if ((format === "pdf" || format === "csv") && project.mode === "office" && procurementMissing(project).length) {
       notify("Заполните поля и реквизиты служебной закупки перед выгрузкой.");
       return;
     }
@@ -107,6 +107,14 @@ export const useProjectFiles = ({
     } else {
       const canvas = document.createElement("canvas");
       drawPlan(canvas, project, allItems, positions, inspection, { width: 1000, height: 590 });
+      if (format === "png") {
+        canvas.toBlob((image) => {
+          if (!image) { notify("Не удалось выгрузить изображение плана."); return; }
+          download(`План — ${filename}.png`, image, "image/png");
+          notify("План выгружен в PNG.");
+        });
+        return;
+      }
       const image = canvas.toDataURL();
       flushSync(() => {
         close();

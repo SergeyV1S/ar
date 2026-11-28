@@ -1,6 +1,6 @@
-import { isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
+import { isFurnitureWish, isLayoutAdvice, isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
 import { dimensions, maxOutlinePoints, normalize, validPolygon } from "../planning/index.ts";
-import type { Item, Project } from "../types/index.ts";
+import type { Item, Project, ProjectWish } from "../types/index.ts";
 import { materials, modes, procurementFields, sourceLabel, types } from "./catalog.ts";
 
 const record = (value: unknown) => (isRecord(value) ? value : {});
@@ -40,6 +40,7 @@ const normalizeItem = (item: ImportItem): Item => ({
   h: item.h,
   quantity: typeof item.quantity === "number" ? item.quantity : 1,
   demo: item.demo === true,
+  wishId: typeof item.wishId === "string" && item.wishId.length <= 150 ? item.wishId : undefined,
   catalogCity: typeof item.catalogCity === "string" ? item.catalogCity.slice(0, 100) : undefined,
   catalogCityId: typeof item.catalogCityId === "string" &&
     /^[a-z][a-z0-9-]{1,60}$/.test(item.catalogCityId) ? item.catalogCityId : undefined,
@@ -77,6 +78,18 @@ const normalizeItem = (item: ImportItem): Item => ({
       ? item.photo
       : undefined
 });
+
+const readBrief = (input: unknown) => {
+  const brief = record(input);
+  if (typeof brief.phrase !== "string" || typeof brief.summary !== "string" || !Array.isArray(brief.wishes))
+    return;
+  const wishes = brief.wishes.slice(0, 10).filter((raw: unknown): raw is ProjectWish =>
+    isRecord(raw) && typeof raw.id === "string" && raw.id.length > 0 && raw.id.length <= 150 &&
+    isFurnitureWish(raw));
+  if (new Set(wishes.map((wish) => wish.id)).size !== wishes.length) return;
+  return { phrase: brief.phrase.slice(0, 4000), summary: brief.summary.slice(0, 600), wishes,
+    layout: isLayoutAdvice(brief.layout) ? brief.layout : undefined };
+};
 
 export const parseOffers = (raw: unknown) => {
   if (
@@ -151,6 +164,7 @@ export const validateImport = (input: unknown): Project => {
   const openings: unknown[] = Array.isArray(room.openings) ? room.openings : [];
   return {
     version: 1,
+    brief: readBrief(raw.brief),
     room: {
       name: room.name.trim().slice(0, 80) || "Комната",
       points,

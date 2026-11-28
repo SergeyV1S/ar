@@ -8,6 +8,7 @@ export const useExportOptions = ({ project, action, run }: ExportOptionsProps) =
   const openProcurement = () => action("procurement");
   const exportPdf = () => run("pdf");
   const exportCsv = () => run("csv");
+  const exportPng = () => run("png");
 
-  return { missing, openProcurement, exportPdf, exportCsv };
+  return { missing, openProcurement, exportPdf, exportCsv, exportPng };
 };

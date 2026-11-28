@@ -12,6 +12,7 @@ ENV NODE_ENV=production
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --non-interactive
 COPY --from=build /app/dist ./dist
+COPY certs ./certs
 USER node
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

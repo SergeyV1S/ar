@@ -94,7 +94,7 @@ test("uses regional prices and stock in store order, with dimensions from the ex
           ? "<span>Ширина 52 см</span><span>Глубина 54 см</span><span>Высота 81 см</span>"
           : "<span>Ширина 52 см</span><span>Высота 81 см</span>";
       return new Response(`
-        ${schema({ "@type": "Product", name: "Стул Тест", sku: pathname === discountedPath ? "1002" : "1001", offers: { url: `https://www.divan.ru${pathname}`, price: "7990" } })}
+        ${schema({ "@type": "Product", name: pathname === discountedPath ? "Стул Велюр" : "Стул Тест", sku: pathname === discountedPath ? "1002" : "1001", offers: { url: `https://www.divan.ru${pathname}`, price: "7990" } })}
         ${pathname === discountedPath ? publicDimensions : "<div><span>Без промокода</span></div>"}
         <div><span>Размеры: </span>${dimensions}</div>
         <div><span>Высота сиденья: </span><span>46 см</span></div>
@@ -147,6 +147,8 @@ test("uses regional prices and stock in store order, with dimensions from the ex
   assert.equal(incomplete, false);
   const numberOfReads = requests.length;
   assert.equal((await fetch(url)).status, 200);
+  const filtered = await (await fetch(`${url}&maxPrice=8000&maxWidth=0.52&material=${encodeURIComponent("Ткань")}`)).json();
+  assert.deepEqual(filtered.offers.map((offer: { sku: string }) => offer.sku), ["1002"]);
   assert.equal(requests.length, numberOfReads);
 });
 

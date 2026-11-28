@@ -106,6 +106,7 @@
     @apply flex justify-between gap-2 items-center w-full min-h-11 rounded-lg bg-white px-2 py-1 text-left;
   }
   .plan-item:hover,
+  .plan-item[aria-current="page"],
   .plan-item[aria-pressed="true"] {
     @apply bg-purple-soft;
   }
@@ -973,7 +974,7 @@
 
   .planner-steps {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
     margin-bottom: 16px;
     padding: 4px;

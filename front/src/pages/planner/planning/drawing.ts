@@ -462,6 +462,34 @@ const markOwnership = (c: CanvasRenderingContext2D, target: Target) => {
   );
 };
 
+const labelFurniture = (c: CanvasRenderingContext2D, targets: Target[], width: number, height: number) => {
+  c.save();
+  c.font = "600 11px Manrope, system-ui, sans-serif";
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  const labels: Box[] = [];
+  [...targets].reverse().forEach(({ item, polygon }) => {
+    if (!polygon?.length) return;
+    const [x, y] = polygon.reduce(
+      ([sx, sy], [px, py]) => [sx + px / polygon.length, sy + py / polygon.length], [0, 0]
+    );
+    if (x < 0 || x > width || y < 0 || y > height) return;
+    const label = item.name.length > 24 ? `${item.name.slice(0, 23)}…` : item.name;
+    const w = Math.min(c.measureText(label).width + 14, width - 8);
+    const left = Math.min(width - w - 4, Math.max(4, x - w / 2));
+    const overlaps = (top: number) => labels.some(({ x, y, w: otherWidth, d }) =>
+      left < x + otherWidth + 3 && left + w + 3 > x && top < y + d + 2 && top + 19 > y);
+    const top = [y - 9, y + 12, y - 30].find((option) =>
+      option >= 4 && option <= height - 22 && !overlaps(option));
+    if (top === undefined) return;
+    labels.push({ x: left, y: top, w, d: 18 });
+    shape(c, left, top, w, 18, 5, item.owned ? "#fffdf8" : "#f4ebff", "#d6caca");
+    c.fillStyle = "#30283a";
+    c.fillText(label, left + w / 2, top + 9, w - 8);
+  });
+  c.restore();
+};
+
 const iso = (
   c: CanvasRenderingContext2D,
   width: number,
@@ -556,6 +584,7 @@ const iso = (
       targets.push({ item, polygon: top, sides, box });
     });
   targets.forEach((target) => markOwnership(c, target));
+  labelFurniture(c, targets, width, height);
   return { targets, scale, to };
 };
 
@@ -695,5 +724,6 @@ export const drawPlan = (
     }
   });
   targets.forEach((target) => markOwnership(c, target));
+  labelFurniture(c, targets, width, height);
   return { targets, scale, to };
 };

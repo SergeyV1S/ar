@@ -29,6 +29,7 @@ export const sourceLabel: Record<string, string> = {
   photo: "Разметка по фото",
   voice: "Голосовой ввод",
   catalog: "Каталог магазина",
+  avito: "Объявление Авито",
   import: "Импорт"
 };
 export const checkLabel: Record<string, string> = {

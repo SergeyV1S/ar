@@ -1,7 +1,7 @@
 import type { CatalogOffer } from "../../../shared/api/requests/index.ts";
 import { newId } from "../../../shared/helpers/index.ts";
 import type { CatalogSearch, Positions, Project } from "../types/index.ts";
-import { getCatalogProblem, findCatalogPlacement } from "./catalogSelection.ts";
+import { findCatalogPlacement, getCatalogProblem } from "../helpers/index.ts";
 
 export type CatalogWork = {
   offers: CatalogOffer[];

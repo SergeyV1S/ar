@@ -1,7 +1,8 @@
 import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import { postSpeechTranscriptions } from "@/shared/api/requests";
+import { postPlannerAnalysis, postSpeechTranscriptions } from "@/shared/api/requests";
+import type { PlanAnalysis } from "@/shared/helpers";
 import axios from "axios";
 
 import type { VoiceProps } from "../components/index.ts";
@@ -43,20 +44,24 @@ const cancelSession = (session: VoiceSession) => {
   session.chunks.length = 0;
 };
 
-export const useVoice = ({ project, apply }: VoiceProps) => {
-  const [transcript, setTranscript] = useState<Transcript>({ text: "" });
+export const useVoice = ({ project, apply, wishes }: VoiceProps) => {
+  const [transcript, setTranscript] = useState<Transcript>({ text: wishes ? project.brief?.phrase ?? "" : "" });
   const [stage, setStage] = useState<VoiceStage>("idle");
   const [message, setMessage] = useState("");
+  const [analysis, setAnalysis] = useState<PlanAnalysis>();
+  const [analyzing, setAnalyzing] = useState(false);
+  const activeAnalysis = useRef<AbortController | null>(null);
   const activeSession = useRef<VoiceSession | null>(null);
   const canRecord = canCaptureVoice();
   const phrase = transcript.text;
-  const { patch, notes } = parseVoice(stage === "idle" ? phrase : "", project);
+  const { patch, notes } = parseVoice(stage === "idle" && !wishes ? phrase : "", project);
 
   useEffect(
     () => () => {
       const session = activeSession.current;
       activeSession.current = null;
       if (session) cancelSession(session);
+      activeAnalysis.current?.abort();
     },
     []
   );
@@ -167,27 +172,74 @@ export const useVoice = ({ project, apply }: VoiceProps) => {
       session.capture.stop();
       return;
     }
-    if (canRecord) void startRecording();
+    if (canRecord) {
+      setAnalysis(undefined);
+      void startRecording();
+    }
   };
 
   const changePhrase = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const text = event.target.value;
+    setMessage("");
+    setAnalysis(undefined);
     setTranscript((current) => ({ ...current, text }));
   };
   const applyVoice = () => apply(patch);
+  const analyze = async () => {
+    if (!wishes || !phrase.trim() || activeAnalysis.current) return;
+    const controller = new AbortController();
+    activeAnalysis.current = controller;
+    setAnalyzing(true);
+    setAnalysis(undefined);
+    setMessage("");
+    try {
+      const result = await postPlannerAnalysis({
+        params: {
+          phrase: phrase.trim(),
+          room: project.room,
+          passage: project.passage,
+          budget: project.budget,
+          items: wishes.items.map(({ id, name, kind, owned, material, w, d, h }) => ({
+            id, name, kind, owned, material, w, d, h, position: wishes.positions[id]
+          }))
+        },
+        config: { signal: controller.signal, timeout: 62_000 }
+      });
+      if (!controller.signal.aborted) setAnalysis(result);
+    } catch (error: unknown) {
+      if (axios.isCancel(error) || controller.signal.aborted) return;
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      if (status === 429) setMessage("GigaChat обрабатывает много запросов. Повторите через несколько секунд.");
+      else if (status === 503) setMessage("Анализ пожеланий пока недоступен.");
+      else setMessage("Не удалось разобрать пожелания. Попробуйте ещё раз.");
+    } finally {
+      if (!controller.signal.aborted) {
+        activeAnalysis.current = null;
+        setAnalyzing(false);
+      }
+    }
+  };
+
+  const saveAnalysis = () => {
+    if (analysis && wishes) wishes.save(phrase.trim(), analysis);
+  };
 
   return {
     phrase,
     message,
     canRecord,
     isDraft: transcript.draftOf !== undefined,
-    isBusy: stage !== "idle",
+    isBusy: stage !== "idle" || analyzing,
     isRecording: stage === "recording",
     buttonLabel: BUTTON_LABELS[stage],
     notes,
     hasPurchase: Boolean(patch.purchase),
     toggleRecording,
     changePhrase,
-    applyVoice
+    applyVoice,
+    analysis,
+    analyzing,
+    analyze,
+    saveAnalysis
   };
 };

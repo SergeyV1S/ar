@@ -4,7 +4,8 @@ import { isRecord } from "@/shared/helpers";
 
 import type { CatalogOffer, CatalogPage } from "../types.ts";
 
-type Params = { city: string; category: string; cursor?: string };
+type Params = { city: string; category: string; cursor?: string; maxPrice?: number;
+  maxWidth?: number; maxDepth?: number; maxHeight?: number; material?: string };
 const isSize = (value: unknown) => typeof value === "number" && value >= 0.05 && value <= 20;
 
 const isOffer = (offer: unknown): offer is CatalogOffer =>

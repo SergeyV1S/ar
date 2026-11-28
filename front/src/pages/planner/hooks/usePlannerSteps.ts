@@ -36,10 +36,12 @@ export const usePlannerSteps = () => {
     };
   });
   const onRoomSaved = (target: string | undefined) => {
-    goToStep(target === PLANNER_STEP.layout ? PLANNER_STEP.layout : PLANNER_STEP.furniture);
+    goToStep(PLANNER_STEPS.find(({ id }) => id === target)?.id ?? PLANNER_STEP.furniture);
   };
   const goToRoom = () => goToStep(PLANNER_STEP.room);
+  const goToFurniture = () => goToStep(PLANNER_STEP.furniture);
+  const goToWishes = () => goToStep(PLANNER_STEP.wishes);
   const goToLayout = () => goToStep(PLANNER_STEP.layout);
 
-  return { step, stepOptions, heading, onRoomSaved, goToRoom, goToLayout };
+  return { step, stepOptions, heading, onRoomSaved, goToRoom, goToFurniture, goToWishes, goToLayout };
 };

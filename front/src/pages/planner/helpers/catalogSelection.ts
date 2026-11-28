@@ -4,15 +4,19 @@ import { arrange, inspect, variants } from "../planning/geometry.ts";
 import { isCatalogCategory } from "../types/index.ts";
 import type { CatalogCategory, CatalogSearch, Item, Positions, Project } from "../types/index.ts";
 
-const catalogKinds = {
+export const catalogKinds = {
   chair: "stool",
   armchair: "chair",
   sofa: "sofa",
   table: "table",
   wardrobe: "cabinet",
   cabinet: "cabinet",
-  pouf: "pouf"
-} as const satisfies Record<CatalogCategory, string>;
+  pouf: "pouf",
+  bed: "other",
+  dresser: "cabinet",
+  shelving: "cabinet",
+  other: "other"
+} as const satisfies Record<CatalogSearch["category"], string>;
 
 export const CATALOG_MAX_AGE = 30 * 60 * 1000;
 export const CATALOG_RESULT_LIMIT = 5;
@@ -21,14 +25,18 @@ export const PROJECT_ITEM_LIMIT = 60;
 export const isLegacyRetailOffer = (item: Item) =>
   item.demo === true && item.mode === "retail" && item.seller === "Hoff" && !item.owned;
 
-export const getReplacementCriteria = (item: Item) => {
+const canReplace = (item: Item, search: CatalogSearch) =>
+  item.id === search.replaceId && (Boolean(search.wishId) || isLegacyRetailOffer(item));
+
+export const getReplacementCriteria = (item: Item): Pick<CatalogSearch, "category" | "quantity" | "maxTotal"> => {
   const category =
-    item.kind === "cabinet" && /шкаф/iu.test(item.name)
-      ? "wardrobe"
-      : (Object.keys(catalogKinds).find(
-          (key): key is CatalogCategory => isCatalogCategory(key) && catalogKinds[key] === item.kind
-        ) ?? "cabinet");
-  return { category, quantity: item.quantity ?? 1, maxTotal: item.cap || undefined };
+    Object.entries({ wardrobe: /шкаф/iu, cabinet: /тумб/iu, bed: /кроват/iu,
+      dresser: /комод/iu, shelving: /стеллаж/iu }).find(([, pattern]) => pattern.test(item.name))?.[0];
+  const matching = Object.keys(catalogKinds).find(
+    (key): key is CatalogCategory => key !== "bed" && isCatalogCategory(key) && catalogKinds[key] === item.kind
+  );
+  const kind = category && isCatalogCategory(category) ? category : matching ?? "other";
+  return { category: kind, quantity: Math.min(20, item.quantity ?? 1), maxTotal: item.cap || undefined };
 };
 
 export const getCatalogProblem = (offer: CatalogOffer, search: CatalogSearch, project: Project) => {
@@ -66,6 +74,33 @@ export const getCatalogProblem = (offer: CatalogOffer, search: CatalogSearch, pr
 
 export const isFreshCatalogOffer = (offer: CatalogOffer, now = Date.now()) =>
   now - Date.parse(offer.checkedAt) < CATALOG_MAX_AGE;
+
+export const makeCatalogItems = (offer: CatalogOffer, search: CatalogSearch, ids: string[], cityName?: string) =>
+  ids.map((id): Item => ({
+    id,
+    name: offer.name,
+    kind: catalogKinds[search.category],
+    w: offer.w,
+    d: offer.d,
+    h: offer.h,
+    quantity: 1,
+    owned: false,
+    source: "catalog",
+    verified: "review",
+    mode: "retail",
+    material: offer.materials[0] ?? "Другое",
+    materials: offer.materials,
+    price: offer.price,
+    cap: search.maxUnit ?? (search.quantity === 1 ? search.maxTotal : undefined),
+    seller: "Divan.ru",
+    availability: offer.availability === "in-stock" ? "В наличии" : "Под заказ",
+    sku: offer.sku,
+    url: offer.url,
+    catalogCity: cityName,
+    catalogCityId: search.city,
+    catalogCheckedAt: offer.checkedAt,
+    wishId: search.wishId
+  }));
 
 const findLayout = (
   project: Project,
@@ -106,38 +141,17 @@ export const findCatalogPlacement = ({
     return;
   if (
     search.replaceId &&
-    !project.items.some((item) => item.id === search.replaceId && isLegacyRetailOffer(item))
+    !project.items.some((item) => canReplace(item, search))
   )
     return;
   const remaining = planItems({ items: existing, mode: project.mode });
-  const added = ids.map((id): Item => ({
-    id,
-    name: offer.name,
-    kind: catalogKinds[search.category],
-    w: offer.w,
-    d: offer.d,
-    h: offer.h,
-    quantity: 1,
-    owned: false,
-    source: "catalog",
-    verified: "review",
-    mode: "retail",
-    material: offer.materials[0] ?? "Другое",
-    materials: offer.materials,
-    price: offer.price,
-    cap: search.maxUnit ?? (search.quantity === 1 ? search.maxTotal : undefined),
-    seller: "Divan.ru",
-    availability: offer.availability === "in-stock" ? "В наличии" : "Под заказ",
-    sku: offer.sku,
-    url: offer.url,
-    catalogCity: cityName,
-    catalogCityId: search.city,
-    catalogCheckedAt: offer.checkedAt
-  }));
+  const added = makeCatalogItems(offer, search, ids, cityName);
   const placed = remaining.filter((item) => positions[item.id]);
   const fixed = Object.fromEntries(placed.map((item) => [item.id, positions[item.id]]));
   const layout = findLayout(project, placed, fixed, added, project.variant);
   if (layout) return { layout, existing, remaining, added };
+  if (search.wishId && findLayout(project, remaining, {}, added, project.variant))
+    return { layout: fixed, existing, remaining, added };
 };
 
 export const prepareCatalogPlacement = (input: Parameters<typeof findCatalogPlacement>[0]) => {

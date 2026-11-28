@@ -1,4 +1,5 @@
 import type { CatalogCriteria } from "./catalog.ts";
+import type { FurnitureWish, LayoutAdvice } from "@/shared/helpers";
 
 export { CATALOG_CATEGORIES, isCatalogCategory } from "./catalog.ts";
 export type { CatalogCategory, CatalogCriteria, CatalogSearch } from "./catalog.ts";
@@ -40,6 +41,7 @@ export type Item = {
   catalogCity?: string;
   catalogCityId?: string;
   catalogCheckedAt?: string;
+  wishId?: string;
   cap?: number;
   access?: number;
   material: string;
@@ -64,6 +66,14 @@ export type Project = {
   items: Item[];
   layouts: Record<string, Record<number, Positions>>;
   procurement: Record<string, string>;
+  brief?: ProjectBrief;
+};
+export type ProjectWish = FurnitureWish & { id: string };
+export type ProjectBrief = {
+  phrase: string;
+  summary: string;
+  wishes: ProjectWish[];
+  layout?: LayoutAdvice;
 };
 export type VoicePatch = Partial<Pick<Project, "budget" | "material" | "mode">> & {
   size?: [number, number];
@@ -81,6 +91,7 @@ type DialogName =
   | "room"
   | "outline"
   | "voice"
+  | "wishes"
   | "add-owned"
   | "add-buy"
   | "catalog-search"
@@ -122,7 +133,7 @@ export type XRState = {
   placedIds?: string[];
 };
 export type ARMode = "scan" | "view";
-export type ExportFormat = "pdf" | "csv" | "json";
+export type ExportFormat = "pdf" | "csv" | "png" | "json";
 
 export type RoomProps = {
   project: Project;

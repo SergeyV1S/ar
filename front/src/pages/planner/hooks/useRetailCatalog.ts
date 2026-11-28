@@ -4,8 +4,8 @@ import type { CatalogCity, CatalogOffer } from "@/shared/api/requests";
 import { newId } from "@/shared/helpers";
 import axios from "axios";
 
-import { searchCatalog } from "../helpers/catalogSearch.ts";
-import type { CatalogProgress } from "../helpers/catalogSearch.ts";
+import { searchCatalog } from "../catalogSearch/index.ts";
+import type { CatalogProgress } from "../catalogSearch/index.ts";
 import {
   CATALOG_MAX_AGE,
   PROJECT_ITEM_LIMIT,

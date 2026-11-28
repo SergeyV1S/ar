@@ -10,7 +10,7 @@ export type ExportOptionsProps = {
 };
 
 export const ExportOptions = (props: ExportOptionsProps) => {
-  const { missing, openProcurement, exportPdf, exportCsv } = useExportOptions(props);
+  const { missing, openProcurement, exportPdf, exportCsv, exportPng } = useExportOptions(props);
   return (
     <>
       {missing.length > 0 && (
@@ -41,6 +41,13 @@ export const ExportOptions = (props: ExportOptionsProps) => {
           <span>
             <strong>Таблица закупки в CSV</strong>
             <small>Позиции, цены, габариты и поставщики</small>
+          </span>
+        </button>
+        <button onClick={exportPng}>
+          <Icon name='download' />
+          <span>
+            <strong>План расстановки в PNG</strong>
+            <small>Размеры и подписи мебели</small>
           </span>
         </button>
       </div>

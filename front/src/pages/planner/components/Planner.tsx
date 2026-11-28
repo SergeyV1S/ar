@@ -1,13 +1,13 @@
 import { Button, Icon, IconButton } from "@/shared/components/index.ts";
 import { decimal } from "@/shared/helpers/index.ts";
 
-import { ROOM_FORM_ID } from "../helpers/index.ts";
+import { PLANNER_STEP, ROOM_FORM_ID } from "../helpers/index.ts";
 import { usePlanner, usePlannerSteps } from "../hooks/index.ts";
 import { PlanSelection, PlanSidebar } from "./PlanSidebar.tsx";
 
 export const Planner = () => {
-  const planner = usePlanner();
   const workflow = usePlannerSteps();
+  const planner = usePlanner(workflow.step === PLANNER_STEP.layout);
   const {
     canvas,
     scaleLabel,

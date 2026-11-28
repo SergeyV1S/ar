@@ -1,8 +1,9 @@
 import type { ChangeEvent, KeyboardEvent, PointerEvent } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { getPlanStatus } from "../helpers/index.ts";
-import { area, dimensions, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
+import { positionsFor } from "../mock/index.ts";
+import { area, dimensions, inspect, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
 import type { Drawing } from "../planning/index.ts";
 import { drawPlan } from "../planning/index.ts";
 import type { Position } from "../types/index.ts";
@@ -15,7 +16,7 @@ const moveDirections = [
   { key: "ArrowRight", x: 1, y: 0, label: "Вправо", symbol: "→" }
 ] as const;
 
-export const usePlanner = () => {
+export const usePlanner = (showLayouts: boolean) => {
   const {
     project,
     allItems: items,
@@ -164,6 +165,7 @@ export const usePlanner = () => {
   const clearSelection = () => setChosen(null);
   const openChecks = () => action("checks");
   const addOwned = () => action("add-owned");
+  const openWishes = () => action("wishes");
   const replan = () => action(project.layouts[project.mode] ? "replan-confirm" : "replan");
 
   const viewOptions = (["2d", "3d"] as const).map((mode) => {
@@ -173,9 +175,23 @@ export const usePlanner = () => {
     };
     return { mode, changeView };
   });
+  const layoutChecks = useMemo(() => {
+    if (!showLayouts) return [];
+    return variants.map((_, index) => {
+      const layout = index === project.variant ? positions : positionsFor(project, index);
+      const unplaced = items.filter(({ id }) => !layout[id]).length;
+      return { index, unplaced, warnings: inspect(project.room, items, layout, project.passage).warnings.length };
+    });
+  }, [items, positions, project, showLayouts]);
+  const advice = project.brief?.layout;
+  const recommended = [...layoutChecks].sort((a, b) =>
+    a.unplaced - b.unplaced || a.warnings - b.warnings ||
+    Number(b.index === advice?.variant) - Number(a.index === advice?.variant))[0];
   const variantOptions = variants.map((variant, i) => {
     const chooseVariant = () => action("variant", i);
-    return { ...variant, index: i, chooseVariant };
+    const check = layoutChecks[i];
+    return { ...variant, index: i, chooseVariant, check,
+      recommended: items.length > 0 && recommended?.index === i };
   });
   const planStatus = getPlanStatus(inspection, project.passage);
   const roomArea = area(project.room.points);
@@ -197,6 +213,7 @@ export const usePlanner = () => {
     planStatus,
     viewOptions,
     variantOptions,
+    layoutReason: advice && recommended?.index === advice.variant ? advice.reason : undefined,
     roomArea,
     roomSize,
     openAR,
@@ -209,6 +226,7 @@ export const usePlanner = () => {
     clearSelection,
     openChecks,
     addOwned,
+    openWishes,
     replan
   };
 };

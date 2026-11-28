@@ -31,6 +31,7 @@ export const createCatalogRouter = (fetchFromDivan?: typeof fetch) => {
         query.city,
         query.category,
         query.cursor,
+        query.filters,
       );
       if (result) response.json(result);
       else response.status(400).json({ code: "UNKNOWN_CITY" });

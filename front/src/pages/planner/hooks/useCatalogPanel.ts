@@ -1,7 +1,7 @@
 import { centimeters, money } from "@/shared/helpers";
 
 import { isLegacyRetailOffer } from "../helpers/catalogSelection.ts";
-import { CATALOG_CATEGORIES } from "../types/index.ts";
+import { CATALOG_CATEGORIES, isCatalogCategory } from "../types/index.ts";
 import { usePlannerContext } from "./usePlannerContext.ts";
 
 const checkedAt = new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" });
@@ -24,7 +24,7 @@ export const useCatalogPanel = () => {
     replace: () => replaceCatalogItem(item.id)
   }));
   const conditions =
-    search && city
+    search && city && isCatalogCategory(search.category)
       ? [city.name, CATALOG_CATEGORIES[search.category], `${quantity} шт.`].join(" · ")
       : "";
   const hasIncompleteResult = results.incomplete && results.status === "done";

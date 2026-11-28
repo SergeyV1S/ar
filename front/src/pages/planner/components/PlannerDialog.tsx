@@ -17,6 +17,7 @@ const dialogTitles = {
   room: ["Комната", "ruler"],
   outline: ["Контур комнаты", "scan"],
   voice: ["Голосовой ввод", "mic"],
+  wishes: ["Пожелания к мебели и расстановке", "spark"],
   "add-owned": ["Добавить свою мебель", "plus"],
   "add-buy": ["Добавить к покупке", "bag"],
   "catalog-search": ["Подбор на Divan.ru", "spark"],
@@ -39,6 +40,9 @@ export const PlannerDialog = () => {
     saveRoom,
     saveOutline,
     acceptVoice,
+    acceptWishes,
+    allItems,
+    positions,
     storeItem,
     catalogDraft,
     confirmCatalogSearch,
@@ -72,6 +76,8 @@ export const PlannerDialog = () => {
         return <Outline project={project} save={saveOutline} close={close} />;
       case "voice":
         return <Voice project={project} apply={acceptVoice} />;
+      case "wishes":
+        return <Voice project={project} apply={acceptVoice} wishes={{ items: allItems, positions, save: acceptWishes }} />;
       case "catalog-search":
         return <CatalogSearchForm initial={catalogDraft} projectMaterial={project.material} start={confirmCatalogSearch} />;
       case "add-owned":

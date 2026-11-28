@@ -17,14 +17,13 @@ export const safeUrl = (value: unknown) => {
     return "";
   }
 };
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+export { isRecord } from "./isRecord.ts";
 
 export const readNumber = (data: FormData, key: string) => Number(data.get(key));
 export const readText = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
-export const download = (name: string, content: string, type: string) => {
+export const download = (name: string, content: string | Blob, type: string) => {
   const anchor = document.createElement("a");
-  const url = URL.createObjectURL(new Blob([content], { type }));
+  const url = URL.createObjectURL(content instanceof Blob ? content : new Blob([content], { type }));
   anchor.href = url;
   anchor.download = name;
   document.body.append(anchor);
@@ -32,3 +31,5 @@ export const download = (name: string, content: string, type: string) => {
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 };
+export { boundedAnalysisNumber, hasAnalysisText, isFurnitureWish, isLayoutAdvice } from "./planAnalysis.ts";
+export type { FurnitureWish, LayoutAdvice, PlanAnalysis } from "./planAnalysis.ts";
