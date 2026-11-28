@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 export {};
 declare const self: ServiceWorkerGlobalScope;
-const CACHE = "metrika-offline-v3";
+const CACHE = "metrika-offline-v4";
 const SCOPE = self.registration.scope;
 const entry = new URL("./", SCOPE);
 const modelDirectory = new URL("models/furniture/", entry);
@@ -93,7 +93,10 @@ self.addEventListener("fetch", (event) => {
       const cached = await cache.match(request);
       if (cached) return cached;
       const response = await fetch(request);
-      if (response.ok) await cache.put(request, response.clone());
+      if (response.ok) {
+        // A large model may exceed the device's offline storage quota.
+        await cache.put(request, response.clone()).catch(() => {});
+      }
       return response;
     })()
   );

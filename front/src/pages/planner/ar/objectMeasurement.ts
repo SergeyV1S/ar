@@ -4,14 +4,20 @@ import type { Point } from "../types/index.ts";
 import type { ScanLayout } from "./geometry.ts";
 import { roomPoint } from "./geometry.ts";
 import type { CameraPose } from "./projection.ts";
-import { cameraOrigin, projectDepth, projectToFloor } from "./projection.ts";
+import { cameraOrigin, horizontalProjection, projectDepth, projectToFloor } from "./projection.ts";
 
 const typicalSizes: Record<string, { w: number; d: number; h: number }> = {
   Диван: { w: 2.1, d: 0.9, h: 0.85 },
-  "Стул или кресло": { w: 0.52, d: 0.56, h: 0.86 },
+  Стул: { w: 0.48, d: 0.52, h: 0.85 },
+  Кресло: { w: 0.8, d: 0.82, h: 0.9 },
   Стол: { w: 1.15, d: 0.75, h: 0.75 },
   Кровать: { w: 1.6, d: 2, h: 0.65 },
-  Скамья: { w: 1.15, d: 0.52, h: 0.65 },
+  Скамья: { w: 1.4, d: 0.52, h: 0.45 },
+  Пуф: { w: 0.45, d: 0.45, h: 0.45 },
+  Шкаф: { w: 1.2, d: 0.6, h: 2 },
+  Тумба: { w: 0.6, d: 0.45, h: 0.65 },
+  Комод: { w: 0.9, d: 0.48, h: 0.88 },
+  Стеллаж: { w: 0.8, d: 0.38, h: 1.7 },
   "Напольное растение": { w: 0.5, d: 0.5, h: 0.8 }
 };
 
@@ -36,8 +42,10 @@ export const measureObject = (
   match: FurnitureMatch
 ) => {
   const [x, y, w, h] = match.box.map((value) => value / 100);
-  if (w < 0.035 || h < 0.05 || x < 0.008 || y < 0.008 || x + w > 0.992 || y + h > 0.992)
-    return null;
+  if (w < 0.035 || h < 0.05) return null;
+  const clippedWidth = x < 0.008 || x + w > 0.992;
+  const clippedHeight = y < 0.008 || y + h > 0.992;
+  const clipped = clippedWidth || clippedHeight;
   const typical = typicalSizes[match.title];
   if (!typical) return null;
   const u = x + w / 2;
@@ -70,7 +78,7 @@ export const measureObject = (
   );
   const measured = foreground.length >= 7;
   const foot = projectToFloor(camera, u, y + h, floor);
-  if (!measured && !foot) return null;
+  if (!measured && (clipped || !foot)) return null;
 
   const eye = roomPoint(layout, cameraOrigin(camera.transform));
   const spans = [0, 1].map((axis) => {
@@ -93,18 +101,19 @@ export const measureObject = (
           sum + (camera.transform[12 + axis] - coordinate) * camera.transform[8 + axis],
         0
       );
-  const apparentWidth = (2 * w * opticalDistance) / camera.projection[0];
+  const apparentWidth = (2 * w * opticalDistance) / horizontalProjection(camera);
   const apparentTop = projectDepth(camera, u, y, opticalDistance)[1] - floor;
   const observedDepth = measured ? spans[away][1] - spans[away][0] : 0;
   const estimated = !measured || observedDepth < typical.d * 0.3;
   const sizes = [typical.w, typical.d];
   const observedWidth = spans[along][1] - spans[along][0];
-  sizes[along] = positive(
+  const width = positive(
     measured
       ? clamp(apparentWidth, observedWidth, Math.max(observedWidth * 1.5, typical.w))
       : apparentWidth,
     typical.w
   );
+  sizes[along] = clippedWidth ? Math.max(typical.w, width) : width;
   sizes[away] = positive(estimated ? typical.d : observedDepth * 1.12, typical.d);
   if (estimated) {
     face[away] += Math.sign(face[away] - eye[away]) * sizes[away] * 0.35;
@@ -122,7 +131,7 @@ export const measureObject = (
   const size = {
     w: sizes[0],
     d: sizes[1],
-    h: positive(height > 0.12 ? height : typical.h, typical.h)
+    h: positive(clippedHeight || height <= 0.12 ? Math.max(typical.h, height) : height, typical.h)
   };
 
   return {
@@ -130,7 +139,7 @@ export const measureObject = (
     kind: match.kind,
     size,
     center: face,
-    estimated,
+    estimated: estimated || clipped,
     measured,
     score: match.score
   };

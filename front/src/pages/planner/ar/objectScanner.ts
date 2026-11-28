@@ -8,6 +8,7 @@ import {
   measurementsMatch
 } from "./objectMeasurement.ts";
 import type { CameraPose } from "./projection.ts";
+import { cameraImagePoint, getCameraRotation } from "./projection.ts";
 import { getDepth, readDepth } from "./tracking.ts";
 
 type Track = { id: string; samples: ObjectMeasurement[]; lastFrame: number; confirmed: boolean };
@@ -92,9 +93,12 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
       return;
     }
     waitSince = null;
+    const transform = view.transform.matrix.slice();
+    const rotation = getCameraRotation(transform);
     const camera: CameraPose = {
-      transform: view.transform.matrix.slice(),
-      projection: view.projectionMatrix.slice()
+      transform,
+      projection: view.projectionMatrix.slice(),
+      rotation
     };
     const depth = new Float32Array(depthGridSize ** 2);
     const info = getDepth(frame, view);
@@ -102,13 +106,14 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
       for (let i = 0; i < depth.length; i++) {
         const u = (i % depthGridSize) / (depthGridSize - 1);
         const v = Math.floor(i / depthGridSize) / (depthGridSize - 1);
-        depth[i] = readDepth(info, u, v) ?? 0;
+        const [cameraU, cameraV] = cameraImagePoint(rotation, u, v);
+        depth[i] = readDepth(info, cameraU, cameraV) ?? 0;
       }
     }
     const request = process;
     inFlight = true;
     void import("../recognition/index.ts")
-      .then(({ recognizeFurniture }) => recognizeFurniture(image, 0.48))
+      .then(({ recognizeFurniture }) => recognizeFurniture(image, rotation))
       .then((matches) => {
         if (process !== request) return;
         const objects = matches

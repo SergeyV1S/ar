@@ -1,4 +1,3 @@
-import { exampleProject } from "./exampleProject.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -6,14 +5,21 @@ import { getScanLayout } from "../src/pages/planner/ar/geometry.ts";
 import { traceBase, traceHeight } from "../src/pages/planner/ar/itemTrace.ts";
 import { depthGridSize, measureObject } from "../src/pages/planner/ar/objectMeasurement.ts";
 import { createObjectTracks } from "../src/pages/planner/ar/objectScanner.ts";
-import { viewRay } from "../src/pages/planner/ar/projection.ts";
+import {
+  cameraImagePoint,
+  getCameraRotation,
+  viewRay
+} from "../src/pages/planner/ar/projection.ts";
+import type { CameraPose } from "../src/pages/planner/ar/projection.ts";
 import {
   getItemLayoutUpdate,
   scaleRoomStroke,
   simplifyRoomStroke
 } from "../src/pages/planner/helpers/index.ts";
 import { centeredPosition, inspect, rect, round } from "../src/pages/planner/planning/index.ts";
+import type { FurnitureMatch } from "../src/pages/planner/recognition/index.ts";
 import type { Item } from "../src/pages/planner/types/index.ts";
+import { exampleProject } from "./exampleProject.ts";
 
 const room = () => {
   const layout = getScanLayout([
@@ -58,18 +64,56 @@ test("camera-space depth measures a recognized chair in front of a background wa
   const minX = Math.min(...u) - 0.01;
   const minY = Math.min(...v) - 0.02;
   const result = measureObject(room(), pose, depth, {
-    kind: "chair",
-    title: "Стул или кресло",
+    kind: "stool",
+    title: "Стул",
     score: 0.86,
-    box: [minX, minY, Math.max(...u) + 0.01 - minX, Math.max(...v) + 0.02 - minY].map(
-      (value) => value * 100
-    )
+    box: [
+      100 * minX,
+      100 * minY,
+      100 * (Math.max(...u) + 0.01 - minX),
+      100 * (Math.max(...v) + 0.02 - minY)
+    ]
   });
   assert(result?.measured);
   assert(Math.abs(result.center[0] - 2) < 0.08);
   assert(Math.abs(result.center[1] - 2) < 0.18);
   assert(Math.abs(result.size.w - 0.56) < 0.14);
   assert(Math.abs(result.size.h - 0.86) < 0.14);
+});
+
+test("sideways AR frames use the same rays for corrected detections and raw depth", () => {
+  const pose = camera(2, 1.45, 4, 0.32);
+  const { transform, projection } = pose;
+  const rolled = new Float32Array([
+    ...transform.slice(4, 8),
+    ...transform.slice(0, 4).map((value) => -value),
+    ...transform.slice(8)
+  ]);
+  const rotation = getCameraRotation(rolled);
+  assert.equal(rotation, 270);
+  const rotated: CameraPose = { transform: rolled, projection: projection.slice(), rotation };
+  rotated.projection[0] = projection[5];
+  rotated.projection[5] = projection[0];
+  const [rawU, rawV] = cameraImagePoint(rotation, 0.3, 0.6);
+  assert.deepEqual([rawU, rawV], [0.4, 0.3]);
+  const expected = viewRay(pose, 0.3, 0.6);
+  const actual = viewRay(rotated, 0.3, 0.6);
+  assert(expected.every((value, axis) => Math.abs(value - actual[axis]) < 1e-6));
+});
+
+test("an edge-clipped table needs depth to produce an approximate measurement", () => {
+  const pose = camera(2, 1.45, 4, 0.32);
+  const match: FurnitureMatch = {
+    kind: "table",
+    title: "Стол",
+    score: 0.43,
+    box: [0, 30, 42, 55]
+  };
+  const depth = new Float32Array(depthGridSize ** 2);
+  assert.equal(measureObject(room(), pose, depth, match), null);
+  const result = measureObject(room(), pose, depth.fill(1.7), match);
+  assert(result?.measured);
+  assert(result.estimated);
 });
 
 test("repeated measurements produce one chair while a second chair gets its own ID", () => {

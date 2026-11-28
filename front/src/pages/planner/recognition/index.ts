@@ -1,51 +1,62 @@
-import { load } from "@tensorflow-models/coco-ssd";
-import "@tensorflow/tfjs-backend-cpu";
-import "@tensorflow/tfjs-backend-webgl";
-import { getBackend, setBackend } from "@tensorflow/tfjs-core";
+import type { FurnitureMatch } from "./detections.ts";
+import type { DetectionRequest, DetectionResponse, ImageRotation } from "./types.ts";
 
-const mapping: Record<string, [string, string]> = {
-  couch: ["sofa", "Диван"],
-  chair: ["chair", "Стул или кресло"],
-  "dining table": ["table", "Стол"],
-  bed: ["other", "Кровать"],
-  bench: ["other", "Скамья"],
-  "potted plant": ["other", "Напольное растение"]
-};
-let model: ReturnType<typeof loadModel> | null;
+export type { FurnitureMatch } from "./detections.ts";
+export type { ImageRotation } from "./types.ts";
 
-const loadModel = async () => {
-  try {
-    if (!getBackend() && !(await setBackend("webgl"))) await setBackend("cpu");
-  } catch {
-    await setBackend("cpu");
+let worker: Worker | undefined;
+let sequence = 0;
+
+const pending = new Map<
+  number,
+  {
+    resolve: (matches: FurnitureMatch[]) => void;
+    reject: (error: Error) => void;
   }
-  const modelUrl = new URL("./furniture-model/model.json", document.baseURI).href;
-  return load({ base: "lite_mobilenet_v2", modelUrl });
+>();
+
+const getWorker = () => {
+  if (worker) return worker;
+  const detector = new Worker(new URL("./detector.worker.ts", import.meta.url), { type: "module" });
+  detector.onmessage = ({ data }: MessageEvent<DetectionResponse>) => {
+    const request = pending.get(data.id);
+    pending.delete(data.id);
+    if (data.matches) request?.resolve(data.matches);
+    else request?.reject(new Error("Furniture detection failed"));
+  };
+  detector.onerror = () => {
+    if (worker !== detector) return;
+    detector.terminate();
+    worker = undefined;
+    for (const request of pending.values())
+      request.reject(new Error("Furniture detector unavailable"));
+    pending.clear();
+  };
+  worker = detector;
+  return detector;
 };
 
-export const recognizeFurniture = async (image: HTMLImageElement | ImageData, threshold: number) => {
-  if (!model)
-    model = loadModel().catch((error) => {
-      model = null;
-      throw error;
-    });
-  const detector = await model;
-  const detected = await detector.detect(image, 20, threshold);
-  const width = image instanceof ImageData ? image.width : image.naturalWidth;
-  const height = image instanceof ImageData ? image.height : image.naturalHeight;
-  return detected.flatMap(({ class: key, score, bbox }) => {
-    if (!Object.hasOwn(mapping, key)) return [];
-    const [kind, title] = mapping[key];
-    return [
-      {
-        kind,
-        title,
-        score,
-        box: bbox.map(
-          (value, i) => (100 * value) / (i % 2 === 0 ? width : height)
-        )
-      }
-    ];
+export const recognizeFurniture = async (
+  image: HTMLImageElement | ImageData,
+  rotation: ImageRotation = 0
+) => {
+  const detector = getWorker();
+  const bitmap = await createImageBitmap(image);
+  if (detector !== worker) {
+    bitmap.close();
+    throw new Error("Furniture detector unavailable");
+  }
+  return new Promise<FurnitureMatch[]>((resolve, reject) => {
+    const id = ++sequence;
+    pending.set(id, { resolve, reject });
+    const request: DetectionRequest = { id, bitmap, rotation };
+    try {
+      detector.postMessage(request, [bitmap]);
+    } catch (error) {
+      pending.delete(id);
+      bitmap.close();
+      reject(error);
+    }
   });
 };
 
@@ -53,7 +64,5 @@ export const identifyFurniture = async (uri: string) => {
   const image = new Image();
   image.src = uri;
   await image.decode();
-  return recognizeFurniture(image, 0.45);
+  return recognizeFurniture(image);
 };
-
-export type FurnitureMatch = Awaited<ReturnType<typeof recognizeFurniture>>[number];
