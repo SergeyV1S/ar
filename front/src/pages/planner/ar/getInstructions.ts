@@ -1,23 +1,25 @@
-import type { ARMode, Point } from "../types/index.ts";
+import type { ARMode, Point, XRState } from "../types/index.ts";
+import { maxCorners } from "./geometry.ts";
 
 export const getInstructions = (
   mode: ARMode,
-  orientation: number | null,
   origin: Point | null,
-  kind: string,
-  corners: number,
+  { positioned, kind, count = 0, ready, closed, closing }: XRState,
   pending: number
 ) => {
   if (mode === "view") {
-    if (orientation !== null)
+    if (positioned)
       return "Мебель размещена. Обойдите её с камерой, поверните модель кнопкой или переставьте.";
     if (origin) return "Отметьте вторую точку вдоль стены вправо от начала плана.";
-    return "Отметьте на полу угол, соответствующий левому верхнему углу плана.";
+    return "Наведите прицел на угол пола, соответствующий началу плана.";
   }
   if (kind === "corner") {
-    if (corners === 0) return "Начните с левого верхнего угла плана. Двигайте телефон медленно.";
-    if (corners < 3) return `Углов: ${corners}. Продолжайте обход по периметру против часовой стрелки.`;
-    return `Углов: ${corners}. Вернитесь к первому углу, чтобы замкнуть контур, или продолжайте обход.`;
+    if (closed) return "Контур замкнут. Добавьте проёмы или сохраните комнату.";
+    if (!count && !ready) return "Наведите камеру на пол и медленно подвигайте телефоном.";
+    if (!count) return "Наведите прицел на стык стен с полом и отметьте первый угол.";
+    if (closing) return "Прицел на первом углу. Замкните контур.";
+    if (count >= maxCorners) return "Достигнут предел углов. Замкните контур.";
+    return "Наведите прицел на следующий угол у пола. Закрепите стену, когда она появится.";
   }
   if (kind === "socket") return "Наведитесь на розетку или на пол прямо под ней.";
   if (pending) return "Отметьте второй край на той же стене.";

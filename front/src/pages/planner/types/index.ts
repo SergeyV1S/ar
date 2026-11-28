@@ -93,8 +93,9 @@ export type XRState = {
   ready?: boolean;
   count?: number;
   positioned?: boolean;
-  confidence?: number;
-  surface?: string;
+  closed?: boolean;
+  closing?: boolean;
+  wallLength?: number;
   area?: number;
   perimeter?: number;
   rotation?: number;

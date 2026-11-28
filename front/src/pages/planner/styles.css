@@ -606,13 +606,13 @@
     box-shadow: 0 18px 48px #1a0f26a6;
   }
   .xr-head {
-    @apply flex items-start gap-2.25;
+    @apply absolute top-[max(12px,_env(safe-area-inset-top))] left-1/2 flex w-[min(570px,_calc(100%_-_20px))] -translate-x-1/2 items-start gap-3 rounded-xl bg-[#251932ed] py-2 pr-2 pl-3;
   }
   .xr-head p {
-    @apply text-[13px] mt-0.75 mr-0 mb-1.75 ml-0 text-[#eee2ff];
+    @apply mt-0.5 text-[13px] text-[#eee2ff];
   }
   .xr-head .xr-exit {
-    @apply ml-auto bg-transparent border-0 text-white min-w-9.5 min-h-9.5;
+    @apply pointer-events-auto ml-auto min-h-11 min-w-11 shrink-0 border-0 bg-transparent text-white;
   }
   .xr-head .xr-exit:hover {
     @apply bg-[#ffffff1f] text-white;
@@ -636,7 +636,10 @@
     @apply bg-[#ffffff26] text-white border-[#ffffff45];
   }
   .xr-actions .btn.primary {
-    @apply bg-purple text-white border-[#b18cff];
+    @apply border-[#b18cff] bg-purple text-white;
+  }
+  .xr-actions .btn.xr-primary {
+    @apply basis-full min-h-11 text-sm;
   }
   .xr-actions .btn.xr-toggle.on {
     @apply bg-[#67d6a230] text-[#a5f3cd] border-[#67d6a270];
@@ -653,33 +656,20 @@
   .xr-metrics dd {
     @apply text-[13px] font-[760] text-white;
   }
-  .xr-meter {
-    @apply absolute top-[max(14px,_env(safe-area-inset-top))] left-1/2 w-[min(420px,_calc(100%_-_24px))];
-    transform: translateX(-50%);
-    @apply h-1.5 rounded-full bg-[#1d1229a6] overflow-hidden;
-  }
-  .xr-meter-bar {
-    @apply block h-full rounded-full;
-    background: linear-gradient(90deg, #9b67ff, #67d6a2);
-    transition: width 0.22s ease-out;
-  }
-  .xr-meter-label {
-    @apply flex items-center justify-center gap-1 text-[11px] font-[700] mt-1.5 text-[#ece3ff];
-    text-shadow: 0 1px 4px #1a0f26cc;
-  }
   .xr-reticle {
     @apply absolute inset-0 flex items-center justify-center pointer-events-none;
   }
   .xr-reticle i {
     @apply block w-3.5 h-3.5 rounded-full border-2 border-[#ffffffa6];
-    transition:
-      transform 0.14s ease-out,
-      border-color 0.14s;
+    box-shadow: 0 0 0 2px #251932aa;
   }
   .xr-reticle i.locked {
     @apply border-[#67d6a2];
     transform: scale(1.5);
-    box-shadow: 0 0 0 6px #67d6a229;
+    box-shadow: 0 0 0 2px #251932aa, 0 0 0 6px #67d6a252;
+  }
+  .xr-wall-length {
+    @apply absolute top-[calc(50%+18px)] rounded-full bg-[#251932ed] px-3 py-1 text-sm font-bold text-white tabular-nums;
   }
   #print-view {
     @apply hidden;

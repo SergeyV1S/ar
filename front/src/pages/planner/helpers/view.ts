@@ -1,5 +1,5 @@
 import { arHelp } from "../ar/index.ts";
-import type { ARMode, Inspection, Opening } from "../types/index.ts";
+import type { ARMode, Inspection, Opening, XRState } from "../types/index.ts";
 
 export const getPlanStatus = (inspection: Inspection, passage: number) => {
   const warnings = inspection.warnings.length;
@@ -23,8 +23,13 @@ export const getOpeningWidth = (
   return opening.width;
 };
 
-export const getARCollectLabel = (mode: ARMode | null, positioned?: boolean) => {
-  if (mode === "scan") return "Поставить точку";
+export const getARCollectLabel = (mode: ARMode | null, { positioned, count, kind, closing }: XRState) => {
+  if (mode === "scan") {
+    if (closing) return "Замкнуть контур";
+    if (kind === "socket") return "Отметить розетку";
+    if (kind === "door" || kind === "window") return "Отметить край";
+    return count ? "Закрепить стену" : "Отметить первый угол";
+  }
   if (positioned) return "Разместить заново";
   return "Отметить точку";
 };

@@ -9,22 +9,24 @@ export const useXRControls = ({ mode, state, control }: XRControlsProps) => {
   const exit = () => control("exit");
   const undo = () => control("undo");
   const save = () => control("save");
+  const closeOutline = () => control("closeOutline");
   const collect = () => control("collect");
   const toggleSnap = () => control("toggleSnap");
   const rotate = () => control("rotate");
-  const collectLabel = getARCollectLabel(mode, state.positioned);
-  const confidence = Math.round((state.confidence ?? 0) * 100);
-  const hint = state.surface ?? "";
+  const collectLabel = getARCollectLabel(mode, state);
+  const showCollect = !scan || !state.closed || state.kind !== "corner";
+  const canClose = scan && !state.closed && !state.closing && (state.count ?? 0) >= 3;
   return {
     scan,
     collectLabel,
-    confidence,
-    hint,
+    showCollect,
+    canClose,
     snap: state.snap !== false,
     changeKind,
     exit,
     undo,
     save,
+    closeOutline,
     collect,
     toggleSnap,
     rotate

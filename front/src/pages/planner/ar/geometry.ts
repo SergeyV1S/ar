@@ -159,19 +159,19 @@ export const analyzeScan = (corners: Point[], features: ScanFeature[]): ScanResu
   return { points, openings: mergeOpenings(openings), skipped };
 };
 
-export const snapCorner = (candidate: Point, previous: Point | null, square: boolean) => {
+export const snapCorner = (candidate: Point, previous: Point | null, square: boolean, axis = 0) => {
   if (!previous || !square) return candidate;
   const dx = candidate[0] - previous[0];
   const dz = candidate[2] - previous[2];
   const length = Math.hypot(dx, dz);
   if (length < 0.05) return candidate;
-  const angle = Math.atan2(dz, dx);
+  const angle = Math.atan2(dz, dx) - axis;
   const target = Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
   if (Math.abs(angle - target) > (10 * Math.PI) / 180) return candidate;
   return [
-    previous[0] + length * Math.cos(target),
+    previous[0] + length * Math.cos(target + axis),
     candidate[1],
-    previous[2] + length * Math.sin(target)
+    previous[2] + length * Math.sin(target + axis)
   ];
 };
 
@@ -183,9 +183,18 @@ export const smoothPoint = (previous: Point | null, next: Point, factor = 0.5) =
     ? next.map((value, index) => previous[index] + (value - previous[index]) * factor)
     : [...next];
 
-export const closingDistance = (corners: Point[]): number => {
-  if (corners.length < 2) return Infinity;
+export const getWallTarget = (corners: Point[], hit: Point, snap: boolean) => {
   const first = corners[0];
-  const last = corners[corners.length - 1];
-  return Math.hypot(first[0] - last[0], first[2] - last[2]);
+  const last = corners.at(-1);
+  if (!first || !last) return null;
+  if (corners.length >= 3 && nearPoint(hit, first, closeRadius)) {
+    return { point: first, length: planGap(last, first), closes: true };
+  }
+  if (corners.length >= maxCorners) return null;
+  const second = corners[1];
+  const axis = second ? Math.atan2(second[2] - first[2], second[0] - first[0]) : undefined;
+  const onFloor: Point = [hit[0], first[1], hit[2]];
+  const point = snapCorner(onFloor, last, snap && axis !== undefined, axis);
+  if (corners.some((corner) => nearPoint(point, corner, duplicateRadius))) return null;
+  return { point, length: planGap(last, point), closes: false };
 };

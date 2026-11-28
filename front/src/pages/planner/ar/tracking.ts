@@ -133,9 +133,6 @@ export const createTracker = async ({
     cancel() {
       hitSource?.cancel();
       hitSource = null;
-    },
-    get locked() {
-      return confidence > 0.68;
     }
   };
 };

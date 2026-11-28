@@ -68,6 +68,7 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
   const frame = gl.getUniformLocation(program, "frame");
   const sine = gl.getUniformLocation(program, "sine");
   const opacity = gl.getUniformLocation(program, "opacity");
+  gl.uniform1f(opacity, 1);
   const buffer = gl.createBuffer();
   if (!buffer) throw new Error("Не удалось выделить буфер 3D-графики.");
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -85,7 +86,7 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
   const translucent = (mesh: Mesh) => {
     if (!mesh.glass.length) return;
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.depthMask(false);
     gl.uniform1f(opacity, 0.7);
     upload(mesh.glass);
@@ -103,7 +104,8 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
       gl.uniformMatrix4fv(projection, false, view.projectionMatrix);
       gl.uniformMatrix4fv(camera, false, view.transform.inverse.matrix);
     },
-    clear() {
+    clear(framebuffer: WebGLFramebuffer | null) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
     drawScene(mesh: Mesh) {

@@ -9,30 +9,19 @@ import type {
   XRState
 } from "../types/index.ts";
 import { furnitureMesh } from "./furniture.ts";
-import {
-  analyzeScan,
-  closeRadius,
-  closingDistance,
-  duplicateRadius,
-  maxCorners,
-  nearPoint,
-  snapCorner
-} from "./geometry.ts";
+import { analyzeScan, getWallTarget } from "./geometry.ts";
 import { getInstructions } from "./getInstructions.ts";
 import { createMesh, rgb } from "./mesh.ts";
 import type { Mesh } from "./renderer.ts";
 import { createRenderer } from "./renderer.ts";
 import {
-  closingEdge,
-  closingHint,
   cornerPosts,
   featureMarks,
   floorPatch,
   green,
-  guide,
   marker,
-  ruler,
   sightCone,
+  wallSegment,
   walls
 } from "./scene.ts";
 import { createTracker } from "./tracking.ts";
@@ -119,6 +108,7 @@ export const startAR = async ({
     let origin: Point | null = null;
     let orientation: number | null = null;
     let confidence = 0;
+    let closed = false;
     const corners: Point[] = [];
     const features: ScanFeature[] = [];
     const pending: Point[] = [];
@@ -149,9 +139,8 @@ export const startAR = async ({
       if (!xs.length || !zs.length) return { w: 3, d: 3 };
       return { w: Math.max(...xs), d: Math.max(...zs) };
     };
-    const firstText = "Наведите телефон на пол и медленно подвигайте им, пока не появится отметка.";
     const outline = () => {
-      if (corners.length < 2) return 0;
+      if (!closed) return 0;
       let total = 0;
       for (let i = 0; i < corners.length; i++) {
         const a = corners[i];
@@ -161,60 +150,65 @@ export const startAR = async ({
       return total;
     };
     const measuredArea = () => {
-      if (corners.length < 3) return 0;
+      if (!closed) return 0;
       return area(corners.map(([x, , z]) => [x, z]));
     };
 
     let lastState = 0;
     let lastSignature = "";
-    const help = (message = "", force = true) => {
+    let notice = "";
+    let noticeUntil = 0;
+    const drawingWall = () => mode === "scan" && !closed && corners.length > 0;
+    const wallTarget = () => (hit && drawingWall() ? getWallTarget(corners, hit, snap) : null);
+    const resetTracking = () => {
+      active.reset();
+      hit = null;
+      confidence = 0;
+    };
+    const help = (message?: string) => {
       const now = performance.now();
-      if (!force && now - lastState < 140) return;
-      const text = getInstructions(mode, orientation, origin, kind, corners.length, pending.length);
+      if (message === undefined && now - lastState < 140) return;
+      if (message !== undefined) {
+        notice = message;
+        noticeUntil = now + 3200;
+      }
+      const target = wallTarget();
+      const hasHit = hit !== null && confidence >= 0.45;
       const state: XRState = {
-        text: message || (!hit && !corners.length && !origin ? firstText : text),
         kind,
-        ready: Boolean(hit) && confidence > 0.45,
+        ready: hasHit && (!drawingWall() || target !== null) && (!closed || kind !== "corner"),
         count: corners.length,
+        closed,
+        closing: hasHit && target?.closes === true,
+        wallLength: hasHit && target ? round(target.length) : undefined,
         positioned: orientation !== null,
-        confidence: Math.round(confidence * 10) / 10,
-        surface: active.locked ? "Поверхность стабильна" : hit ? "Ищем опору" : "Опоры нет",
         area: round(measuredArea()),
         perimeter: round(outline()),
         rotation,
         snap
       };
-      const signature = `${state.text}|${state.ready}|${state.surface}|${state.count}|${state.area}|${state.confidence}|${state.rotation}|${state.snap}`;
-      if (!force && signature === lastSignature) return;
-      lastSignature = signature;
+      state.text = (now < noticeUntil && notice) || getInstructions(mode, origin, state, pending.length);
+      const signature = JSON.stringify(state);
       lastState = now;
+      if (signature === lastSignature) return;
+      lastSignature = signature;
       onState(state);
     };
 
-    const finishCorner = (point: Point) => {
-      const previous = corners[corners.length - 1] ?? null;
-      const candidate = snapCorner(point, previous, snap);
-      if (corners.length >= 3 && nearPoint(candidate, corners[0], closeRadius)) {
-        sceneDirty = true;
-        help(`Контур замкнут: ${corners.length} углов. Можно отметить проёмы или сохранить.`);
-        return true;
+    const closeOutline = () => {
+      if (mode !== "scan" || closed || corners.length < 3) return;
+      if (!analyzeScan(corners, [])) {
+        help("Контур не замыкается. Проверьте порядок углов и отмените лишние отметки.");
+        return;
       }
-      if (corners.length >= maxCorners) {
-        help(`Достигнут предел в ${maxCorners} точек. Сохраните контур.`);
-        return true;
-      }
-      if (corners.some((corner) => nearPoint(candidate, corner, duplicateRadius))) {
-        help("Эта точка уже отмечена. Выберите другое место.");
-        return true;
-      }
-      corners.push(candidate);
-      active.reset();
+      closed = true;
+      resetTracking();
       sceneDirty = true;
-      help();
-      return false;
+      help("");
     };
 
     const collect = () => {
+      if (closed && kind === "corner") return;
       if (!hit || confidence < 0.45) {
         help("Опора не определена. Медленно ведите камерой по полу.");
         return;
@@ -229,20 +223,29 @@ export const startAR = async ({
           help("Выберите точку вдоль стены не ближе 30 см от начала.");
           return;
         } else orientation = Math.atan2(point[2] - origin[2], point[0] - origin[0]);
-        active.reset();
+        resetTracking();
         sceneDirty = true;
-        help();
+        help("");
         return;
       }
       if (kind === "corner") {
-        finishCorner(point);
+        const target = wallTarget();
+        if (target?.closes) {
+          closeOutline();
+          return;
+        }
+        if (corners.length && !target) return;
+        corners.push(target?.point ?? point);
+        resetTracking();
+        sceneDirty = true;
+        help("");
         return;
       }
       pending.push(point);
       if (kind === "socket" || pending.length === 2) features.push({ type: kind, points: pending.splice(0) });
-      active.reset();
+      resetTracking();
       sceneDirty = true;
-      help();
+      help("");
     };
 
     const click = (event: Event) => {
@@ -259,27 +262,19 @@ export const startAR = async ({
       if (!pose) return;
       const firstView = pose.views[0];
       const result = active.update(frame, firstView);
-      const previousReady = Boolean(hit) && confidence > 0.45;
       hit = result?.point ?? null;
-      confidence = result?.confidence ?? Math.max(0, confidence - 0.08);
-      const ready = Boolean(hit) && confidence > 0.45;
-      if (previousReady !== ready) help();
-      else help("", false);
+      confidence = result?.confidence ?? 0;
+      const ready = confidence >= 0.45;
+      help();
       if (!layer) return;
 
       if (sceneDirty) {
         sceneMesh.reset();
         const level = frameLevel() ?? hit?.[1] ?? 0;
         if (mode === "scan" && corners.length) {
-          floorPatch(sceneMesh, corners, level);
-          walls(sceneMesh, corners, level);
-          cornerPosts(sceneMesh, corners, level, corners.length - 1);
-          closingEdge(sceneMesh, corners, level, corners.length > 2);
-          if (corners.length > 2 && hit) {
-            const dist = closingDistance(corners);
-            closingHint(sceneMesh, corners[0], hit, dist, level);
-          }
-          for (let i = 1; i < corners.length; i++) ruler(sceneMesh, corners[i - 1], corners[i], level);
+          if (closed) floorPatch(sceneMesh, corners, level);
+          walls(sceneMesh, corners, level, closed);
+          cornerPosts(sceneMesh, corners, level, closed ? -1 : corners.length - 1);
           featureMarks(sceneMesh, features, pending);
         }
         const anchor = origin;
@@ -318,15 +313,13 @@ export const startAR = async ({
 
       liveMesh.reset();
       const floor = frameLevel() ?? hit?.[1] ?? 0;
-      if (hit) {
+      const target = wallTarget();
+      if (target && ready) {
+        const last = corners[corners.length - 1];
+        wallSegment(liveMesh, last, target.point, floor, true);
+        marker(liveMesh, target.point, greenSoft, target.closes ? 0.08 : 0.05);
+      } else if (hit && !drawingWall() && (!closed || kind !== "corner")) {
         marker(liveMesh, hit, ready ? green : accentSoft, 0.05, ready ? 1 : 0.4);
-        if (mode === "scan" && corners.length) {
-          const last = corners[corners.length - 1];
-          sightCone(liveMesh, hit, last, floor + 0.005);
-          guide(liveMesh, last, hit, floor + 0.005);
-          if (corners.length > 1 && nearPoint(hit, corners[0], closeRadius))
-            marker(liveMesh, corners[0], greenSoft, 0.07, 1);
-        }
         if (mode === "view" && origin && orientation === null)
           sightCone(liveMesh, hit, origin, floor + 0.005);
       }
@@ -347,7 +340,7 @@ export const startAR = async ({
       }
       const live = liveMesh.finish();
 
-      renderer.clear();
+      renderer.clear(layer.framebuffer);
       for (const view of pose.views) {
         const viewport = layer.getViewport(view);
         if (!viewport) continue;
@@ -381,23 +374,26 @@ export const startAR = async ({
       },
       { once: true }
     );
-    help();
+    help("");
     session.addEventListener("visibilitychange", () => {
       if (session.visibilityState === "hidden") help("AR приостановлен. Вернитесь в приложение.");
     });
 
     return {
       collect,
+      closeOutline,
       exit: () => session.end(),
       kind: (next?: string) => {
+        if (!closed) return;
         kind = next ?? "corner";
         pending.length = 0;
+        resetTracking();
         sceneDirty = true;
-        help();
+        help("");
       },
       toggleSnap: () => {
         snap = !snap;
-        help(snap ? "Привязка к осям включена." : "Привязка к осям выключена.");
+        help("");
       },
       rotate: () => {
         rotation = (rotation + 90) % 360;
@@ -409,13 +405,17 @@ export const startAR = async ({
           orientation = null;
           rotation = 0;
         } else if (pending.length) pending.pop();
-        else if (kind !== "corner" && features.length) features.pop();
-        else corners.pop();
-        active.reset();
+        else if (features.length) features.pop();
+        else if (closed) {
+          closed = false;
+          kind = "corner";
+        } else corners.pop();
+        resetTracking();
         sceneDirty = true;
-        help();
+        help("");
       },
       save: async () => {
+        if (!closed) return;
         if (pending.length) {
           help("Отметьте второй край проёма или отмените незавершённую точку.");
           return;

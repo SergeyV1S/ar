@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeAR } from "../src/pages/planner/ar/index.ts";
-import { snapCorner } from "../src/pages/planner/ar/geometry.ts";
+import { getWallTarget, snapCorner } from "../src/pages/planner/ar/geometry.ts";
+import { createMesh } from "../src/pages/planner/ar/mesh.ts";
+import { createRenderer } from "../src/pages/planner/ar/renderer.ts";
+import { wallSegment, walls } from "../src/pages/planner/ar/scene.ts";
 import { makeCsv } from "../src/pages/planner/helpers/index.ts";
 import { plannerLoader } from "../src/pages/planner/loader.ts";
 import {
@@ -321,6 +324,81 @@ test("square snapping aligns a corner to the previous wall direction", () => {
   assert.equal(round(snapped[2]), 2);
   const free = snapCorner([3.02, 0, 2.01], [0, 0, 2], false);
   assert.equal(round(free[0]), 3.02);
+});
+
+test("wall preview uses the floor and the same corner for measurement and placement", () => {
+  const first = [0, -1, 0];
+  const second = [2, -1, 2];
+  assert.deepEqual(getWallTarget([first], [2, -0.92, 2], true)?.point, second);
+  const third = getWallTarget([first, second], [0, -0.87, 4.1], true);
+  assert(third);
+  assert.equal(third.point[1], -1);
+  assert.equal(round(third.point[0] + third.point[2]), 4);
+  assert.equal(getWallTarget([first, second], [2.01, -1, 2.01], true), null);
+  assert.deepEqual(getWallTarget([first, second, third.point], [0.02, -0.95, 0], true), {
+    point: first,
+    length: Math.hypot(third.point[0], third.point[2]),
+    closes: true
+  });
+});
+
+test("preview and confirmed walls have vertical faces and only close on request", () => {
+  const corners = [[0, -1, 0], [3, -1, 0], [3, -1, 2]];
+  const mesh = createMesh();
+  walls(mesh, corners.slice(0, 1), -1, false);
+  assert.equal(mesh.glass.length, 0);
+  wallSegment(mesh, corners[0], corners[1], -1, true);
+  const face = mesh.finish();
+  assert.equal(face.glass.length, 6 * 7);
+  assert(face.glass[1] < -0.9 && face.glass[2 * 7 + 1] > 0);
+  assert(face.solid.length > 0);
+
+  mesh.reset();
+  walls(mesh, corners, -1, false);
+  assert.equal(mesh.glass.length, 2 * face.glass.length);
+  mesh.reset();
+  walls(mesh, corners, -1, true);
+  assert.equal(mesh.glass.length, 3 * face.glass.length);
+});
+
+test("AR rendering clears the XR framebuffer while it is bound", () => {
+  const framebuffer = {};
+  const commands: unknown[][] = [];
+  const noop = () => {};
+  const gl = {
+    createShader: () => ({}),
+    shaderSource: noop,
+    compileShader: noop,
+    getShaderParameter: () => true,
+    createProgram: () => ({}),
+    attachShader: noop,
+    linkProgram: noop,
+    deleteShader: noop,
+    getProgramParameter: () => true,
+    useProgram: noop,
+    getAttribLocation: () => 0,
+    enableVertexAttribArray: noop,
+    getUniformLocation: () => null,
+    uniform1f: noop,
+    createBuffer: () => ({}),
+    bindBuffer: noop,
+    vertexAttribPointer: noop,
+    enable: noop,
+    depthFunc: noop,
+    clearColor: noop,
+    FRAMEBUFFER: 0x8d40,
+    COLOR_BUFFER_BIT: 0x4000,
+    DEPTH_BUFFER_BIT: 0x0100,
+    bindFramebuffer: (target: number, buffer: WebGLFramebuffer | null) => commands.push(["bind", target, buffer]),
+    clear: (mask: number) => commands.push(["clear", mask])
+  };
+  // This fake implements the WebGL methods used to initialize the renderer and clear the frame.
+  const renderer = createRenderer(gl as unknown as WebGLRenderingContext);
+  renderer.clear(framebuffer);
+  assert.deepEqual(commands, [
+    ["bind", gl.FRAMEBUFFER, framebuffer],
+    ["clear", gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT]
+  ]);
 });
 
 test("a socket and a window on the same wall are not deduplicated", () => {
