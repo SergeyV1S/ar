@@ -364,12 +364,19 @@ const preferred: Record<string, number[]>[] = [
   }
 ];
 
-export const arrange = (room: Room, items: Item[], variant: number, minimum = 0.8) => {
+export const arrange = (
+  room: Room, items: Item[], variant: number, minimum = 0.8, fixed?: Positions
+) => {
   const { w, d } = dimensions(room.points);
   const doors = doorPolygons(room),
-    positions: Positions = {};
-  const occupied: { pos: Position; box: Box; access: Box | null }[] = [];
-  const ordered = [...items].sort(
+    positions: Positions = { ...fixed };
+  const occupied = items.flatMap((item) => {
+    const pos = fixed?.[item.id];
+    if (!pos) return [];
+    const box = bounds(item, pos);
+    return [{ pos, box, access: clearance(item, pos, box) }];
+  });
+  const ordered = items.filter((item) => !fixed?.[item.id]).sort(
     (a, b) => Number(b.owned) - Number(a.owned) || b.w * b.d - a.w * a.d
   );
   ordered.forEach((item) => {

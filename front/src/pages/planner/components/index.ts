@@ -18,3 +18,5 @@ export type { ProjectHeaderProps } from "./ProjectHeader.tsx";
 export type { RoomEditorProps } from "./RoomEditor.tsx";
 export type { VoiceProps } from "./Voice.tsx";
 export type { XRControlsProps } from "./XRControls.tsx";
+
+export { RetailCatalog } from "./RetailCatalog.tsx";

@@ -20,6 +20,7 @@ export const useProjectStorage = (
   const [project, setProject] = useState<Project>(() =>
     initial.kind === "locked" ? initialProject() : initial.project
   );
+  const [revision, setRevision] = useState(0);
   const [locked, setLocked] = useState(initial.kind === "locked" ? initial.record : null);
   const [pending, setPending] = useState<Project | null>(() =>
     initial.kind === "ready" && needsProtection(initial.project) ? initial.project : null
@@ -41,6 +42,7 @@ export const useProjectStorage = (
   const change = useCallback((updater: SetStateAction<Project>) => {
     updateMade.current = true;
     setProject(updater);
+    if (typeof updater !== "function") setRevision((current) => current + 1);
   }, []);
   const importPlain = (next: Project) => {
     if (needsProtection(next)) {
@@ -114,6 +116,7 @@ export const useProjectStorage = (
       if (pending) {
         updateMade.current = false;
         setProject(pending);
+        setRevision((current) => current + 1);
         setPending(null);
       }
       setIsProtected(true);
@@ -139,6 +142,7 @@ export const useProjectStorage = (
       activeProtection.current = null;
       setIsProtected(false);
       setProject(initialProject());
+      setRevision((current) => current + 1);
       close();
     } catch {
       setPrivacyError("Не удалось проверить сохранённую копию. Проект остался открытым.");
@@ -166,6 +170,7 @@ export const useProjectStorage = (
       }
       updateMade.current = false;
       setProject(result.project);
+      setRevision((current) => current + 1);
       activeProtection.current = result.protection;
       setIsProtected(true);
       setLocked(null);
@@ -181,6 +186,7 @@ export const useProjectStorage = (
 
   return {
     project,
+    revision,
     locked: importRecord ?? locked,
     pendingProtection: Boolean(pending),
     canCancelProtection: Boolean(importRecord || (pending && pending !== project)),

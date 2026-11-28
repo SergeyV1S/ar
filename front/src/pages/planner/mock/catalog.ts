@@ -1,6 +1,3 @@
-import type { Item } from "../types/index.ts";
-import mockOffers from "./mock-offers.json" with { type: "json" };
-
 export const materials = [
   "Любой материал",
   "ЛДСП",
@@ -20,6 +17,7 @@ export const modes: Record<string, string> = {
 export const types: Record<string, string> = {
   sofa: "Диван",
   chair: "Кресло",
+  stool: "Стул",
   table: "Стол",
   cabinet: "Шкаф / тумба",
   pouf: "Пуф",
@@ -44,5 +42,3 @@ export const procurementFields: Record<string, string> = {
   reason: "Обоснование выбора поставщика",
   offer: "Ссылка на коммерческое предложение"
 };
-
-export const catalog: Item[] = mockOffers.filter((item) => item.mode === "retail");

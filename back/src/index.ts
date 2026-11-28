@@ -17,6 +17,7 @@ const createGroqProxy = (proxyUrl?: string) => {
 const groqProxy = createGroqProxy(process.env.GROQ_PROXY_URL?.trim());
 
 createApp({
+  fetchFromDivan: process.env.DIVAN_CATALOG_ENABLED === "1" ? fetch : undefined,
   groqApiKey: process.env.GROQ_API_KEY?.trim(),
   fetchFromGroq: (input, config) => {
     const options = { ...config, dispatcher: groqProxy, redirect: "error" } satisfies RequestInit & {
@@ -25,5 +26,5 @@ createApp({
     return fetch(input, options);
   }
 }).listen(port, host, () => {
-  console.log(`Speech API listening on ${host}:${port}`);
+  console.log(`Metrika API listening on ${host}:${port}`);
 });

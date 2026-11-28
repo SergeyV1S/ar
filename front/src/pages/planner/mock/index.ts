@@ -1,5 +1,4 @@
 export {
-  catalog,
   checkLabel,
   materials,
   modes,

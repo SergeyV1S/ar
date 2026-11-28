@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Link } from "react-router";
 
 import { getItemPath } from "@/pages/planner/helpers/index.ts";
+import { RetailCatalog } from "@/pages/planner/components/index.ts";
 import { usePlannerContext } from "@/pages/planner/hooks/index.ts";
 import { itemSize } from "@/pages/planner/mock/index.ts";
 import { Button } from "@/shared/components/index.ts";
@@ -63,18 +64,22 @@ export const CatalogPage = () => {
               Внести позицию вручную
             </Button>
           </div>
-          <p className='support-text'>
-            {project.mode === "retail"
-              ? "Демонстрационный каталог Hoff. Цены и наличие тестовые."
-              : "Демонстрационные предложения. Для фактического подбора требуется подключение источника."}
-          </p>
-          <label className='check-field'>
-            <input type='checkbox' checked={fitOnly} onChange={filterOffers} />
-            Показывать подходящие и уже добавленные
-          </label>
-          <Suspense fallback={<CatalogLoading />}>
-            <CatalogResults result={data.offers} fitOnly={fitOnly} planPath={planPath} />
-          </Suspense>
+          {project.mode === "retail" ? (
+            <RetailCatalog showHeading={false} />
+          ) : (
+            <>
+              <p className='support-text'>
+                Демонстрационные предложения. Для фактического подбора требуется подключение источника.
+              </p>
+              <label className='check-field'>
+                <input type='checkbox' checked={fitOnly} onChange={filterOffers} />
+                Показывать подходящие и уже добавленные
+              </label>
+              <Suspense fallback={<CatalogLoading />}>
+                <CatalogResults result={data.offers} fitOnly={fitOnly} planPath={planPath} />
+              </Suspense>
+            </>
+          )}
           <div className='editor-links'>
             {project.mode === "used" && (
               <a

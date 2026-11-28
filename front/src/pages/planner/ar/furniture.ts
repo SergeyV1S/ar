@@ -122,7 +122,7 @@ const shapeOf = (item: Item) => {
   const { w, d, h } = item;
   const m = createMesh();
   if (item.kind === "sofa") sofa(m, w, h, d, dye);
-  else if (item.kind === "chair") chair(m, w, h, d, dye);
+  else if (item.kind === "chair" || item.kind === "stool") chair(m, w, h, d, dye);
   else if (item.kind === "table") table(m, w, h, d, dye);
   else if (item.kind === "cabinet") cabinet(m, w, h, d, dye);
   else if (item.kind === "pouf") pouf(m, w, h, d, dye);

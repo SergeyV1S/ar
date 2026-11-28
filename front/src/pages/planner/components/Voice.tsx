@@ -18,6 +18,7 @@ export const Voice = (props: VoiceProps) => {
     isRecording,
     buttonLabel,
     notes,
+    hasPurchase,
     toggleRecording,
     changePhrase,
     applyVoice
@@ -25,7 +26,7 @@ export const Voice = (props: VoiceProps) => {
   return (
     <>
       <p className='support-text'>
-        Например: «Комната 4 на 3, диван 2 метра, бюджет 80 тысяч, материал ЛДСП».
+        Например: «Комната 4 на 3» или «Подбери два стула до 12 000 рублей».
       </p>
       {canRecord ? (
         <>
@@ -77,7 +78,7 @@ export const Voice = (props: VoiceProps) => {
         !isBusy &&
         phrase.trim() && (
           <p className='support-text'>
-            Попробуйте указать комнату, размеры дивана или бюджет цифрами.
+            Укажите размеры комнаты или опишите мебель, которую хотите подобрать.
           </p>
         )
       )}
@@ -88,7 +89,7 @@ export const Voice = (props: VoiceProps) => {
           disabled={!notes.length || isBusy}
           onClick={applyVoice}
         >
-          Проверено, применить
+          {hasPurchase ? "Проверить условия подбора" : "Проверено, применить"}
         </Button>
       </div>
     </>
