@@ -157,19 +157,30 @@ export const measureObject = (
 export type ObjectMeasurement = NonNullable<ReturnType<typeof measureObject>>;
 
 export const measurementsMatch = (first: ObjectMeasurement, second: ObjectMeasurement) => {
-  if (first.name !== second.name) return false;
-  const dx = Math.abs(first.center[0] - second.center[0]);
-  const dy = Math.abs(first.center[1] - second.center[1]);
+  const sameType = first.name === second.name;
+  const distance = Math.hypot(
+    first.center[0] - second.center[0],
+    first.center[1] - second.center[1]
+  );
   const near = Math.min(first.size.w, first.size.d, second.size.w, second.size.d);
-  if (Math.hypot(dx, dy) <= clamp(near * 0.48, 0.19, 0.42)) return true;
+  if (sameType && distance <= clamp(near * 0.48, 0.19, 0.42)) return true;
   const a = centeredPosition(first.size, first.center, 0);
   const b = centeredPosition(second.size, second.center, 0);
   const width = Math.min(a.x + first.size.w, b.x + second.size.w) - Math.max(a.x, b.x);
   const depth = Math.min(a.y + first.size.d, b.y + second.size.d) - Math.max(a.y, b.y);
   if (width <= 0 || depth <= 0) return false;
   const intersection = width * depth;
-  const union = first.size.w * first.size.d + second.size.w * second.size.d - intersection;
-  return intersection / union >= 0.38;
+  const firstArea = first.size.w * first.size.d;
+  const secondArea = second.size.w * second.size.d;
+  if (!sameType) {
+    return (
+      distance <= clamp(near * 0.35, 0.12, 0.25) &&
+      intersection >= Math.max(firstArea, secondArea) * 0.45
+    );
+  }
+  const union = firstArea + secondArea - intersection;
+  // A partial view can cover much less of the floor than a full view of the same object.
+  return intersection / union >= 0.38 || intersection >= Math.min(firstArea, secondArea) * 0.7;
 };
 
 export const combineMeasurements = (samples: ObjectMeasurement[]): ObjectMeasurement => {

@@ -18,7 +18,10 @@ export const createObjectTracks = () => {
     frame++;
     tracks = tracks.filter((track) => track.confirmed || frame - track.lastFrame <= 5);
     const results: { id: string; measurement: ObjectMeasurement }[] = [];
+    const seen: ObjectMeasurement[] = [];
     for (const object of [...objects].sort((a, b) => b.score - a.score)) {
+      if (seen.some((previous) => measurementsMatch(previous, object))) continue;
+      seen.push(object);
       const candidates = tracks.flatMap((track) => {
         if (track.lastFrame === frame) return [];
         const previous = combineMeasurements(track.samples);
@@ -26,6 +29,7 @@ export const createObjectTracks = () => {
         return [
           {
             track,
+            previous,
             distance: Math.hypot(
               previous.center[0] - object.center[0],
               previous.center[1] - object.center[1]
@@ -39,11 +43,16 @@ export const createObjectTracks = () => {
           tracks.push({ id: newId(), samples: [object], lastFrame: frame, confirmed: false });
         continue;
       }
-      const { track } = nearest;
+      const { track, previous } = nearest;
       track.lastFrame = frame;
+      if (track.confirmed && previous.name !== object.name) continue;
       track.samples = [...track.samples.slice(-8), object];
       const reliable = track.samples.filter((sample) => sample.measured).length >= 2;
       if (!reliable && track.samples.length < 3 && !track.confirmed) continue;
+      if (!track.confirmed) {
+        const classified = track.samples.find((sample) => sample.measured) ?? track.samples[0];
+        track.samples = track.samples.filter((sample) => sample.name === classified.name);
+      }
       track.confirmed = true;
       results.push({ id: track.id, measurement: combineMeasurements(track.samples) });
     }

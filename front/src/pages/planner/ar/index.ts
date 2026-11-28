@@ -295,17 +295,16 @@ export const startAR = async ({
       },
       publish: (id, result) => {
         if (!finding || !scanLayout) return;
-        const current = recognized.get(id);
-        if (!current && !hasInventorySpace()) {
+        const duplicate = [...recognized].some(
+          ([key, prior]) => key !== id && measurementsMatch(prior, result)
+        );
+        if (duplicate) return;
+        if (!recognized.has(id) && !hasInventorySpace()) {
           finding = false;
           scanner.stop();
           help("В проекте достигнут предел мебели.");
           return;
         }
-        const duplicate = [...recognized].some(
-          ([key, prior]) => key !== id && measurementsMatch(prior, result)
-        );
-        if (!current && duplicate) return;
         const item: Item = {
           id,
           name: result.name,

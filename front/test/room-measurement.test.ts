@@ -184,7 +184,7 @@ test("repeated measurements produce one chair while a second chair gets its own 
     size: { w: 0.5, d: 0.55, h: 0.9 },
     center: [2, 2]
   };
-  const other = { ...chair, center: [2.55, 2] };
+  const other = { ...chair, center: [2.43, 2] };
   assert.deepEqual(track([chair, other]), []);
   const first = track([{ ...chair, center: [2.08, 1.93] }, other]);
   assert.equal(first.length, 2);
@@ -193,6 +193,63 @@ test("repeated measurements produce one chair while a second chair gets its own 
   assert.equal(repeated.length, 1);
   assert.equal(repeated[0].id, first[0].id);
   assert.deepEqual(repeated[0].measurement.center, [2, 2]);
+});
+
+test("duplicate boxes in one frame cannot confirm a second track", () => {
+  const track = createObjectTracks();
+  const chair = {
+    kind: "stool",
+    name: "Стул",
+    score: 0.9,
+    measured: true,
+    estimated: false,
+    size: { w: 0.5, d: 0.55, h: 0.9 },
+    center: [2, 2]
+  };
+  const duplicate = { ...chair, score: 0.8, center: [2.05, 2.08] };
+  assert.deepEqual(track([chair, duplicate]), []);
+  const first = track([chair, duplicate]);
+  assert.equal(first.length, 1);
+  assert.deepEqual(track([duplicate]).map(({ id }) => id), [first[0].id]);
+});
+
+test("a partial view and a changed label do not add a second model for the same sofa", () => {
+  const track = createObjectTracks();
+  const sofa = {
+    kind: "sofa",
+    name: "Диван",
+    score: 0.9,
+    measured: true,
+    estimated: false,
+    size: { w: 2.1, d: 0.9, h: 0.85 },
+    center: [2, 2]
+  };
+  const partial = {
+    ...sofa,
+    size: { w: 0.9, d: 0.82, h: 0.85 },
+    center: [2.43, 2.23],
+    estimated: true
+  };
+  const bench = {
+    ...sofa,
+    kind: "other",
+    name: "Скамья",
+    size: { w: 1.65, d: 0.75, h: 0.65 },
+    center: [2.08, 2.1]
+  };
+  assert.deepEqual(track([sofa]), []);
+  const [first] = track([sofa]);
+  assert(first);
+  const [fromSide] = track([partial]);
+  assert.equal(fromSide?.id, first.id);
+  assert.deepEqual(track([bench]), []);
+  assert.deepEqual(track([bench]), []);
+  assert.equal(track([sofa])[0]?.id, first.id);
+
+  const restarted = createObjectTracks();
+  assert.deepEqual(restarted([sofa]), []);
+  const [confirmed] = restarted([bench]);
+  assert.deepEqual(confirmed?.measurement, sofa);
 });
 
 test("three floor marks define a rotated rectangle and height works with and without depth", () => {
