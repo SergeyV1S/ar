@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 
 import { searchCatalog } from "@/pages/planner/catalogSearch";
 import {
-  catalogKinds, getCatalogProblem, getWishPurchaseLimit, getWishPurchases, getWishSearch,
+  catalogKinds, getCatalogProblem, getDimensionOverages, getWishPurchaseLimit, getWishPurchases, getWishSearch,
   isFreshCatalogOffer, makeCatalogItems, prepareWishPurchase
 } from "@/pages/planner/helpers";
 import { usePlannerContext } from "@/pages/planner/hooks";
@@ -48,6 +48,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
   const [selection, setSelection] = useState<Selection>();
   const [selectedListing, setSelectedListing] = useState<AvitoListing>();
   const [selectionError, setSelectionError] = useState("");
+  const [pendingOverride, setPendingOverride] = useState<string>();
   const [status, setStatus] = useState("");
   const listingRequest = useRef<AbortController | null>(null);
   const confirmation = useRef<HTMLHeadingElement>(null);
@@ -96,6 +97,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
     setSelection(undefined);
     setSelectedListing(undefined);
     setSelectionError("");
+    setPendingOverride(undefined);
   };
   const resetResults = () => {
     clearSelection();
@@ -138,6 +140,12 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
     clearSelection();
     setSelection({ source: "divan", offer });
   };
+  const changePurchaseForm = () => {
+    if (pendingOverride !== undefined) {
+      setPendingOverride(undefined);
+      setSelectionError("");
+    }
+  };
   const selectPurchase = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selection || !city || !search.quantity) return;
@@ -149,7 +157,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
     let purchases: Item[];
     if (selection.source === "divan") {
       const offer = selection.offer;
-      const problem = getCatalogProblem(offer, search, project);
+      const problem = getCatalogProblem(offer, search, project, true);
       if (!isFreshCatalogOffer(offer) || problem) {
         setSelectionError(problem ?? "Цена могла измениться. Повторите поиск.");
         return;
@@ -173,11 +181,8 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
         setSelectionError("Проверьте материал мебели в объявлении или у продавца.");
         return;
       }
-      if (price === undefined || (maxPrice !== undefined && price > maxPrice) ||
-        (search.maxWidth !== undefined && w > search.maxWidth) ||
-        (search.maxDepth !== undefined && d > search.maxDepth) ||
-        (search.maxHeight !== undefined && h > search.maxHeight)) {
-        setSelectionError("Цена или габариты превышают условия подбора.");
+      if (price === undefined || (maxPrice !== undefined && price > maxPrice)) {
+        setSelectionError("Цена превышает условия подбора.");
         return;
       }
       if (project.items.some((item) => item.id !== search.replaceId && item.url === url)) {
@@ -199,16 +204,29 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
       return;
     }
     const prepared = prepareWishPurchase(project, positions, search,
-      purchases.map((item) => ({ ...item, mode: project.mode })));
+      purchases.map((item) => ({ ...item, mode: project.mode })), true);
     if (!prepared) {
-      setSelectionError("Движок планировки не нашёл место для этой мебели. Проверьте габариты или выберите другой предмет.");
+      setSelectionError("Проверьте, есть ли ещё место в списке мебели и доступен ли предмет для замены.");
       return;
     }
-    update({ items: prepared.items, layouts: prepared.layouts, catalogCity: city.id });
+    const warnings = getDimensionOverages(purchases[0], search);
+    if (prepared.requiresManualPlacement)
+      warnings.push("Подходящего места на плане пока нет. Предмет можно добавить в смету и разместить вручную.");
+    const warning = warnings.join(" ");
+    if (warning && pendingOverride !== warning) {
+      setPendingOverride(warning);
+      setSelectionError(warning);
+      return;
+    }
+    update({ items: prepared.items, layouts: prepared.layouts, layoutIdeas: undefined, catalogCity: city.id });
     resetResults();
     if (replaced && !project.brief?.wishes.some(({ id }) => id === wish.id)) {
       const params = new URLSearchParams({ step: "layout", item: purchases[0].id });
       void navigate(`${PATHS.planner}?${params}`);
+      return;
+    }
+    if (prepared.requiresManualPlacement) {
+      setStatus("Предмет добавлен в смету. Выберите его на шаге «Своя мебель» и укажите место на плане.");
       return;
     }
     if (prepared.needsLayout) {
@@ -219,10 +237,10 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
   };
 
   return {
-    cities, city, cityId, chosen, search, maxPrice, changeCity, replaced, divanAvailable,
+    cities, city, cityId, chosen, positions, search, maxPrice, changeCity, replaced, divanAvailable,
     divan: divan ?? loading, avito: avito ?? loading, allowsSearch, retry,
     selection, selectedListing, selectionError, status, clearSelection, selectPurchase,
-    confirmation,
+    confirmation, pendingOverride, changePurchaseForm,
     divanCards: (divan?.offers ?? []).map((offer) => ({ offer, preview: previewDivan(offer) })),
     avitoCards: (avito?.offers ?? []).filter((offer) => !chosen.some(({ url }) => url === offer.url))
       .map((offer) => ({ offer, preview: previewAvito(offer) }))

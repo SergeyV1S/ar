@@ -39,7 +39,22 @@ export const getReplacementCriteria = (item: Item): Pick<CatalogSearch, "categor
   return { category: kind, quantity: Math.min(20, item.quantity ?? 1), maxTotal: item.cap || undefined };
 };
 
-export const getCatalogProblem = (offer: CatalogOffer, search: CatalogSearch, project: Project) => {
+export const getDimensionOverages = (size: Pick<Item, "w" | "d" | "h">, search: CatalogSearch) => {
+  const limits = [
+    { label: "Ширина", actual: size.w, limit: search.maxWidth },
+    { label: "Длина", actual: size.d, limit: search.maxDepth },
+    { label: "Высота", actual: size.h, limit: search.maxHeight }
+  ];
+  return limits.flatMap(({ label, actual, limit }) => {
+    if (limit === undefined || actual <= limit + 1e-6) return [];
+    const cm = (meters: number) => Number((meters * 100).toFixed(1)).toLocaleString("ru-RU");
+    return [`${label} ${cm(actual)} см при лимите ${cm(limit)} см.`];
+  });
+};
+
+export const getCatalogProblem = (
+  offer: CatalogOffer, search: CatalogSearch, project: Project, ignoreDimensions = false
+) => {
   const total = offer.price * search.quantity;
   const purchases = visibleItems(project).filter(
     (item) => !item.owned && item.id !== search.replaceId
@@ -64,11 +79,7 @@ export const getCatalogProblem = (offer: CatalogOffer, search: CatalogSearch, pr
   const material = search.material ?? project.material;
   if (material !== "Любой материал" && !offer.materials.includes(material))
     return "Не совпадает материал";
-  if (
-    (search.maxWidth !== undefined && offer.w > search.maxWidth) ||
-    (search.maxDepth !== undefined && offer.d > search.maxDepth) ||
-    (search.maxHeight !== undefined && offer.h > search.maxHeight)
-  )
+  if (!ignoreDimensions && getDimensionOverages(offer, search).length)
     return "Габариты превышают заданные";
 };
 

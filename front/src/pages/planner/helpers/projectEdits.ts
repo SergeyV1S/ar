@@ -26,7 +26,7 @@ export const applyVoicePatch = (
   ...(mode === undefined ? {} : { mode }),
   room: size ? resizeRoomFromVoice(project.room, size) : project.room,
   items: sofa ? upsertItem(project.items, sofa) : project.items,
-  ...(size || sofa ? { layouts: {} } : {})
+  ...(size || sofa ? { layouts: {}, layoutIdeas: undefined } : {})
 });
 
 export const getItemLayoutUpdate = (project: Project, item: Item, redraw: boolean): Pick<Partial<Project>, "layouts"> => {
@@ -66,7 +66,8 @@ export const getARLayoutUpdate = (
   starterItems: Item[]
 ) => ({
   items: [...project.items, ...starterItems.filter((item) => Object.hasOwn(positions, item.id))],
-  layouts: { [project.mode]: { [project.variant]: positions } }
+  layouts: { [project.mode]: { [project.variant]: positions } },
+  layoutIdeas: undefined
 });
 
 export const getScanLayoutUpdate = (project: Project, positions: Positions, measured: Item[]) => {

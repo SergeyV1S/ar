@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { getPlanStatus } from "../helpers/index.ts";
 import { positionsFor } from "../mock/index.ts";
-import { area, dimensions, inspect, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
+import { area, centeredPosition, dimensions, inspect, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
 import type { Drawing } from "../planning/index.ts";
 import { drawPlan } from "../planning/index.ts";
 import type { Position } from "../types/index.ts";
@@ -29,7 +29,8 @@ export const usePlanner = (showLayouts: boolean) => {
     zoom,
     setZoom,
     move,
-    action
+    action,
+    proposingLayouts
   } = usePlannerContext();
   const scaleLabel = useRef<HTMLSpanElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -78,9 +79,16 @@ export const usePlanner = (showLayouts: boolean) => {
     return [event.clientX - left, event.clientY - top];
   };
   const start = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (event.button !== 0 || !drawing.current) return;
+    const plan = drawing.current;
+    if (event.button !== 0 || !plan) return;
     const [x, y] = eventPoint(event);
-    const found = [...drawing.current.targets]
+    if (view === "2d" && current && !currentPosition && plan.scale > 0) {
+      const [left, top] = plan.to([0, 0]);
+      const point = [(x - left) / plan.scale, (y - top) / plan.scale];
+      if (pointIn(point, project.room.points)) move(current.id, centeredPosition(current, point, 0));
+      return;
+    }
+    const found = [...plan.targets]
       .reverse()
       .find((target) =>
         target.polygon
@@ -97,7 +105,7 @@ export const usePlanner = (showLayouts: boolean) => {
       x,
       y,
       pos: positions[found.item.id],
-      scale: drawing.current.scale,
+      scale: plan.scale,
       latest: null
     };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -141,7 +149,13 @@ export const usePlanner = (showLayouts: boolean) => {
     return { ...direction, nudge };
   });
   const itemChoices = items.map((item) => {
-    const select = () => setChosen(item.id);
+    const select = () => {
+      setChosen(item.id);
+      if (!positions[item.id]) {
+        setView("2d");
+        canvas.current?.scrollIntoView({ block: "center" });
+      }
+    };
     return { item, select };
   });
 
@@ -166,7 +180,12 @@ export const usePlanner = (showLayouts: boolean) => {
   const openChecks = () => action("checks");
   const addOwned = () => action("add-owned");
   const openWishes = () => action("wishes");
-  const replan = () => action(project.layouts[project.mode] ? "replan-confirm" : "replan");
+  const replan = () => {
+    const hasAlternatives = Object.keys(project.layouts[project.mode] ?? {}).some(
+      (index) => Number(index) !== project.variant
+    );
+    action(hasAlternatives ? "replan-confirm" : "replan");
+  };
 
   const viewOptions = (["2d", "3d"] as const).map((mode) => {
     const changeView = () => {
@@ -176,26 +195,25 @@ export const usePlanner = (showLayouts: boolean) => {
     return { mode, changeView };
   });
   const layoutChecks = useMemo(() => {
-    if (!showLayouts) return [];
-    return variants.map((_, index) => {
+    if (!showLayouts || !items.length) return [];
+    const saved = project.layouts[project.mode];
+    return variants.flatMap((_, index) => {
+      if (index !== project.variant && !saved?.[index]) return [];
       const layout = index === project.variant ? positions : positionsFor(project, index);
       const unplaced = items.filter(({ id }) => !layout[id]).length;
-      return { index, unplaced, warnings: inspect(project.room, items, layout, project.passage).warnings.length };
+      return [{ index, layout, unplaced, warnings: inspect(project.room, items, layout, project.passage).warnings.length }];
     });
   }, [items, positions, project, showLayouts]);
-  const advice = project.brief?.layout;
-  const recommended = [...layoutChecks].sort((a, b) =>
-    a.unplaced - b.unplaced || a.warnings - b.warnings ||
-    Number(b.index === advice?.variant) - Number(a.index === advice?.variant))[0];
-  const variantOptions = variants.map((variant, i) => {
+  const variantOptions = layoutChecks.map((check) => {
+    const { index } = check;
     const chooseVariant = () => {
-      action("variant", i);
+      action("variant", index);
       if (window.matchMedia("(max-width: 760px)").matches)
         canvas.current?.scrollIntoView({ block: "center" });
     };
-    const check = layoutChecks[i];
-    return { ...variant, index: i, chooseVariant, check,
-      recommended: items.length > 0 && recommended?.index === i };
+    const idea = project.layoutIdeas?.[project.mode]?.[index];
+    const fallbackTitle = index === project.variant ? "Текущая расстановка" : `Вариант ${index + 1}`;
+    return { index, title: idea?.title ?? fallbackTitle, note: idea?.reason, chooseVariant, check };
   });
   const planStatus = getPlanStatus(inspection, project.passage);
   const roomArea = area(project.room.points);
@@ -217,7 +235,8 @@ export const usePlanner = (showLayouts: boolean) => {
     planStatus,
     viewOptions,
     variantOptions,
-    layoutReason: advice && recommended?.index === advice.variant ? advice.reason : undefined,
+    proposingLayouts,
+    items,
     roomArea,
     roomSize,
     openAR,

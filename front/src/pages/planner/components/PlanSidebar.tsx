@@ -8,6 +8,7 @@ import { usePlannerContext } from "../hooks/index.ts";
 import type { usePlanner, usePlannerSteps } from "../hooks/index.ts";
 import { itemSize } from "../mock/index.ts";
 import { AngleInput } from "./AngleInput.tsx";
+import { LayoutThumbnail } from "./LayoutThumbnail.tsx";
 import { RoomEditor } from "./RoomEditor.tsx";
 
 type PlannerModel = ReturnType<typeof usePlanner>;
@@ -18,7 +19,7 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
   const { project, current, itemChoices, positions, addOwned, variantOptions, replan, openChecks } =
     planner;
   const { step, heading, onRoomSaved, goToRoom, goToFurniture, goToWishes, goToLayout } = workflow;
-  const { openWishes, layoutReason } = planner;
+  const { openWishes, items, proposingLayouts } = planner;
 
   return (
     <section
@@ -127,29 +128,24 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
             Варианты расстановки
           </h2>
           <p className='planner-step-intro'>
-            Сравните варианты и проверьте проход от двери к центру комнаты.
+            Подберите расстановки по размерам комнаты, мебели и пожеланиям.
           </p>
-          {layoutReason && (
-            <p className='notice'>{layoutReason}</p>
-          )}
+          <Button icon='spark' onClick={replan} disabled={proposingLayouts || !items.length}>
+            {proposingLayouts ? "Подбираем расстановки…" : "Подобрать расстановки с ИИ"}
+          </Button>
           <div className='variant-list' role='group' aria-label='Выбор расстановки'>
-            {variantOptions.map(({ title, note, style, index, chooseVariant, check, recommended }) => (
+            {variantOptions.map(({ title, note, index, chooseVariant, check }) => (
               <button
-                key={style}
+                key={index}
                 type='button'
                 className={project.variant === index ? "variant selected" : "variant"}
                 aria-pressed={project.variant === index}
                 onClick={chooseVariant}
               >
-                <span aria-hidden='true' className={`mini-plan ${style}`}>
-                  <i />
-                  <i />
-                  <i />
-                </span>
+                <LayoutThumbnail room={project.room} items={items} positions={check.layout} />
                 <span>
                   <strong>{title}</strong>
-                  <small>{note}</small>
-                  {recommended && <small>Рекомендуемый вариант</small>}
+                  {note && <small>{note}</small>}
                   {check && check.unplaced > 0 && <small>Без места: {check.unplaced}</small>}
                   {check && check.warnings > 0 && <small>Замечаний: {check.warnings}</small>}
                 </span>
@@ -165,9 +161,6 @@ export const PlanSidebar = ({ planner, workflow }: PlanSidebarProps) => {
               Открыть смету
             </Link>
           </div>
-          <Button icon='spark' onClick={replan}>
-            Подобрать варианты заново
-          </Button>
         </>
       )}
       <p className='planner-feedback' role='status'>
@@ -222,6 +215,7 @@ export const PlanSelection = ({
           Подобрать замену
         </Link>
       </div>
+      {!position && <p role='status'>Коснитесь нужного места на 2D-плане, чтобы разместить предмет.</p>}
       {position && <AngleInput value={position.r} onChange={changeItemAngle} />}
       {position && (
         <div className='move-tools' role='group' aria-label='Переместить предмет на 3 сантиметра'>

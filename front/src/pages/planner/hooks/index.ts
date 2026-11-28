@@ -14,3 +14,4 @@ export { useVoice } from "./useVoice.ts";
 export { useXRControls } from "./useXRControls.ts";
 export { useImagePicker } from "./useImagePicker.ts";
 export { usePlannerContext } from "./usePlannerContext.ts";
+export { useLayoutThumbnail } from "./useLayoutThumbnail.ts";

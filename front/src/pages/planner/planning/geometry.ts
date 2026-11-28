@@ -225,8 +225,6 @@ const footprintVsPolygon = (footprint: Point[], poly: Point[]) => {
   );
 };
 
-const rectVsPolygon = (box: Box, poly: Point[]) => footprintVsPolygon(corners(box), poly);
-
 const clearance = (item: Item, pos: Position) => {
   const depth = item.access || 0;
   if (!depth) return null;
@@ -433,7 +431,8 @@ export const arrange = (
   items: Item[],
   variant: number,
   minimum = 0.8,
-  fixed?: Positions
+  fixed?: Positions,
+  preferences?: Positions
 ) => {
   const { w, d } = dimensions(room.points);
   const doors = doorPolygons(room),
@@ -448,7 +447,9 @@ export const arrange = (
     .filter((item) => !fixed?.[item.id])
     .sort((a, b) => Number(b.owned) - Number(a.owned) || b.w * b.d - a.w * a.d);
   ordered.forEach((item) => {
-    const [fx, fy, rotation] = preferred[variant][item.kind] ?? preferred[variant].other;
+    const [fx, fy, defaultRotation] = preferred[variant][item.kind] ?? preferred[variant].other;
+    const hint = preferences?.[item.id];
+    const rotation = hint ? normalizeAngle(hint.r) : defaultRotation;
     const candidates: ((typeof occupied)[number] & { score: number })[] = [];
     for (const r of [
       rotation,
@@ -458,18 +459,18 @@ export const arrange = (
     ]) {
       const size = bounds(item, { x: 0, y: 0, r });
       if (size.w > w || size.d > d) continue;
-      const px = clamp(fx * w - size.w / 2, 0.055, Math.max(0, w - size.w - 0.055));
-      const py = clamp(fy * d - size.d / 2, 0.055, Math.max(0, d - size.d - 0.055));
+      const px = clamp(hint?.x ?? fx * w - size.w / 2, 0.055, Math.max(0, w - size.w - 0.055));
+      const py = clamp(hint?.y ?? fy * d - size.d / 2, 0.055, Math.max(0, d - size.d - 0.055));
       const step = Math.max(0.15, w / 36, d / 36);
       const test = (x: number, y: number) => {
         const score = Math.hypot(x - px, y - py) + (r === rotation ? 0 : 0.2);
         const pos = { x: round(x), y: round(y), r };
         const box = bounds(item, pos);
-        const footprint = corners(box);
+        const footprint = itemFootprint(item, pos);
         const access = clearance(item, pos);
         if (
-          !fits(box, room.points) ||
-          doors.some((poly) => rectVsPolygon(box, poly)) ||
+          !fitsFootprint(footprint, room.points) ||
+          doors.some((poly) => footprintVsPolygon(footprint, poly)) ||
           occupied.some(
             (other) =>
               (overlap(box, other.box) && footprintsOverlap(footprint, other.footprint)) ||
@@ -486,6 +487,7 @@ export const arrange = (
           return;
         candidates.push({ pos, box, footprint, access, score });
       };
+      if (hint && r === rotation) test(hint.x, hint.y);
       test(px, py);
       test(w - size.w, py);
       test(w - size.w, d - size.d);

@@ -178,7 +178,7 @@ export const PlannerDialog = () => {
         return (
           <>
             <p className='support-text'>
-              Новый подбор заменит сохранённые положения мебели в текущем способе покупки.
+              ИИ подберёт новые альтернативы и сохранит открытую сейчас расстановку.
             </p>
             <div className='form-actions'>
               <Button onClick={close}>Отмена</Button>

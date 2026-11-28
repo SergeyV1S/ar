@@ -53,7 +53,8 @@ export const getWishPurchaseLimit = (project: Project, search: CatalogSearch, qu
 };
 
 export const prepareWishPurchase = (
-  project: Project, positions: Positions, search: CatalogSearch, purchases: Item[]
+  project: Project, positions: Positions, search: CatalogSearch, purchases: Item[],
+  keepUnplaced = false
 ) => {
   const remaining = project.items.filter((item) => item.id !== search.replaceId);
   if (!purchases.length || remaining.length + purchases.length > PROJECT_ITEM_LIMIT ||
@@ -76,7 +77,7 @@ export const prepareWishPurchase = (
   });
   const stays = valid(preserved, alreadyPlaced);
   const canPlace = stays || alternatives.some(([, plan]) => valid(plan, visible));
-  if (!canPlace) return;
+  if (!canPlace && !keepUnplaced) return;
   const activeLayout = stays ? preserved : fixed;
   const otherLayouts = Object.fromEntries(Object.entries(project.layouts).map(([mode, layouts]) => [
     mode, Object.fromEntries(Object.entries(layouts).map(([index, layout]) => [
@@ -86,6 +87,6 @@ export const prepareWishPurchase = (
   const layouts: Project["layouts"] = { ...otherLayouts, [project.mode]: {
     ...Object.fromEntries(alternatives), [project.variant]: activeLayout
   } };
-  return { items, layouts, needsLayout: !stays };
+  return { items, layouts, needsLayout: !stays, requiresManualPlacement: !canPlace };
 };
 

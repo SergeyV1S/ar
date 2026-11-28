@@ -62,14 +62,14 @@ export const createGigaChat = (key: string, send: typeof fetch = fetch) => {
     return token.value;
   };
 
-  const complete = async (system: string, content: string, signal: AbortSignal) => {
+  const complete = async (system: string, content: string, signal: AbortSignal, maxTokens = 2500) => {
     const bearer = await accessToken();
     const response = await send(`${api}/chat/completions`, {
       method: "POST",
       redirect: "error",
       headers: { Authorization: `Bearer ${bearer}`, Accept: "application/json",
         "Content-Type": "application/json" },
-      body: JSON.stringify({ model, temperature: 0.15, max_tokens: 2500,
+      body: JSON.stringify({ model, temperature: 0.15, max_tokens: maxTokens,
         messages: [{ role: "system", content: system }, { role: "user", content }] }),
       signal
     });

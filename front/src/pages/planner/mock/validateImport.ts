@@ -144,6 +144,15 @@ export const validateImport = (input: unknown): Project => {
     ])
   );
   const openings: unknown[] = Array.isArray(room.openings) ? room.openings : [];
+  const layoutIdeas = Object.fromEntries(Object.keys(modes).map((mode) => [
+    mode,
+    Object.fromEntries([0, 1, 2].flatMap((index) => {
+      const entry = record(record(record(raw.layoutIdeas)[mode])[index]);
+      if (!layouts[mode]?.[index] || typeof entry.title !== "string" || !entry.title.trim() ||
+        typeof entry.reason !== "string") return [];
+      return [[index, { title: entry.title.slice(0, 65), reason: entry.reason.slice(0, 220) }]];
+    }))
+  ]));
   return {
     version: 1,
     brief: readBrief(raw.brief),
@@ -194,6 +203,7 @@ export const validateImport = (input: unknown): Project => {
     variant: typeof raw.variant === "number" && [0, 1, 2].includes(raw.variant) ? raw.variant : 0,
     items: items.map(normalizeItem),
     layouts,
+    layoutIdeas,
     procurement: Object.fromEntries(
       Object.keys(procurementFields).map((key) => [
         key,

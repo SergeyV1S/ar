@@ -231,43 +231,6 @@
   .variant small {
     @apply block text-[#736884] font-[670] text-[10px] mt-0.75 leading-[1.24];
   }
-  .mini-plan {
-    @apply relative block h-7.5 w-10;
-    border: 1px solid #d1bfdc;
-    @apply rounded-[5px] bg-[#f6f1f9] shadow-[inset_0_0_0_3px_#fff9];
-  }
-  .mini-plan i {
-    @apply absolute bg-[#d2b6ec];
-    border: 1px solid #bfa3d6;
-    @apply rounded-[2px];
-  }
-  .mini-plan.lounge i:nth-child(1) {
-    @apply top-1.5 left-1.25 w-1.75 h-4.25;
-  }
-  .mini-plan.lounge i:nth-child(2) {
-    @apply top-2.5 left-4 w-2.5 h-2.25 rounded-[50%] bg-[#ead6c2] border-[#ceb69c];
-  }
-  .mini-plan.lounge i:nth-child(3) {
-    @apply top-1.25 right-1 w-1.25 h-4;
-  }
-  .mini-plan.space i:nth-child(1) {
-    @apply top-1 left-1.5 w-4.75 h-1.25;
-  }
-  .mini-plan.space i:nth-child(2) {
-    @apply top-3.25 left-1.25 w-1.5 h-2.5;
-  }
-  .mini-plan.space i:nth-child(3) {
-    @apply bottom-1 right-1 w-2.25 h-1.25 bg-[#dbe1d0] border-[#b6c2a5];
-  }
-  .mini-plan.walls i:nth-child(1) {
-    @apply top-1.5 left-1 w-1.5 h-4;
-  }
-  .mini-plan.walls i:nth-child(2) {
-    @apply top-1.25 right-1.25 w-1.75 h-4 bg-[#e4dacb] border-[#cab79f];
-  }
-  .mini-plan.walls i:nth-child(3) {
-    @apply bottom-1 left-3.25 w-2.75 h-1.25;
-  }
 
   .product-image {
     @apply w-13.75 h-13.25 rounded-lg flex-none;
@@ -1409,15 +1372,16 @@
     font-size: .78rem;
   }
 
-  .planner-flow .mini-plan {
+  .layout-thumbnail {
+    width: 64px;
+    height: 52px;
+    flex: none;
+    border: 1px solid var(--planner-edge);
+    border-radius: 6px;
     background: var(--planner-paper);
-    border-color: var(--planner-accent-edge);
   }
 
-  .planner-flow .mini-plan i {
-    background: #b08a63;
-    border-color: var(--planner-accent);
-  }
+
 
   .planner-selection {
     padding: 14px;

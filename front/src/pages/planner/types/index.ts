@@ -66,9 +66,11 @@ export type Project = {
   variant: number;
   items: Item[];
   layouts: Record<string, Record<number, Positions>>;
+  layoutIdeas?: Record<string, Record<number, LayoutIdea>>;
   procurement: Record<string, string>;
   brief?: ProjectBrief;
 };
+export type LayoutIdea = { title: string; reason: string };
 export type ProjectWish = FurnitureWish & { id: string };
 export type ProjectBrief = {
   phrase: string;

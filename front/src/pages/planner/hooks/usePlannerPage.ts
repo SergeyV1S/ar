@@ -8,7 +8,7 @@ import { getReplacementCriteria, isLegacyRetailOffer } from "../helpers/catalogS
 import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, getScanLayoutUpdate, makeProjectBrief, upsertItem } from "../helpers/index.ts";
 import type { readLocal } from "../mock/index.ts";
 import { initialProject, planItems, positionsFor, visibleItems } from "../mock/index.ts";
-import { area, arrange, clamp, dimensions, inspect, variants } from "../planning/index.ts";
+import { area, clamp, dimensions, inspect, variants } from "../planning/index.ts";
 import { isCatalogCategory } from "../types/index.ts";
 import type {
   ARMode,
@@ -24,6 +24,7 @@ import type {
   VoicePatch
 } from "../types/index.ts";
 import { usePlannerAR } from "./usePlannerAR.ts";
+import { useLayoutIdeas } from "./useLayoutIdeas.ts";
 import { useProjectFiles } from "./useProjectFiles.ts";
 import { useProjectStorage } from "./useProjectStorage.ts";
 import { useRetailCatalog } from "./useRetailCatalog.ts";
@@ -93,6 +94,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     () => inspect(room, allItems, positions, passage),
     [room, allItems, positions, passage]
   );
+  const { requestLayouts, proposingLayouts } = useLayoutIdeas(project, allItems, positions, update, notify);
   const retail = useRetailCatalog({
     project, positions, revision, enabled: mode === "retail" && !locked && !pendingProtection, update, notify
   });
@@ -120,21 +122,8 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       return;
     }
     if (name === "replan") {
-      if (!allItems.length) {
-        notify("Добавьте мебель, чтобы подобрать расстановку.");
-        return;
-      }
-      const options = variants.map((_, i) => arrange(project.room, allItems, i, passage));
-      const ranks = options.map(
-        (option) => inspect(project.room, allItems, option, project.passage).warnings.length
-      );
-      update({
-        variant: ranks.indexOf(Math.min(...ranks)),
-        layouts: { ...project.layouts, [project.mode]: options }
-      });
-      setSelected(null);
       close();
-      notify("Варианты обновлены. Выбран вариант с наименьшим числом замечаний.");
+      void requestLayouts();
       return;
     }
     if (name === "ar-view" && !allItems.some((item) => positions[item.id])) {
@@ -170,7 +159,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     update({
       room,
       passage,
-      ...(geometryChanged || passage !== project.passage ? { layouts: {} } : {})
+      ...(geometryChanged || passage !== project.passage ? { layouts: {}, layoutIdeas: undefined } : {})
     });
     close();
     notify("Параметры комнаты сохранены.");
@@ -227,6 +216,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       !old || (["w", "d", "access", "kind"] as const).some((key) => old[key] !== item[key]);
     update({
       items: upsertItem(project.items, item),
+      ...(redraw ? { layoutIdeas: undefined } : {}),
       ...getItemLayoutUpdate(
         project,
         item,
@@ -249,7 +239,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
         )
       ])
     );
-    update({ items: project.items.filter((item) => item.id !== id), layouts });
+    update({ items: project.items.filter((item) => item.id !== id), layouts, layoutIdeas: undefined });
     setSelected(null);
     close();
     notify("Позиция удалена.");
@@ -391,6 +381,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     openPrivacy,
     openNewProject,
     replan,
+    proposingLayouts,
     backFromARHelp,
     launchSelectedAR,
     dialogItem,

@@ -6,7 +6,7 @@ import type { PlanAnalysis } from "@/shared/helpers";
 import axios from "axios";
 
 import type { VoiceProps } from "../components/index.ts";
-import { NO_SPEECH_MESSAGE, getTranscriptionError } from "../helpers/index.ts";
+import { NO_SPEECH_MESSAGE, getPlanningContext, getTranscriptionError } from "../helpers/index.ts";
 import { parseVoice } from "../mock/index.ts";
 import {
   CHUNK_SECONDS,
@@ -194,14 +194,7 @@ export const useVoice = ({ project, apply, wishes }: VoiceProps) => {
     setMessage("");
     try {
       const result = await postPlannerAnalysis({
-        params: {
-          phrase: phrase.trim(),
-          room: project.room,
-          passage: project.passage,
-          items: wishes.items.map(({ id, name, kind, owned, material, w, d, h }) => ({
-            id, name, kind, owned, material, w, d, h, position: wishes.positions[id]
-          }))
-        },
+        params: getPlanningContext(project, wishes.items, wishes.positions, phrase.trim()),
         config: { signal: controller.signal, timeout: 62_000 }
       });
       if (!controller.signal.aborted) setAnalysis(result);

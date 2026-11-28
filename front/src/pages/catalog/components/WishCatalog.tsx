@@ -21,9 +21,9 @@ export const WishCatalog = ({
 }: { wish: ProjectWish; cities: Promise<CatalogCity[]> }) => {
   const model = useWishCatalog(wish, use(cities));
   const {
-    city, cityId, chosen, search, maxPrice, divanAvailable, changeCity, replaced, divan, avito,
+    city, cityId, chosen, positions, search, maxPrice, divanAvailable, changeCity, replaced, divan, avito,
     allowsSearch, retry, selection, selectedListing, selectionError, status, clearSelection,
-    selectPurchase, divanCards, avitoCards, confirmation
+    selectPurchase, divanCards, avitoCards, confirmation, pendingOverride, changePurchaseForm
   } = model;
 
   return (
@@ -32,12 +32,12 @@ export const WishCatalog = ({
         <ul className='planner-furniture-list' aria-label='Выбранная мебель'>
           {chosen.map((item) => (
             <li key={item.id}>
-              <Link className='plan-item' to={getItemPath(PATHS.planner, item.id)}>
+              <Link className='plan-item' to={`${getItemPath(PATHS.planner, item.id)}&step=furniture`}>
                 <span className='min-w-0'>
                   <strong>{item.name}</strong>
                   <small>{item.seller} · {money(item.price)}</small>
                 </span>
-                <small>На плане</small>
+                <small>{positions[item.id] ? "На плане" : "Выбрать место"}</small>
               </Link>
             </li>
           ))}
@@ -62,7 +62,7 @@ export const WishCatalog = ({
         </div>
       )}
       {selection && (
-        <form className='notice grid gap-3' onSubmit={selectPurchase}>
+        <form className='notice grid gap-3' onSubmit={selectPurchase} onChange={changePurchaseForm}>
           <h3 ref={confirmation} tabIndex={-1}>{selection.offer.name}</h3>
           {(selectedListing?.photo ?? selection.offer.photo) && (
             <Thumbnail className='catalog-selection-photo' item={{ photo: selectedListing?.photo ?? selection.offer.photo }} />
@@ -115,7 +115,10 @@ export const WishCatalog = ({
           <div className='inline-actions'>
             <Button onClick={clearSelection}>Отмена</Button>
             {(selection.source === "divan" || selectedListing?.price !== undefined) && (
-              <Button type='submit' className='primary'>{replaced ? "Подтвердить замену" : "Выбрать для проекта"}</Button>
+              <Button type='submit' className='primary'>
+                {pendingOverride && (replaced ? "Заменить всё равно" : "Добавить всё равно")}
+                {!pendingOverride && (replaced ? "Подтвердить замену" : "Выбрать для проекта")}
+              </Button>
             )}
           </div>
         </form>
