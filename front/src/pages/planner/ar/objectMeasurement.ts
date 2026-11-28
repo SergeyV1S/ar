@@ -1,4 +1,4 @@
-import { centeredPosition, clamp, pointIn, round } from "../planning/index.ts";
+import { centeredPosition, clamp, distance, pointIn, round } from "../planning/index.ts";
 import type { FurnitureMatch } from "../recognition/index.ts";
 import type { Point } from "../types/index.ts";
 import type { ScanLayout } from "./geometry.ts";
@@ -87,18 +87,17 @@ export const measureObject = (
   const measured = foreground.length >= 7;
   const worldFoot = projectToFloor(camera, u, y + h, floor);
   const foot = worldFoot && roomPoint(layout, worldFoot);
-  if (!measured && (clipped || !foot || !pointIn(foot, layout.points))) return null;
+  const floorContact = !clipped && foot && pointIn(foot, layout.points) ? foot : undefined;
+  if (!measured && !floorContact) return null;
 
   const eye = roomPoint(layout, cameraOrigin(camera.transform));
   const spans = [0, 1].map((axis) => {
     const values = foreground.map(({ point }) => point[axis]);
     return [percentile(values, 0.06), percentile(values, 0.94)];
   });
-  const face = foot ?? [0, 0];
-  if (measured) {
-    face[0] = (spans[0][0] + spans[0][1]) / 2;
-    face[1] = (spans[1][0] + spans[1][1]) / 2;
-  }
+  const face = measured
+    ? spans.map(([low, high]) => (low + high) / 2)
+    : [...(floorContact ?? [0, 0])];
   const along = Math.abs(face[0] - eye[0]) < Math.abs(face[1] - eye[1]) ? 0 : 1;
   const away = 1 - along;
   const cameraDistance = Math.hypot(face[0] - eye[0], face[1] - eye[1]);
@@ -148,6 +147,7 @@ export const measureObject = (
     kind: match.kind,
     size,
     center: face,
+    ...(floorContact && { floorContact }),
     estimated: estimated || clipped,
     measured,
     score: match.score
@@ -158,12 +158,9 @@ export type ObjectMeasurement = NonNullable<ReturnType<typeof measureObject>>;
 
 export const measurementsMatch = (first: ObjectMeasurement, second: ObjectMeasurement) => {
   const sameType = first.name === second.name;
-  const distance = Math.hypot(
-    first.center[0] - second.center[0],
-    first.center[1] - second.center[1]
-  );
+  const separation = distance(first.center, second.center);
   const near = Math.min(first.size.w, first.size.d, second.size.w, second.size.d);
-  if (sameType && distance <= clamp(near * 0.48, 0.19, 0.42)) return true;
+  if (sameType && separation <= clamp(near * 0.48, 0.19, 0.42)) return true;
   const a = centeredPosition(first.size, first.center, 0);
   const b = centeredPosition(second.size, second.center, 0);
   const width = Math.min(a.x + first.size.w, b.x + second.size.w) - Math.max(a.x, b.x);
@@ -174,7 +171,7 @@ export const measurementsMatch = (first: ObjectMeasurement, second: ObjectMeasur
   const secondArea = second.size.w * second.size.d;
   if (!sameType) {
     return (
-      distance <= clamp(near * 0.35, 0.12, 0.25) &&
+      separation <= clamp(near * 0.35, 0.12, 0.25) &&
       intersection >= Math.max(firstArea, secondArea) * 0.45
     );
   }
@@ -183,19 +180,32 @@ export const measurementsMatch = (first: ObjectMeasurement, second: ObjectMeasur
   return intersection / union >= 0.38 || intersection >= Math.min(firstArea, secondArea) * 0.7;
 };
 
+export const observationsMatch = (first: ObjectMeasurement, second: ObjectMeasurement) => {
+  if (measurementsMatch(first, second)) return true;
+  if (first.name !== second.name || !first.floorContact || !second.floorContact) return false;
+
+  // The bottom of the camera box can stay stable when depth alternates between surfaces.
+  return (
+    distance(first.floorContact, second.floorContact) <= 0.18 &&
+    distance(first.center, second.center) <= 0.75
+  );
+};
+
+const medianPoint = (points: Point[]) =>
+  [0, 1].map((axis) => percentile(points.map((point) => point[axis]), 0.5));
+
 export const combineMeasurements = (samples: ObjectMeasurement[]): ObjectMeasurement => {
   const preferred = samples.filter((sample) => sample.measured);
   const sized = preferred.length ? preferred : samples;
   const withDepth = sized.filter((sample) => !sample.estimated);
   const dimensions = withDepth.length ? withDepth : sized;
+  const contacts = samples
+    .map(({ floorContact }) => floorContact)
+    .filter((point) => point !== undefined);
   return {
     ...sized[0],
-    center: [0, 1].map((axis) =>
-      percentile(
-        sized.map(({ center }) => center[axis]),
-        0.5
-      )
-    ),
+    center: medianPoint(sized.map(({ center }) => center)),
+    ...(contacts.length > 0 && { floorContact: medianPoint(contacts) }),
     size: {
       w: round(
         percentile(

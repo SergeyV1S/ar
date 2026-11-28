@@ -14,7 +14,8 @@ export const getInstructions = (
     if (origin) return "Отметьте вторую точку вдоль стены вправо от начала плана.";
     return "Наведите прицел на угол пола, соответствующий началу плана.";
   }
-  if (finding) return "Медленно наведите камеру на мебель. Покажите каждый предмет с двух сторон для замера.";
+  if (finding)
+    return "Покажите мебель с двух сторон. 3D-модели появятся после завершения поиска.";
   if (traceStep !== undefined) return traceInstructions[traceStep];
   if (arranging) {
     if (!itemId) return "Выберите предмет. Чтобы передвинуть мебель, выберите её снова.";

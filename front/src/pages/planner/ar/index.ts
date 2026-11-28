@@ -25,7 +25,7 @@ import { getInstructions } from "./getInstructions.ts";
 import { traceBase, traceHeight } from "./itemTrace.ts";
 import { createMesh, rgb } from "./mesh.ts";
 import type { ObjectMeasurement } from "./objectMeasurement.ts";
-import { measurementsMatch } from "./objectMeasurement.ts";
+import { observationsMatch } from "./objectMeasurement.ts";
 import { createObjectScanner } from "./objectScanner.ts";
 import type { CameraPose } from "./projection.ts";
 import { projectDepth, projectToFloor } from "./projection.ts";
@@ -296,10 +296,11 @@ export const startAR = async ({
       publish: (id, result) => {
         if (!finding || !scanLayout) return;
         const duplicate = [...recognized].some(
-          ([key, prior]) => key !== id && measurementsMatch(prior, result)
+          ([key, prior]) => key !== id && observationsMatch(prior, result)
         );
         if (duplicate) return;
-        if (!recognized.has(id) && !hasInventorySpace()) {
+        const current = recognized.get(id);
+        if (!current && !hasInventorySpace()) {
           finding = false;
           scanner.stop();
           help("В проекте достигнут предел мебели.");
@@ -315,7 +316,7 @@ export const startAR = async ({
           verified: "review",
           material: ""
         };
-        recognized.set(id, result);
+        recognized.set(id, { ...result, floorContact: result.floorContact ?? current?.floorContact });
         furniture.add(item, centeredPosition(item, result.center, 0));
         describe(item, result.estimated);
         help();
@@ -570,7 +571,7 @@ export const startAR = async ({
           renderer.drawPlaced(plan, [origin[0], origin[1], origin[2]], angle, modelPivot, turn);
           renderer.drawPlaced(model, [origin[0], origin[1], origin[2]], angle, modelPivot, turn);
         }
-        if (scanLayout) {
+        if (scanLayout && !finding) {
           const { origin, angle } = scanLayout;
           const placedModel = preview?.valid ? furniture.withoutSelection : furniture.model;
           renderer.drawPlaced(placedModel, [origin[0], origin[1], origin[2]], angle);

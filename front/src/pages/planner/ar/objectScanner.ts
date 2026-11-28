@@ -1,9 +1,14 @@
 import { newId } from "../../../shared/helpers/index.ts";
-import { pointIn } from "../planning/index.ts";
+import { distance, pointIn } from "../planning/index.ts";
 import { createLiveFurnitureDetector } from "../recognition/index.ts";
 import type { ScanLayout } from "./geometry.ts";
 import type { ObjectMeasurement } from "./objectMeasurement.ts";
-import { combineMeasurements, measureObject, measurementsMatch } from "./objectMeasurement.ts";
+import {
+  combineMeasurements,
+  measureObject,
+  measurementsMatch,
+  observationsMatch
+} from "./objectMeasurement.ts";
 import type { CameraPose } from "./projection.ts";
 import { getCameraRotation } from "./projection.ts";
 import { restrictRoomFrame } from "./roomImage.ts";
@@ -25,17 +30,8 @@ export const createObjectTracks = () => {
       const candidates = tracks.flatMap((track) => {
         if (track.lastFrame === frame) return [];
         const previous = combineMeasurements(track.samples);
-        if (!measurementsMatch(previous, object)) return [];
-        return [
-          {
-            track,
-            previous,
-            distance: Math.hypot(
-              previous.center[0] - object.center[0],
-              previous.center[1] - object.center[1]
-            )
-          }
-        ];
+        if (!observationsMatch(previous, object)) return [];
+        return [{ track, previous, distance: distance(previous.center, object.center) }];
       });
       const nearest = candidates.sort((a, b) => a.distance - b.distance)[0];
       if (!nearest) {

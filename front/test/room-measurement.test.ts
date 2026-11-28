@@ -195,6 +195,41 @@ test("repeated measurements produce one chair while a second chair gets its own 
   assert.deepEqual(repeated[0].measurement.center, [2, 2]);
 });
 
+test("a depth jump under the same chair box keeps one ID and leaves a neighboring chair separate", () => {
+  const track = createObjectTracks();
+  const layout = room();
+  const pose = camera(2, 1.45, 4, 0.32);
+  const depth = new Float32Array(depthGridSize ** 2);
+  const match: FurnitureMatch = {
+    kind: "stool",
+    title: "Стул",
+    score: 0.85,
+    box: [32, 30, 35, 55]
+  };
+  const chair = measureObject(layout, pose, depth.fill(1.5), match);
+  const shifted = measureObject(layout, pose, depth.fill(2), match);
+  const neighbor = measureObject(layout, pose, depth, { ...match, box: [63, 30, 30, 55] });
+  assert(chair && shifted && neighbor);
+
+  assert.deepEqual(track([chair]), []);
+  const [confirmed] = track([chair]);
+  assert(confirmed);
+  const [repeated] = track([shifted, neighbor]);
+  assert.equal(repeated?.id, confirmed.id);
+
+  const [sameChair, otherChair] = track([shifted, neighbor]);
+  assert.equal(sameChair?.id, confirmed.id);
+  assert(otherChair);
+  assert.notEqual(otherChair.id, confirmed.id);
+
+  const fromSide = measureObject(layout, camera(2.25, 1.45, 4, 0.32), depth.fill(1.5), {
+    ...match,
+    box: [24, 30, 35, 55]
+  });
+  assert(fromSide);
+  assert.equal(track([fromSide])[0]?.id, confirmed.id);
+});
+
 test("duplicate boxes in one frame cannot confirm a second track", () => {
   const track = createObjectTracks();
   const chair = {
