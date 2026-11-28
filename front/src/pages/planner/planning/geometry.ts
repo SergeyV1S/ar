@@ -100,8 +100,26 @@ export const pointIn = (p: Point, poly: Point[]) => {
 };
 
 export const bounds = (item: Pick<Item, "w" | "d">, pos: Position) => {
-  const swap = pos.r % 180 !== 0;
-  return { x: pos.x, y: pos.y, w: swap ? item.d : item.w, d: swap ? item.w : item.d };
+  if (pos.r % 90 === 0) {
+    const swap = pos.r % 180 !== 0;
+    return { x: pos.x, y: pos.y, w: swap ? item.d : item.w, d: swap ? item.w : item.d };
+  }
+  const angle = (pos.r * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(angle));
+  const sin = Math.abs(Math.sin(angle));
+  return { x: pos.x, y: pos.y, w: item.w * cos + item.d * sin, d: item.w * sin + item.d * cos };
+};
+
+export const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
+
+export const centeredPosition = (item: Pick<Item, "w" | "d">, [x, y]: Point, r: number) => {
+  const size = bounds(item, { x: 0, y: 0, r });
+  return { x: x - size.w / 2, y: y - size.d / 2, r };
+};
+
+export const rotatePosition = (item: Item, pos: Position, angle: number) => {
+  const box = bounds(item, pos);
+  return centeredPosition(item, [box.x + box.w / 2, box.y + box.d / 2], normalizeAngle(angle));
 };
 
 export const corners = ({ x, y, w, d }: Box) => {
@@ -113,13 +131,51 @@ export const corners = ({ x, y, w, d }: Box) => {
   ];
 };
 
-export const fits = (box: Box, room: Point[]) => {
-  const footprint = corners(box);
+export const itemFootprint = (item: Pick<Item, "w" | "d">, pos: Position, front = 0) => {
+  const box = bounds(item, pos);
+  const angle = (pos.r * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return corners({
+    x: -item.w / 2,
+    y: front ? item.d / 2 : -item.d / 2,
+    w: item.w,
+    d: front || item.d
+  }).map(([x, y]) => [
+    box.x + box.w / 2 + x * cos - y * sin,
+    box.y + box.d / 2 + x * sin + y * cos
+  ]);
+};
+
+export const fitsFootprint = (footprint: Point[], room: Point[]) => {
   if (!footprint.every((point) => pointIn(point, room))) return false;
   return footprint.every((a, i) =>
     room.every((b, j) => !crosses(a, footprint[(i + 1) % 4], b, room[(j + 1) % room.length]))
   );
 };
+
+export const fits = (box: Box, room: Point[]) => fitsFootprint(corners(box), room);
+
+const footprintsOverlap = (first: Point[], second: Point[]) =>
+  [first, second].every(([a, b, c]) =>
+    [
+      [a, b],
+      [b, c]
+    ].every(([start, end]) => {
+      const dx = end[0] - start[0];
+      const dy = end[1] - start[1];
+      const length = Math.hypot(dx, dy);
+      if (!length) return false;
+      const project = ([x, y]: Point) => (x * dx + y * dy) / length;
+      const left = first.map(project);
+      const right = second.map(project);
+      return (
+        Math.min(Math.max(...left), Math.max(...right)) -
+          Math.max(Math.min(...left), Math.min(...right)) >
+        0.005
+      );
+    })
+  );
 
 const overlap = (a: Box, b: Box) => {
   return (
@@ -156,15 +212,12 @@ export const wallFeature = (room: Point[], opening: Opening) => {
   return { start, end, hinge, inward, middle, arc };
 };
 
-const rectVsPolygon = (box: Box, poly: Point[]) => {
-  const footprint = corners(box);
-  const inBox = ([x, y]: Point) =>
-    x > box.x + 0.006 &&
-    x < box.x + box.w - 0.006 &&
-    y > box.y + 0.006 &&
-    y < box.y + box.d - 0.006;
+const footprintVsPolygon = (footprint: Point[], poly: Point[]) => {
+  const inFootprint = (point: Point) =>
+    pointIn(point, footprint) &&
+    footprint.every((a, i) => segmentDistance(point, a, footprint[(i + 1) % 4]) > 0.006);
   return (
-    poly.some(inBox) ||
+    poly.some(inFootprint) ||
     footprint.some((p) => pointIn(p, poly)) ||
     footprint.some((a, i) =>
       poly.some((b, j) => crosses(a, footprint[(i + 1) % 4], b, poly[(j + 1) % poly.length]))
@@ -172,13 +225,12 @@ const rectVsPolygon = (box: Box, poly: Point[]) => {
   );
 };
 
-const clearance = (item: Item, pos: Position, box: Box) => {
+const rectVsPolygon = (box: Box, poly: Point[]) => footprintVsPolygon(corners(box), poly);
+
+const clearance = (item: Item, pos: Position) => {
   const depth = item.access || 0;
   if (!depth) return null;
-  if (pos.r === 90) return { x: box.x - depth, y: box.y, w: depth, d: box.d };
-  if (pos.r === 180) return { x: box.x, y: box.y - depth, w: box.w, d: depth };
-  if (pos.r === 270) return { x: box.x + box.w, y: box.y, w: depth, d: box.d };
-  return { x: box.x, y: box.y + box.d, w: box.w, d: depth };
+  return itemFootprint(item, pos, depth);
 };
 
 const doorPolygons = (room: Room) => {
@@ -189,7 +241,7 @@ const doorPolygons = (room: Room) => {
     .map((f) => [f.hinge, ...f.arc]);
 };
 
-const passage = (room: Room, boxes: Box[], minimum: number, checkOnly = false) => {
+const passage = (room: Room, footprints: Point[][], minimum: number, checkOnly = false) => {
   const door = room.openings.find((o) => o.type === "door");
   if (!door) return { path: [], state: "no-door" };
   if (door.width < minimum) return { path: [], state: "blocked", location: "в дверном проёме" };
@@ -206,16 +258,26 @@ const passage = (room: Room, boxes: Box[], minimum: number, checkOnly = false) =
     { length: Math.floor(d / step) + 1 },
     () => new Int8Array(Math.floor(w / step) + 1)
   );
-  const free = ([x, y]: Point) =>
-    pointIn([x, y], room.points) &&
+  const obstacles = footprints.map((footprint) => ({
+    footprint,
+    x: Math.min(...footprint.map(([x]) => x)),
+    y: Math.min(...footprint.map(([, y]) => y)),
+    ...dimensions(footprint)
+  }));
+  const free = (p: Point) =>
+    pointIn(p, room.points) &&
     room.points.every(
-      (a, i) =>
-        segmentDistance([x, y], a, room.points[(i + 1) % room.points.length]) + 1e-12 >= radius
+      (a, i) => segmentDistance(p, a, room.points[(i + 1) % room.points.length]) + 1e-12 >= radius
     ) &&
-    boxes.every(
-      ({ x: bx, y: by, w: bw, d: bd }) =>
-        Math.hypot(x - clamp(x, bx, bx + bw), y - clamp(y, by, by + bd)) + 1e-12 >= radius
-    );
+    obstacles.every(({ footprint, x, y, w, d }) => {
+      const dx = p[0] - clamp(p[0], x, x + w);
+      const dy = p[1] - clamp(p[1], y, y + d);
+      if (Math.hypot(dx, dy) + 1e-12 >= radius) return true;
+      return (
+        !pointIn(p, footprint) &&
+        footprint.every((a, i) => segmentDistance(p, a, footprint[(i + 1) % 4]) + 1e-12 >= radius)
+      );
+    });
   const cell = start.map((v) => Math.round(v / step));
   const candidateStarts = [
     cell,
@@ -279,7 +341,7 @@ export const inspect = (
   const doors = doorPolygons(room);
   const placed = items.flatMap((item) =>
     positions[item.id]
-      ? [{ item, pos: positions[item.id], box: bounds(item, positions[item.id]) }]
+      ? [{ item, pos: positions[item.id], footprint: itemFootprint(item, positions[item.id]) }]
       : []
   );
   items
@@ -287,25 +349,27 @@ export const inspect = (
     .forEach((item) =>
       warnings.push({ id: item.id, message: `«${item.name}» не поместился при автоподборе.` })
     );
-  placed.forEach(({ item, pos, box }, index) => {
-    if (!fits(box, room.points))
+  placed.forEach(({ item, pos, footprint }, index) => {
+    if (!fitsFootprint(footprint, room.points))
       warnings.push({ id: item.id, message: `«${item.name}» выходит за контур комнаты.` });
-    if (doors.some((poly) => rectVsPolygon(box, poly)))
+    if (doors.some((poly) => footprintVsPolygon(footprint, poly)))
       warnings.push({ id: item.id, message: `«${item.name}» мешает открыванию двери комнаты.` });
     placed.slice(index + 1).forEach((other) => {
-      if (overlap(box, other.box))
+      if (footprintsOverlap(footprint, other.footprint))
         warnings.push({
           id: item.id,
           other: other.item.id,
           message: `«${item.name}» пересекается с «${other.item.name}».`
         });
     });
-    const access = clearance(item, pos, box);
+    const access = clearance(item, pos);
     if (
       access &&
-      (!fits(access, room.points) ||
-        doors.some((poly) => rectVsPolygon(access, poly)) ||
-        placed.some((other) => other.item.id !== item.id && overlap(access, other.box)))
+      (!fitsFootprint(access, room.points) ||
+        doors.some((poly) => footprintVsPolygon(access, poly)) ||
+        placed.some(
+          (other) => other.item.id !== item.id && footprintsOverlap(access, other.footprint)
+        ))
     ) {
       warnings.push({
         id: item.id,
@@ -315,7 +379,7 @@ export const inspect = (
   });
   const route = passage(
     room,
-    placed.map((entry) => entry.box),
+    placed.map((entry) => entry.footprint),
     minimum
   );
   if (route.state === "blocked") {
@@ -323,7 +387,7 @@ export const inspect = (
       (entry) =>
         passage(
           room,
-          placed.filter((other) => other !== entry).map((other) => other.box),
+          placed.filter((other) => other !== entry).map((other) => other.footprint),
           minimum,
           true
         ).state === "ok"
@@ -365,7 +429,11 @@ const preferred: Record<string, number[]>[] = [
 ];
 
 export const arrange = (
-  room: Room, items: Item[], variant: number, minimum = 0.8, fixed?: Positions
+  room: Room,
+  items: Item[],
+  variant: number,
+  minimum = 0.8,
+  fixed?: Positions
 ) => {
   const { w, d } = dimensions(room.points);
   const doors = doorPolygons(room),
@@ -374,11 +442,11 @@ export const arrange = (
     const pos = fixed?.[item.id];
     if (!pos) return [];
     const box = bounds(item, pos);
-    return [{ pos, box, access: clearance(item, pos, box) }];
+    return [{ pos, box, footprint: itemFootprint(item, pos), access: clearance(item, pos) }];
   });
-  const ordered = items.filter((item) => !fixed?.[item.id]).sort(
-    (a, b) => Number(b.owned) - Number(a.owned) || b.w * b.d - a.w * a.d
-  );
+  const ordered = items
+    .filter((item) => !fixed?.[item.id])
+    .sort((a, b) => Number(b.owned) - Number(a.owned) || b.w * b.d - a.w * a.d);
   ordered.forEach((item) => {
     const [fx, fy, rotation] = preferred[variant][item.kind] ?? preferred[variant].other;
     const candidates: ((typeof occupied)[number] & { score: number })[] = [];
@@ -397,23 +465,26 @@ export const arrange = (
         const score = Math.hypot(x - px, y - py) + (r === rotation ? 0 : 0.2);
         const pos = { x: round(x), y: round(y), r };
         const box = bounds(item, pos);
-        const access = clearance(item, pos, box);
+        const footprint = corners(box);
+        const access = clearance(item, pos);
         if (
           !fits(box, room.points) ||
           doors.some((poly) => rectVsPolygon(box, poly)) ||
           occupied.some(
-            (other) => overlap(box, other.box) || (other.access && overlap(box, other.access))
+            (other) =>
+              (overlap(box, other.box) && footprintsOverlap(footprint, other.footprint)) ||
+              (other.access && footprintsOverlap(footprint, other.access))
           )
         )
           return;
         if (
           access &&
-          (!fits(access, room.points) ||
-            doors.some((poly) => rectVsPolygon(access, poly)) ||
-            occupied.some((other) => overlap(access, other.box)))
+          (!fitsFootprint(access, room.points) ||
+            doors.some((poly) => footprintVsPolygon(access, poly)) ||
+            occupied.some((other) => footprintsOverlap(access, other.footprint)))
         )
           return;
-        candidates.push({ pos, box, access, score });
+        candidates.push({ pos, box, footprint, access, score });
       };
       test(px, py);
       test(w - size.w, py);
@@ -426,12 +497,13 @@ export const arrange = (
       }
     }
     candidates.sort((a, b) => a.score - b.score);
-    const boxes = occupied.map((entry) => entry.box);
-    const existingRoute = passage(room, boxes, minimum, true);
+    const footprints = occupied.map((entry) => entry.footprint);
+    const existingRoute = passage(room, footprints, minimum, true);
     const placement =
       existingRoute.state === "ok"
         ? (candidates.find(
-            ({ box }) => passage(room, [...boxes, box], minimum, true).state === "ok"
+            ({ footprint }) =>
+              passage(room, [...footprints, footprint], minimum, true).state === "ok"
           ) ?? candidates[0])
         : candidates[0];
     if (placement) {

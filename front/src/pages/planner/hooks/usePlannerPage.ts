@@ -15,6 +15,7 @@ import type {
   Item,
   PlannerModal,
   Position,
+  Positions,
   Project,
   Room,
   ScanResult,
@@ -191,6 +192,24 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     );
   };
 
+  const saveARViewLayout = (next: Positions) => update({
+    layouts: {
+      ...project.layouts,
+      [project.mode]: { ...project.layouts[project.mode], [project.variant]: next }
+    }
+  });
+
+  const saveOutline = (room: Room, positions: Positions, items: Item[]) => {
+    if (!Object.keys(positions).length) {
+      saveRoom(room, project.passage);
+      return;
+    }
+    update({ room, ...getARLayoutUpdate(project, positions, items) });
+    setSelected(null);
+    close();
+    notify("Комната и мебель сохранены.");
+  };
+
   const storeItem = (item: Item, fromCatalog = false) => {
     const old = project.items.find((candidate) => candidate.id === item.id);
     if (!old && project.items.length >= 60) {
@@ -266,6 +285,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       close,
       openHelp: openARHelp,
       saveScan: saveARScan,
+      saveViewLayout: saveARViewLayout,
       notify
     });
   const { printImage, fileInput, importProject, exportData, chooseImportFile, exportCopy } =
@@ -362,6 +382,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     update,
     move,
     saveRoom,
+    saveOutline,
     storeItem,
     removeItem,
     acceptVoice,

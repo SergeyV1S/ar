@@ -112,6 +112,12 @@ export type XRState = {
   rotation?: number;
   snap?: boolean;
   arranging?: boolean;
+  finding?: boolean;
+  traceStep?: number;
+  canUndo?: boolean;
+  measuredItems?: Item[];
+  measurement?: string;
+  viewEdited?: boolean;
   itemId?: string;
   placedIds?: string[];
 };

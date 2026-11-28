@@ -6,6 +6,7 @@ import { PATHS } from "@/shared/constants/index.ts";
 import { getItemPath } from "../helpers/index.ts";
 import type { usePlanner } from "../hooks/index.ts";
 import { checkLabel, itemSize, sourceLabel } from "../mock/index.ts";
+import { AngleInput } from "./AngleInput.tsx";
 
 type PlanSidebarProps = Pick<
   ReturnType<typeof usePlanner>,
@@ -15,6 +16,7 @@ type PlanSidebarProps = Pick<
   | "itemChoices"
   | "movementControls"
   | "editRoom"
+  | "drawRoom"
   | "scanRoom"
   | "dictate"
   | "addOwned"
@@ -31,6 +33,7 @@ export const PlanSidebar = ({
   itemChoices,
   movementControls,
   editRoom,
+  drawRoom,
   scanRoom,
   dictate,
   addOwned,
@@ -53,12 +56,8 @@ export const PlanSidebar = ({
           <Button icon='pencil' onClick={editItem}>
             Редактировать
           </Button>
-          {positions[current.id] && (
-            <Button icon='rotate' onClick={rotateItem}>
-              Повернуть на 90°
-            </Button>
-          )}
         </div>
+        {positions[current.id] && <AngleInput value={positions[current.id].r} onChange={rotateItem} />}
         {positions[current.id] && (
           <div className='move-tools' role='group' aria-label='Переместить предмет на 3 см'>
             <span>Переместить на 3 см</span>
@@ -82,6 +81,9 @@ export const PlanSidebar = ({
       <div className='inline-actions'>
         <Button icon='ruler' onClick={editRoom}>
           Задать размеры комнаты
+        </Button>
+        <Button icon='pencil' onClick={drawRoom}>
+          Нарисовать комнату
         </Button>
         <Button icon='scan' onClick={scanRoom}>
           AR-обмер

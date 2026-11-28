@@ -9,7 +9,7 @@ import type {
   Project,
   Room
 } from "../types/index.ts";
-import { bounds, corners, dimensions, wallFeature } from "./geometry.ts";
+import { bounds, dimensions, itemFootprint, wallFeature } from "./geometry.ts";
 
 type Paint = string | CanvasGradient | CanvasPattern;
 type Projection = (point: Point, z?: number) => Point;
@@ -18,7 +18,7 @@ export type Target = {
   item: Item;
   box: Box;
   polygon?: Point[];
-  front?: Point[];
+  sides?: Point[][];
   x?: number;
   y?: number;
   w?: number;
@@ -162,23 +162,7 @@ const furniture = (
   c.shadowColor = "rgba(64,45,43,.28)";
   c.shadowBlur = 9;
   c.shadowOffsetY = 4;
-<<<<<<< HEAD
-  if (item.arMesh) {
-    c.shadowColor = "transparent";
-    const top = localMeshPoints(item).map(([x, , z]) => [x * scale, z * scale]);
-    const color = palette[item.kind] ?? palette.other;
-    for (const triangle of meshTriangles(top, item.arMesh.indices)) fill(c, triangle, color);
-  } else if (item.arFootprint) {
-    fill(
-      c,
-      item.arFootprint.map(([x, y]) => [x * w, y * h]),
-      palette[item.kind] ?? palette.other,
-      "#7c6b68"
-    );
-  } else if (item.kind === "sofa" || item.kind === "chair" || item.kind === "stool") {
-=======
-  if (item.kind === "sofa" || item.kind === "chair") {
->>>>>>> parent of 340b4d0 (ar update)
+  if (item.kind === "sofa" || item.kind === "chair" || item.kind === "stool") {
     const couch = item.kind === "sofa";
     shape(c, 0, 0, w, h, h * 0.18, couch ? "#c7b8a6" : "#909a7e");
     c.shadowColor = "transparent";
@@ -306,6 +290,7 @@ const furniture = (
   return {
     item,
     box,
+    polygon: itemFootprint(item, pos).map((point) => to(point)),
     x: to([box.x, box.y])[0],
     y: to([box.x, box.y])[1],
     w: box.w * scale,
@@ -507,32 +492,34 @@ const iso = (
   const targets: Target[] = [];
   [...entries]
     .sort((a, b) => a.box.x + a.box.y - b.box.x - b.box.y)
-    .forEach(({ item, box }) => {
-      const base = corners(box);
+    .forEach(({ item, box, pos }) => {
+      const base = itemFootprint(item, pos);
       const color = palette[item.kind] ?? palette.other;
       const z = item.h;
-      fill(c, [to(base[1]), to(base[2]), to(base[2], z), to(base[1], z)], color, "#7c6b68");
-      fill(c, [to(base[2]), to(base[3]), to(base[3], z), to(base[2], z)], color, "#8e7e73");
-      const front = [to(base[2]), to(base[3]), to(base[3], z), to(base[2], z)];
-      fill(c, front, "#3930391c");
+      const sides = base.flatMap((point, i) => {
+        const next = base[(i + 1) % base.length];
+        const a = to(point);
+        const b = to(next);
+        if (a[0] <= b[0]) return [];
+        const side = [a, b, to(next, z), to(point, z)];
+        fill(c, side, color, "#7c6b68");
+        if (b[1] <= a[1]) fill(c, side, "#3930391c");
+        return [side];
+      });
       const top = base.map((p) => to(p, z));
       fill(c, top, color, selected === item.id ? purple : "#8e7d73");
       fill(c, top, "#ffffff37");
       if (["sofa", "chair", "stool"].includes(item.kind)) {
-        const inset = {
-          x: box.x + box.w * 0.14,
-          y: box.y + box.d * 0.12,
-          w: box.w * 0.72,
-          d: box.d * 0.76
-        };
+        const cx = box.x + box.w / 2;
+        const cy = box.y + box.d / 2;
         fill(
           c,
-          corners(inset).map((p) => to(p, z + 0.01)),
+          base.map(([x, y]) => to([cx + (x - cx) * 0.74, cy + (y - cy) * 0.74], z + 0.01)),
           "#ffffff39",
           "#79726966"
         );
       }
-      targets.push({ item, polygon: [...top], front, box });
+      targets.push({ item, polygon: top, sides, box });
     });
   return { targets, scale, to };
 };

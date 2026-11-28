@@ -37,6 +37,7 @@ export const PlannerDialog = () => {
     action,
     close,
     saveRoom,
+    saveOutline,
     acceptVoice,
     storeItem,
     catalogDraft,
@@ -68,7 +69,7 @@ export const PlannerDialog = () => {
       case "room":
         return <RoomEditor project={project} save={saveRoom} action={action} close={close} />;
       case "outline":
-        return <Outline project={project} save={saveRoom} close={close} />;
+        return <Outline project={project} save={saveOutline} close={close} />;
       case "voice":
         return <Voice project={project} apply={acceptVoice} />;
       case "catalog-search":

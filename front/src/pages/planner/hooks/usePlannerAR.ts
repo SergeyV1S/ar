@@ -12,6 +12,7 @@ type Options = {
   close: () => void;
   openHelp: (mode: ARMode) => void;
   saveScan: (result: ScanResult, starterItems: Item[]) => void;
+  saveViewLayout: (positions: Positions) => void;
   notify: (message: string) => void;
 };
 
@@ -22,6 +23,7 @@ export const usePlannerAR = ({
   close,
   openHelp,
   saveScan,
+  saveViewLayout,
   notify
 }: Options) => {
   const [arSupport, setArSupport] = useState<boolean | null>(null),
@@ -71,12 +73,17 @@ export const usePlannerAR = ({
         items,
         positions,
         roomPoints: project.room.points,
+        availableItems: 60 - project.items.length,
+        starterIds: new Set(starterItems.map(({ id }) => id)),
         onState: (state) => {
           if (!attempt.signal.aborted) setXrState(state);
         },
-        onScan: (data) => {
+        onScan: (data, newItems) => {
           if (attempt.signal.aborted) return;
-          saveScan(data, starterItems);
+          saveScan(data, [...starterItems, ...newItems]);
+        },
+        onViewLayout: (layout) => {
+          if (!attempt.signal.aborted) saveViewLayout(layout);
         },
         onEnd: () => {
           ended = true;
@@ -107,9 +114,9 @@ export const usePlannerAR = ({
   };
 
   const controlAR = (method: keyof ARController, value?: string) => {
-    Promise.resolve(controller.current?.[method]?.(value)).catch(() =>
-      notify("Не удалось выполнить действие в AR.")
-    );
+    void Promise.resolve()
+      .then(() => controller.current?.[method](value))
+      .catch(() => notify("Не удалось выполнить действие в AR."));
   };
 
   const resetARError = () => setArError("");

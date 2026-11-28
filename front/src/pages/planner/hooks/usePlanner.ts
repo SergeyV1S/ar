@@ -1,8 +1,8 @@
-import type { KeyboardEvent, PointerEvent } from "react";
+import type { ChangeEvent, KeyboardEvent, PointerEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { getPlanStatus } from "../helpers/index.ts";
-import { area, pointIn, round, variants } from "../planning/index.ts";
+import { area, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
 import type { Drawing } from "../planning/index.ts";
 import { drawPlan } from "../planning/index.ts";
 import type { Position } from "../types/index.ts";
@@ -77,7 +77,7 @@ export const usePlanner = () => {
       .reverse()
       .find((target) =>
         target.polygon
-          ? pointIn([x, y], target.polygon) || pointIn([x, y], target.front ?? [])
+          ? pointIn([x, y], target.polygon) || target.sides?.some((side) => pointIn([x, y], side))
           : x >= (target.x ?? 0) &&
             x <= (target.x ?? 0) + (target.w ?? 0) &&
             y >= (target.y ?? 0) &&
@@ -146,14 +146,15 @@ export const usePlanner = () => {
   const editItem = () => {
     if (current) action("item", current.id);
   };
-  const rotateItem = () => {
+  const rotateItem = (event: ChangeEvent<HTMLInputElement>) => {
     if (!current) return;
     const pos = positions[current.id];
-    if (pos) move(current.id, { ...pos, r: (pos.r + 90) % 360 });
+    if (pos) move(current.id, rotatePosition(current, pos, event.target.valueAsNumber));
   };
   const clearSelection = () => setChosen(null);
   const openChecks = () => action("checks");
   const editRoom = () => action("room");
+  const drawRoom = () => action("outline");
   const scanRoom = () => action("ar-scan");
   const dictate = () => action("voice");
   const addOwned = () => action("add-owned");
@@ -198,6 +199,7 @@ export const usePlanner = () => {
     clearSelection,
     openChecks,
     editRoom,
+    drawRoom,
     scanRoom,
     dictate,
     addOwned,

@@ -471,11 +471,20 @@
     @apply absolute w-px h-px m-0 opacity-0;
   }
   .outline-canvas {
-    @apply w-full h-[clamp(230px,_43vw,_350px)] cursor-crosshair block;
+    @apply w-full h-[clamp(230px,_43vw,_350px)] cursor-crosshair block touch-none;
     border: 1px solid #e5dcef;
     @apply rounded-[9px];
     background: #f8f5fb radial-gradient(circle, #d9cae8 1px, transparent 1.05px) 0 0 / 17px 17px;
     @apply mb-2;
+  }
+  .angle-input {
+    @apply my-1 flex items-center gap-2 text-xs;
+  }
+  .angle-input input[type='range'] {
+    @apply min-w-14 w-full max-w-40 accent-purple p-0;
+  }
+  .angle-input output {
+    @apply min-w-8 tabular-nums;
   }
   .item-preview {
     @apply flex items-center gap-2.5 mb-2.25;

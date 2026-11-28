@@ -11,3 +11,5 @@ export {
 } from "./view.ts";
 export { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, upsertItem } from "./projectEdits.ts";
 export { getTranscriptionError, NO_SPEECH_MESSAGE } from "./voice.ts";
+export { scaleRoomStroke, simplifyRoomStroke } from "./roomSketch.ts";
+export { drawRoomSketch } from "./drawRoomSketch.ts";

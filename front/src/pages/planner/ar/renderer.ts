@@ -106,6 +106,12 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
     },
     clear(framebuffer: WebGLFramebuffer | null) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.enableVertexAttribArray(tint);
+      gl.vertexAttribPointer(position, 3, gl.FLOAT, false, stride, 0);
+      gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 12);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
     drawScene(mesh: Mesh) {

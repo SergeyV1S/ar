@@ -4,6 +4,7 @@ import { Button, Field, IconButton, Select } from "../../../shared/components/in
 import type { ARController } from "../ar/index.ts";
 import { useXRControls } from "../hooks/index.ts";
 import type { ARMode, Item, XRState } from "../types/index.ts";
+import { AngleInput } from "./AngleInput.tsx";
 
 export type XRControlsProps = {
   mode: ARMode | null;
@@ -17,11 +18,13 @@ const metrics = (props: XRState) => {
   const rows: { label: string; value: string }[] = [];
   if (props.area) rows.push({ label: "Площадь", value: `${props.area.toFixed(1)} м²` });
   if (props.perimeter) rows.push({ label: "Периметр", value: `${props.perimeter.toFixed(1)} м` });
-  if (props.rotation) rows.push({ label: "Поворот", value: `${props.rotation}°` });
   return rows;
 };
 
-const meters = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const meters = new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 
 export const XRControls = (props: XRControlsProps) => {
   const { mode, state, items, overlayRef } = props;
@@ -32,6 +35,8 @@ export const XRControls = (props: XRControlsProps) => {
     canClose,
     canUndo,
     canRotate,
+    canRemove,
+    tracing,
     snap,
     changeKind,
     changeItem,
@@ -42,9 +47,14 @@ export const XRControls = (props: XRControlsProps) => {
     closeOutline,
     collect,
     toggleSnap,
-    rotate
+    rotate,
+    findObjects,
+    trace,
+    removeItem
   } = useXRControls(props);
   const rows = metrics(state);
+  const furniture = [...items, ...(state.measuredItems ?? [])];
+  const showItems = state.arranging || (!scan && state.positioned);
   return (
     <div
       className='fixed inset-0 bg-transparent pointer-events-none z-20 text-white'
@@ -77,7 +87,8 @@ export const XRControls = (props: XRControlsProps) => {
             ))}
           </dl>
         )}
-        {scan && state.closed && !state.arranging && (
+        {state.measurement && <p className='mb-2 text-xs'>{state.measurement}</p>}
+        {scan && state.closed && !state.arranging && !tracing && !state.finding && (
           <Field label='Проёмы и розетки'>
             <Select value={state.kind ?? "corner"} onChange={changeKind}>
               <option value='corner'>Только стены</option>
@@ -87,41 +98,50 @@ export const XRControls = (props: XRControlsProps) => {
             </Select>
           </Field>
         )}
-        {state.arranging && (
+        {showItems && (
           <Field label='Предмет мебели'>
             <Select value={state.itemId ?? ""} onChange={changeItem}>
-              <option value=''>Выберите предмет</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                  {state.placedIds?.includes(item.id) ? " · размещён" : ""}
-                </option>
-              ))}
+              <option value=''>{scan ? "Выберите предмет" : "Весь план"}</option>
+              {furniture
+                .filter((item) => scan || state.placedIds?.includes(item.id))
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                    {state.placedIds?.includes(item.id) ? " · размещён" : ""}
+                  </option>
+                ))}
             </Select>
           </Field>
         )}
+        {canRotate && <AngleInput value={state.rotation ?? 0} onChange={rotate} />}
         <div className='xr-actions'>
           {scan && !state.closed && (state.count ?? 0) >= 2 && (
-            <Button className={snap ? "xr-toggle on" : "xr-toggle"} onClick={toggleSnap} aria-pressed={snap}>
+            <Button
+              className={snap ? "xr-toggle on" : "xr-toggle"}
+              onClick={toggleSnap}
+              aria-pressed={snap}
+            >
               {snap ? "Привязка вкл." : "Привязка выкл."}
             </Button>
           )}
           <Button icon='rotate' onClick={undo} disabled={!canUndo}>
             {scan ? "Отменить" : "Сбросить"}
           </Button>
-          {canRotate && (
-            <Button icon='rotate' onClick={rotate}>
-              Повернуть
-            </Button>
-          )}
-          {canClose && (
-            <Button onClick={closeOutline}>
-              Замкнуть контур
-            </Button>
-          )}
+          {canRemove && <Button onClick={removeItem}>Убрать с плана</Button>}
+          {canClose && <Button onClick={closeOutline}>Замкнуть контур</Button>}
           {scan && state.closed && (
             <>
-              {items.length > 0 && (
+              {!state.arranging && !tracing && (
+                <Button onClick={findObjects}>
+                  {state.finding ? "Завершить поиск" : "Распознать мебель"}
+                </Button>
+              )}
+              {!state.arranging && !state.finding && (
+                <Button onClick={trace}>
+                  {tracing ? "Выйти из выделения" : "Выделить предмет вручную"}
+                </Button>
+              )}
+              {furniture.length > 0 && !tracing && !state.finding && (
                 <Button onClick={arrange}>
                   {state.arranging ? "К обмеру" : "Расставить мебель"}
                 </Button>
@@ -130,10 +150,16 @@ export const XRControls = (props: XRControlsProps) => {
                 icon='check'
                 className={showCollect ? undefined : "primary xr-primary"}
                 onClick={save}
+                disabled={tracing}
               >
                 {state.placedIds?.length ? "Сохранить план" : "Сохранить комнату"}
               </Button>
             </>
+          )}
+          {!scan && state.viewEdited && (
+            <Button icon='check' onClick={save}>
+              Сохранить повороты
+            </Button>
           )}
           {showCollect && (
             <Button

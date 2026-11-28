@@ -137,8 +137,7 @@ export const validateImport = (input: unknown): Project => {
                   const position = record(layout[id]);
                   return numeric(position.x, -35, 35) &&
                     numeric(position.y, -35, 35) &&
-                    typeof position.r === "number" &&
-                    [0, 90, 180, 270].includes(position.r)
+                    numeric(position.r, 0, 360)
                     ? [[id, { x: position.x, y: position.y, r: position.r }]]
                     : [];
                 })

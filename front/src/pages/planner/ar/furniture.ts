@@ -22,7 +22,7 @@ const sofa = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number,
   const backDepth = Math.min(d * 0.24, 0.28);
   const legHeight = Math.min(h * 0.11, 0.14);
   m.box(0, legHeight, 0, w, h * 0.2, d, color);
-  m.box(0, legHeight + h * 0.2, 0, w, h * 0.62, backDepth, color);
+  m.box(0, legHeight + h * 0.2, 0, w, h * 0.8 - legHeight, backDepth, color);
   m.box(0, legHeight + h * 0.24, backDepth, arm, h * 0.36, d - backDepth, color);
   m.box(w - arm, legHeight + h * 0.24, backDepth, arm, h * 0.36, d - backDepth, color);
   const seats = Math.max(1, Math.round(w / 0.72));
@@ -48,7 +48,7 @@ const chair = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number
   const color = dye as [number, number, number];
   const legHeight = Math.min(h * 0.42, 0.44);
   m.box(0, legHeight, 0, w, h * 0.09, d, color);
-  m.box(0, legHeight + h * 0.09, 0, w, h * 0.42, Math.min(d * 0.18, 0.1), color);
+  m.box(0, legHeight + h * 0.09, 0, w, h * 0.91 - legHeight, Math.min(d * 0.18, 0.1), color);
   for (const x of [w * 0.08, w * 0.92])
     for (const z of [d * 0.1, d * 0.9])
       m.cylinder(x, 0, z, Math.min(w, d) * 0.035, Math.min(w, d) * 0.035, legHeight, wood, 8);
@@ -114,31 +114,14 @@ const pouf = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number,
 const generic = (m: ReturnType<typeof createMesh>, w: number, h: number, d: number, dye: number[]) => {
   const color = dye as [number, number, number];
   m.box(0, 0, 0, w, h, d, color);
-  m.box(-0.004, h, -0.004, w + 0.008, 0.008, d + 0.008, darkWood);
 };
 
 const shapeOf = (item: Item) => {
   const dye = rgb(palette[item.kind] ?? palette.other) as [number, number, number];
   const { w, d, h } = item;
   const m = createMesh();
-<<<<<<< HEAD
-  if (item.arMesh) {
-    meshTriangles(localMeshPoints(item), item.arMesh.indices).forEach(([a, b, c]) =>
-      m.tri(a, b, c, dye)
-    );
-  } else if (item.arFootprint)
-    itemVolume(
-      m,
-      item.arFootprint.map(([x, z]) => [x * w, 0, z * d]),
-      h,
-      dye
-    );
-  else if (item.kind === "sofa") sofa(m, w, h, d, dye);
-  else if (item.kind === "chair" || item.kind === "stool") chair(m, w, h, d, dye);
-=======
   if (item.kind === "sofa") sofa(m, w, h, d, dye);
-  else if (item.kind === "chair") chair(m, w, h, d, dye);
->>>>>>> parent of 340b4d0 (ar update)
+  else if (item.kind === "chair" || item.kind === "stool") chair(m, w, h, d, dye);
   else if (item.kind === "table") table(m, w, h, d, dye);
   else if (item.kind === "cabinet") cabinet(m, w, h, d, dye);
   else if (item.kind === "pouf") pouf(m, w, h, d, dye);

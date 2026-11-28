@@ -1,25 +1,28 @@
 import type { ARMode, Point, XRState } from "../types/index.ts";
 import { maxCorners } from "./geometry.ts";
+import { traceInstructions } from "./itemTrace.ts";
 
 export const getInstructions = (
   mode: ARMode,
   origin: Point | null,
-  { positioned, kind, count = 0, ready, closed, closing, arranging, itemId }: XRState,
+  { positioned, kind, count = 0, ready, closed, closing, arranging, itemId, finding, traceStep }: XRState,
   pending: number
 ) => {
   if (mode === "view") {
     if (positioned)
-      return "Мебель размещена. Обойдите её с камерой, поверните модель кнопкой или переставьте.";
+      return "Выберите предмет, чтобы повернуть его. Без выбранного предмета поворачивается весь план.";
     if (origin) return "Отметьте вторую точку вдоль стены вправо от начала плана.";
     return "Наведите прицел на угол пола, соответствующий началу плана.";
   }
+  if (finding) return "Медленно наведите камеру на мебель. Покажите каждый предмет с двух сторон для замера.";
+  if (traceStep !== undefined) return traceInstructions[traceStep];
   if (arranging) {
     if (!itemId) return "Выберите предмет. Чтобы передвинуть мебель, выберите её снова.";
     if (!ready) return "Наведите прицел на свободное место внутри контура, где поместится предмет.";
     return "Подтвердите положение или поверните предмет.";
   }
   if (kind === "corner") {
-    if (closed) return "Контур замкнут. Отметьте проёмы, расставьте мебель или сохраните комнату.";
+    if (closed) return "Найдите мебель камерой, выделите её вручную или отметьте проёмы.";
     if (!count && !ready) return "Наведите камеру на пол и медленно подвигайте телефоном.";
     if (!count) return "Наведите прицел на стык стен с полом и отметьте первый угол.";
     if (closing) return "Прицел на первом углу. Замкните контур.";

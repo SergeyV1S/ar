@@ -5,6 +5,7 @@ import { PATHS } from "@/shared/constants/index.ts";
 import { decimal } from "@/shared/helpers/index.ts";
 
 import { usePlanner } from "../hooks/index.ts";
+import { AngleInput } from "./AngleInput.tsx";
 import { PlanSidebar } from "./PlanSidebar.tsx";
 
 const MiniPlan = ({ style }: { style: string }) => {
@@ -97,7 +98,7 @@ export const Planner = () => {
               <button className='selected-item-name' onClick={editItem}>
                 {current.name}
               </button>
-              <IconButton icon='rotate' label='Повернуть на 90 градусов' onClick={rotateItem} />
+              <AngleInput value={positions[current.id].r} onChange={rotateItem} />
               <IconButton icon='close' label='Снять выделение' onClick={clearSelection} />
             </div>
           )}

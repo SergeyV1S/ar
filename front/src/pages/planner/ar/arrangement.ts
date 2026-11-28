@@ -1,11 +1,16 @@
 import { newId } from "../../../shared/helpers/index.ts";
-import { bounds, fits, round } from "../planning/index.ts";
+import {
+  centeredPosition,
+  fitsFootprint,
+  itemFootprint,
+  normalizeAngle,
+  rotatePosition,
+  round
+} from "../planning/index.ts";
 import type { Item, Point, Position, Positions } from "../types/index.ts";
 import { furnitureMesh } from "./furniture.ts";
-import type { getScanLayout } from "./geometry.ts";
-import { toRoom } from "./geometry.ts";
-
-type ScanLayout = NonNullable<ReturnType<typeof getScanLayout>>;
+import type { ScanLayout } from "./geometry.ts";
+import { roomPoint, worldPoint } from "./geometry.ts";
 
 const prototypes = [
   { name: "Диван", kind: "sofa", w: 2.2, d: 0.9, h: 0.83 },
@@ -23,49 +28,47 @@ export const createARStarterItems = (available: number): Item[] =>
     material: ""
   }));
 
-export const aimAtFloor = (camera: Float32Array, floor: number): Point | null => {
-  const down = camera[9];
-  if (down <= 0.01) return null;
-  const distance = (camera[13] - floor) / down;
-  if (distance <= 0 || distance > 35) return null;
-  return [camera[12] - camera[8] * distance, floor, camera[14] - camera[10] * distance];
-};
-
-const toWorld = ({ origin, frame }: ScanLayout, x: number, z: number): Point => [
-  origin[0] + x * frame.cos - z * frame.sin,
-  origin[1],
-  origin[2] + x * frame.sin + z * frame.cos
-];
-
 export const getItemTarget = (layout: ScanLayout, item: Item, hit: Point, rotation: number) => {
-  const [x, z] = toRoom({ ...layout.frame, x: layout.origin[0], z: layout.origin[2] }, hit);
-  const size = bounds(item, { x: 0, y: 0, r: rotation });
-  const position = { x: round(x - size.w / 2), y: round(z - size.d / 2), r: rotation };
+  const center = roomPoint(layout, hit);
+  const raw = centeredPosition(item, center, rotation);
+  const position = { ...raw, x: round(raw.x), y: round(raw.y) };
+  const dx = position.x - raw.x;
+  const dz = position.y - raw.y;
   return {
     position,
-    valid: fits(bounds(item, position), layout.points),
-    modelOrigin: toWorld(
-      layout,
-      position.x + (size.w - item.w) / 2,
-      position.y + (size.d - item.d) / 2
-    )
+    valid: fitsFootprint(itemFootprint(item, position), layout.points),
+    modelOrigin: worldPoint(layout, [center[0] + dx - item.w / 2, center[1] + dz - item.d / 2])
   };
 };
 
-export const createArrangement = (items: Item[]) => {
+export const createArrangement = (initialItems: Item[]) => {
+  const items = new Map(initialItems.map((item) => [item.id, item]));
+  const added = new Set<string>();
   const placed = new Map<string, Position>();
   const history: { id: string; previous: Position | undefined }[] = [];
   let selected: Item | undefined;
+  let rotating = false;
   let rotation = 0;
   let model = furnitureMesh([], {});
+  let withoutSelection = model;
   let preview = model;
 
   const positions = (): Positions => Object.fromEntries(placed);
   const updateModel = () => {
-    model = furnitureMesh(items.filter(({ id }) => id !== selected?.id && placed.has(id)), positions());
+    const visible = [...items.values()].filter(({ id }) => placed.has(id));
+    const layout = positions();
+    model = furnitureMesh(visible, layout);
+    withoutSelection =
+      selected && placed.has(selected.id)
+        ? furnitureMesh(
+            visible.filter(({ id }) => id !== selected?.id),
+            layout
+          )
+        : model;
   };
   const select = (id?: string) => {
-    selected = items.find((item) => item.id === id);
+    selected = id ? items.get(id) : undefined;
+    rotating = false;
     rotation = selected ? (placed.get(selected.id)?.r ?? 0) : 0;
     if (selected) preview = furnitureMesh([selected], { [selected.id]: { x: 0, y: 0, r: 0 } });
     updateModel();
@@ -73,7 +76,7 @@ export const createArrangement = (items: Item[]) => {
   const place = (position: Position) => {
     if (!selected) return;
     const { id } = selected;
-    history.push({ id, previous: placed.get(id) });
+    if (!rotating) history.push({ id, previous: placed.get(id) });
     placed.set(id, position);
     select();
   };
@@ -81,17 +84,55 @@ export const createArrangement = (items: Item[]) => {
     const change = history.pop();
     if (!change) return;
     if (change.previous) placed.set(change.id, change.previous);
-    else placed.delete(change.id);
+    else {
+      placed.delete(change.id);
+      if (added.delete(change.id)) items.delete(change.id);
+    }
+    select();
+  };
+
+  const add = (item: Item, pos: Position) => {
+    if (!added.has(item.id)) history.push({ id: item.id, previous: undefined });
+    added.add(item.id);
+    items.set(item.id, item);
+    placed.set(item.id, pos);
+    updateModel();
+  };
+
+  const removeSelected = () => {
+    if (!selected) return;
+    const previous = placed.get(selected.id);
+    if (!previous) return;
+    history.push({ id: selected.id, previous });
+    placed.delete(selected.id);
     select();
   };
 
   return {
+    add,
     select,
     place,
     undo,
+    removeSelected,
     positions,
-    rotate: () => {
-      rotation = (rotation + 90) % 360;
+    rotate: (angle: number) => {
+      rotation = normalizeAngle(angle);
+      if (!selected) return;
+      const pos = placed.get(selected.id);
+      if (!pos || pos.r === rotation) return;
+      if (!rotating) history.push({ id: selected.id, previous: pos });
+      rotating = true;
+      placed.set(selected.id, rotatePosition(selected, pos, rotation));
+      updateModel();
+    },
+    get items() {
+      return [...items.values()];
+    },
+    get additions() {
+      return [...items.values()].filter(({ id }) => added.has(id) && placed.has(id));
+    },
+    get canUndo() {
+      return history.length > 0;
     },
     get selected() {
       return selected;
@@ -104,6 +145,9 @@ export const createArrangement = (items: Item[]) => {
     },
     get model() {
       return model;
+    },
+    get withoutSelection() {
+      return withoutSelection;
     },
     get preview() {
       return preview;

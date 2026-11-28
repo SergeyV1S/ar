@@ -1,4 +1,5 @@
 import { arHelp } from "../ar/index.ts";
+import { traceLabels } from "../ar/itemTrace.ts";
 import type { ARMode, Inspection, Opening, XRState } from "../types/index.ts";
 
 export const getPlanStatus = (inspection: Inspection, passage: number) => {
@@ -25,9 +26,10 @@ export const getOpeningWidth = (
 
 export const getARCollectLabel = (
   mode: ARMode | null,
-  { positioned, count, kind, closing, arranging, itemId, placedIds }: XRState
+  { positioned, count, kind, closing, arranging, itemId, placedIds, traceStep }: XRState
 ) => {
   if (mode === "scan") {
+    if (traceStep !== undefined) return traceLabels[traceStep];
     if (arranging) {
       return itemId && placedIds?.includes(itemId) ? "Переместить сюда" : "Поставить сюда";
     }

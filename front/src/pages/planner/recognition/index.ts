@@ -23,17 +23,16 @@ const loadModel = async () => {
   return load({ base: "lite_mobilenet_v2", modelUrl });
 };
 
-export const identifyFurniture = async (uri: string) => {
-  const image = new Image();
-  image.src = uri;
-  await image.decode();
+export const recognizeFurniture = async (image: HTMLImageElement | ImageData, threshold: number) => {
   if (!model)
     model = loadModel().catch((error) => {
       model = null;
       throw error;
     });
   const detector = await model;
-  const detected = await detector.detect(image, 20, 0.45);
+  const detected = await detector.detect(image, 20, threshold);
+  const width = image instanceof ImageData ? image.width : image.naturalWidth;
+  const height = image instanceof ImageData ? image.height : image.naturalHeight;
   return detected.flatMap(({ class: key, score, bbox }) => {
     if (!Object.hasOwn(mapping, key)) return [];
     const [kind, title] = mapping[key];
@@ -43,11 +42,18 @@ export const identifyFurniture = async (uri: string) => {
         title,
         score,
         box: bbox.map(
-          (value, i) => (100 * value) / (i % 2 === 0 ? image.naturalWidth : image.naturalHeight)
+          (value, i) => (100 * value) / (i % 2 === 0 ? width : height)
         )
       }
     ];
   });
 };
 
-export type FurnitureMatch = Awaited<ReturnType<typeof identifyFurniture>>[number];
+export const identifyFurniture = async (uri: string) => {
+  const image = new Image();
+  image.src = uri;
+  await image.decode();
+  return recognizeFurniture(image, 0.45);
+};
+
+export type FurnitureMatch = Awaited<ReturnType<typeof recognizeFurniture>>[number];

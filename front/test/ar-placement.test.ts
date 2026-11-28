@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  aimAtFloor,
   createArrangement,
   createARStarterItems,
   getItemTarget
 } from "../src/pages/planner/ar/arrangement.ts";
 import { getScanLayout } from "../src/pages/planner/ar/geometry.ts";
+import { projectToFloor } from "../src/pages/planner/ar/projection.ts";
 import { createViewAnchor } from "../src/pages/planner/ar/viewAnchor.ts";
 import { getARLayoutUpdate } from "../src/pages/planner/helpers/index.ts";
 import { initialProject, positionsFor, validateImport } from "../src/pages/planner/mock/index.ts";
@@ -36,9 +36,12 @@ test("an aim ray intersects the measured floor and ignores the horizon", () => {
   pose[10] = 0.8;
   pose[12] = 4;
   pose[13] = 0.8;
-  assert.deepEqual(aimAtFloor(pose, -1)?.map(round), [4, -1, -2.4]);
+  const projection = new Float32Array(16);
+  projection[0] = projection[5] = 1;
+  const camera = { transform: pose, projection };
+  assert.deepEqual(projectToFloor(camera, 0.5, 0.5, -1)?.map(round), [4, -1, -2.4]);
   pose[9] = 0;
-  assert.equal(aimAtFloor(pose, -1), null);
+  assert.equal(projectToFloor(camera, 0.5, 0.5, -1), null);
 });
 
 test("moving placed furniture replaces its position and undo restores it", () => {
@@ -49,7 +52,8 @@ test("moving placed furniture replaces its position and undo restores it", () =>
   arrangement.place(first);
   arrangement.select(sofa.id);
   assert.equal(arrangement.rotation, 90);
-  arrangement.rotate();
+  arrangement.rotate(37);
+  assert.equal(arrangement.positions()[sofa.id].r, 37);
   const moved = { x: 2, y: 1, r: arrangement.rotation };
   arrangement.place(moved);
   assert.deepEqual(arrangement.positions(), { [sofa.id]: moved });
@@ -62,7 +66,7 @@ test("moving placed furniture replaces its position and undo restores it", () =>
 test("saving the AR layout persists only placed starter items and keeps their coordinates", () => {
   const project = { ...initialProject(), items: [], variant: 1 };
   const starter = createARStarterItems(3);
-  const positions = { [starter[1].id]: { x: 1.4, y: 1.6, r: 270 } };
+  const positions = { [starter[1].id]: { x: 1.4, y: 1.6, r: 37.25 } };
   const saved = validateImport({ ...project, ...getARLayoutUpdate(project, positions, starter) });
   assert.deepEqual(saved.items.map(({ id }) => id), [starter[1].id]);
   assert.deepEqual(positionsFor(saved), positions);
