@@ -68,7 +68,7 @@ export const useRoomEditor = ({ project, save, action, guided }: RoomEditorProps
         name: readText(data, "name") || project.room.name,
         openings: normalizedOpenings,
         verified: status,
-        source: changed ? "manual" : room.source
+        source: changed || room.source === "draft" ? "manual" : room.source
       },
       readNumber(data, "passage") / 100
     );

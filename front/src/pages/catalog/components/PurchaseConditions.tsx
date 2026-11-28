@@ -7,8 +7,8 @@ export const PurchaseConditions = () => {
   const { project, budgetValue, changeBudget, formatBudget, changeMaterial, changeMode } =
     usePurchaseConditions();
   return (
-    <section className='panel editor-panel' aria-labelledby='purchase-conditions'>
-      <h2 id='purchase-conditions'>Условия подбора</h2>
+    <details className='panel editor-panel purchase-settings'>
+      <summary>Условия подбора</summary>
       <div className='purchase-conditions'>
         <Field label='Способ покупки'>
           <Select name='purchase-mode' value={project.mode} onChange={changeMode}>
@@ -32,6 +32,7 @@ export const PurchaseConditions = () => {
               name='budget'
               type='text'
               inputMode='numeric'
+              placeholder='Не задан'
               value={budgetValue}
               onChange={changeBudget}
               onBlur={formatBudget}
@@ -40,6 +41,6 @@ export const PurchaseConditions = () => {
           </span>
         </Field>
       </div>
-    </section>
+    </details>
   );
 };

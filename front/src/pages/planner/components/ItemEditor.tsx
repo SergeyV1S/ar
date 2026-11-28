@@ -141,7 +141,7 @@ export const ItemEditor = (props: ItemEditorProps) => {
           <div className='form-grid three'>
             {[
               ["w", "Ширина, см"] as const,
-              ["d", "Глубина, см"] as const,
+              ["d", "Длина, см"] as const,
               ["h", "Высота, см"] as const
             ].map(([key, label]) => (
               <Field label={label} key={key}>

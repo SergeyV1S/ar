@@ -2,37 +2,26 @@ import { Suspense } from "react";
 import { Link } from "react-router";
 
 import { getItemPath, getWishPath, getWishPurchases } from "@/pages/planner/helpers/index.ts";
-import { RetailCatalog } from "@/pages/planner/components/index.ts";
+import { ProjectHeader, RetailCatalog } from "@/pages/planner/components/index.ts";
 import { usePlannerContext } from "@/pages/planner/hooks/index.ts";
 import { itemSize } from "@/pages/planner/mock/index.ts";
 import { Button } from "@/shared/components/index.ts";
 import { PATHS } from "@/shared/constants/index.ts";
 import { money } from "@/shared/helpers/index.ts";
 
-import { CatalogLoading, CatalogResults, PurchaseConditions, WishCatalog } from "./components/index.ts";
+import { CatalogLoading, PurchaseConditions, WishCatalog } from "./components/index.ts";
 import { useCatalogPage } from "./hooks/index.ts";
 
 export const CatalogPage = () => {
   const { project, openProcurement } = usePlannerContext();
-  const { data, fitOnly, selectedItem, wish, difference, hasUnknownPrices, filterOffers, addManually } =
+  const { data, selectedItem, wish, difference, hasUnknownPrices, addManually } =
     useCatalogPage();
   const planPath = getItemPath(PATHS.planner, selectedItem?.id ?? null);
   return (
-    <>
-      <header className='project-head'>
-        <div>
-          <h1>Каталог</h1>
-          <p>
-            {project.room.name}
-            {wish && ` · ${wish.name}`}
-          </p>
-        </div>
-        <div className='editor-links'>
-          <Link className='btn' to={PATHS.estimate}>
-            Открыть смету
-          </Link>
-        </div>
-      </header>
+    <div className='planner-flow'>
+      <ProjectHeader title='Каталог' description={wish ? `${project.room.name} · ${wish.name}` : project.room.name} illustrated={false}>
+        <Link className='btn' to={PATHS.estimate}>Открыть смету</Link>
+      </ProjectHeader>
       {!wish && <PurchaseConditions />}
       <div className='catalog-layout'>
         <aside className='panel editor-panel catalog-context' aria-label='Контекст подбора'>
@@ -44,11 +33,13 @@ export const CatalogPage = () => {
             </>
           ) : (
             <>
-              <h2>{difference < 0 ? "Превышение бюджета" : "Остаток бюджета"}</h2>
-              <p>
-                <strong>{money(Math.abs(difference))}</strong>
-              </p>
-              {hasUnknownPrices && <p>Предварительно, по указанным ценам.</p>}
+              {difference === undefined ? <h2>Бюджет не задан</h2> : (
+                <>
+                  <h2>{difference < 0 ? "Превышение бюджета" : "Остаток бюджета"}</h2>
+                  <p><strong>{money(Math.abs(difference))}</strong></p>
+                  {hasUnknownPrices && <p>Предварительно, по указанным ценам.</p>}
+                </>
+              )}
             </>
           )}
           {project.brief && project.brief.wishes.length > 0 && (
@@ -81,31 +72,17 @@ export const CatalogPage = () => {
           {!wish && project.mode === "retail" && (
             <RetailCatalog showHeading={false} />
           )}
-          {!wish && project.mode === "office" && (
-            <>
-              <p className='support-text'>
-                Демонстрационные предложения. Для фактического подбора требуется подключение источника.
-              </p>
-              <label className='check-field'>
-                <input type='checkbox' checked={fitOnly} onChange={filterOffers} />
-                Показывать подходящие и уже добавленные
-              </label>
-              <Suspense fallback={<CatalogLoading />}>
-                <CatalogResults result={data.offers} fitOnly={fitOnly} planPath={planPath} />
-              </Suspense>
-            </>
-          )}
-          {!wish && project.mode === "used" && (
-            <p className='support-text'>Выберите позицию в списке покупок, чтобы найти объявления Авито.</p>
+          {!wish && project.mode !== "retail" && (
+            <p className='support-text'>Выберите позицию в списке покупок или внесите предложение вручную.</p>
           )}
           <div className='editor-links'>
-            {!wish && project.mode === "used" && (
+            {!wish && project.mode !== "retail" && (
               <Link className='btn' to={`${PATHS.planner}?step=wishes`}>К списку покупок</Link>
             )}
             {project.mode === "office" && <Button onClick={openProcurement}>Поля закупки</Button>}
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 };

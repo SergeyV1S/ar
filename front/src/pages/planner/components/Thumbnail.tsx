@@ -12,7 +12,7 @@ export const Thumbnail = ({
   if (item.photo)
     return (
       <span className={`product-image ${className}`}>
-        <img src={item.photo} alt='' />
+        <img src={item.photo} alt='' loading='lazy' decoding='async' referrerPolicy='no-referrer' />
       </span>
     );
   return (

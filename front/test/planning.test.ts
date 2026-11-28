@@ -1,3 +1,4 @@
+import { exampleProject } from "./exampleProject.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -9,7 +10,6 @@ import { wallSegment, walls } from "../src/pages/planner/ar/scene.ts";
 import { makeCsv } from "../src/pages/planner/helpers/index.ts";
 import { plannerLoader } from "../src/pages/planner/loader.ts";
 import {
-  initialProject,
   newProtection,
   parseVoice,
   positionsFor,
@@ -32,7 +32,7 @@ import {
 import type { Point } from "../src/pages/planner/types/index.ts";
 
 test("the example has distinct valid plans and an 80 cm route", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const layouts = [0, 1, 2].map((index) => positionsFor(project, index));
   assert.notDeepEqual(layouts[0], layouts[1]);
   for (const positions of layouts) {
@@ -43,7 +43,7 @@ test("the example has distinct valid plans and an 80 cm route", () => {
 });
 
 test("moving furniture into a door arc and through the wall produces warnings", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const items = visibleItems(project);
   const positions = { ...positionsFor(project), sofa: { x: 4.25, y: 3.0, r: 0 } };
   const { warnings } = inspect(project.room, items, positions);
@@ -52,7 +52,7 @@ test("moving furniture into a door arc and through the wall produces warnings", 
 });
 
 test("a narrow doorway cannot pass the requested minimum clearance", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const door = project.room.openings.find((opening) => opening.type === "door");
   assert(door);
   door.width = 0.73;
@@ -100,7 +100,7 @@ test("self-intersecting outlines and unsafe imported supplier URLs are handled",
     ]),
     false
   );
-  const project = initialProject();
+  const project = exampleProject();
   const lastItem = project.items.at(-1);
   assert(lastItem);
   lastItem.url = "javascript:alert(1)";
@@ -122,7 +122,7 @@ test("self-intersecting outlines and unsafe imported supplier URLs are handled",
 test("voice parser produces editable meter dimensions and a ruble budget", () => {
   const result = parseVoice(
     "Комната четыре на три, диван 220 сантиметров на 95 см, бюджет восемьдесят тысяч, материал ЛДСП",
-    initialProject()
+    exampleProject()
   );
   assert.deepEqual(result.patch.size, [4, 3]);
   assert(result.patch.sofa);
@@ -133,7 +133,7 @@ test("voice parser produces editable meter dimensions and a ruble budget", () =>
 });
 
 test("office export requires procurement information and supplier details", () => {
-  const project = initialProject();
+  const project = exampleProject();
   project.mode = "office";
   const lastItem = project.items.at(-1);
   assert(lastItem);
@@ -166,7 +166,7 @@ test("the planner loader reads existing browser projects and reports damaged dat
     else Reflect.deleteProperty(globalThis, "localStorage");
   });
 
-  const project = initialProject();
+  const project = exampleProject();
   project.room.name = "Сохранённая гостиная";
   let stored = JSON.stringify(project);
   Object.defineProperty(globalThis, "localStorage", {
@@ -191,11 +191,11 @@ test("the planner loader reads existing browser projects and reports damaged dat
   stored = "false";
   const invalid = plannerLoader();
   assert.equal(invalid.kind, "unreadable");
-  assert.equal(invalid.project.room.name, initialProject().room.name);
+  assert.equal(invalid.project.room.name, exampleProject().room.name);
 });
 
 test("audit room keeps a passable layout and identifies the blocking table when moved", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const door = { id: "door", type: "door", wall: 0, offset: 0.2, width: 0.9, hinge: "start" };
   project.room = { ...project.room, points: rect(2.8, 2), openings: [door] };
   const table = { ...project.items[0], id: "table", name: "Стол", kind: "table", w: 1.2, d: 1.5 };
@@ -216,7 +216,7 @@ test("audit room keeps a passable layout and identifies the blocking table when 
 });
 
 test("estimate quantities and services round-trip without adding plan objects", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const table = {
     ...project.items[0],
     id: "table",
@@ -239,7 +239,7 @@ test("estimate quantities and services round-trip without adding plan objects", 
 });
 
 test("office backups require the original password and retain partial procurement fields", async () => {
-  const project = { ...initialProject(), mode: "office", procurement: { purpose: "Архив" } };
+  const project = { ...exampleProject(), mode: "office", procurement: { purpose: "Архив" } };
   await assert.rejects(serializeProject(project, null));
   const password = "test-password";
   const encoded = await serializeProject(project, await newProtection(password));
@@ -253,7 +253,7 @@ test("office backups require the original password and retain partial procuremen
 });
 
 test("a project can retain missing prices without treating a free item as unknown", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const base = { ...project.items[0], owned: false, mode: project.mode };
   const draft = {
     ...project,
@@ -427,7 +427,7 @@ test("a socket and a window on the same wall are not deduplicated", () => {
 });
 
 test("a voice request for two chairs applies the limit to both and keeps the project budget", () => {
-  const { patch } = parseVoice("Хочу добавить два стула, бюджет 12 000 ₽", initialProject());
+  const { patch } = parseVoice("Хочу добавить два стула, бюджет 12 000 ₽", exampleProject());
   assert.equal(patch.purchase?.category, "chair");
   assert.equal(patch.purchase?.quantity, 2);
   assert.equal(patch.purchase?.maxTotal, 12000);
@@ -437,7 +437,7 @@ test("a voice request for two chairs applies the limit to both and keeps the pro
 test("the spoken unit limit is separate from size and project limits", () => {
   const { patch } = parseVoice(
     "Подбери стул 2 шт. шириной до 50 см, бюджет 6 тысяч за штуку, бюджет проекта 50 тысяч",
-    initialProject()
+    exampleProject()
   );
   assert.equal(patch.purchase?.quantity, 2);
   assert.equal(patch.purchase?.maxUnit, 6000);
@@ -449,7 +449,7 @@ test("the spoken unit limit is separate from size and project limits", () => {
 test("voice separates furniture already in the room from a new purchase", () => {
   const { patch } = parseVoice(
     "Комната 4 на 3, диван 220 см, хочу купить два стула из массива до 12 тысяч",
-    initialProject()
+    exampleProject()
   );
   assert.deepEqual(patch.size, [4, 3]);
   assert.equal(patch.sofa?.w, 2.2);

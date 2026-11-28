@@ -9,6 +9,7 @@ export {
 export {
   getPurchaseBudget,
   initialProject,
+  legacyStarterItems,
   itemSize,
   positionsFor,
   planItems,
@@ -28,5 +29,5 @@ export {
   unlockLocal,
   writeLocal
 } from "./storage.ts";
-export { parseOffers, validateImport } from "./validateImport.ts";
+export { validateImport } from "./validateImport.ts";
 export { parseVoice } from "./voice.ts";

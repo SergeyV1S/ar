@@ -11,8 +11,10 @@ export const useEstimateContent = ({ project, items, positions, action }: Estima
     const issues = purchaseIssues(project, item);
     if (item.price === undefined) issues.push("Цена не указана");
     if (item.kind !== "service" && !positions[item.id]) issues.push("Не размещено");
-    if (lineTotal(item) > balance) issues.push("За пределами бюджета");
-    balance -= lineTotal(item);
+    if (balance !== undefined) {
+      if (lineTotal(item) > balance) issues.push("За пределами бюджета");
+      balance -= lineTotal(item);
+    }
     const editItem = action ? () => action("item", item.id) : undefined;
     return {
       item,

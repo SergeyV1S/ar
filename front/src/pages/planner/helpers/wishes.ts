@@ -47,8 +47,9 @@ export const getWishSearch = (wish: ProjectWish, project: Project, city: string)
 export const getWishPurchaseLimit = (project: Project, search: CatalogSearch, quantity = 1) => {
   const spent = visibleItems(project).filter((item) => !item.owned && item.id !== search.replaceId)
     .reduce((sum, item) => sum + lineTotal(item), 0);
-  return Math.max(0, Math.floor(Math.min((project.budget - spent) / quantity,
-    (search.maxTotal ?? Infinity) / quantity, search.maxUnit ?? Infinity)));
+  const remaining = project.budget === undefined ? Infinity : project.budget - spent;
+  const limit = Math.min(remaining / quantity, (search.maxTotal ?? Infinity) / quantity, search.maxUnit ?? Infinity);
+  return Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : undefined;
 };
 
 export const prepareWishPurchase = (

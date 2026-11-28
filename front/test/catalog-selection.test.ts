@@ -1,3 +1,4 @@
+import { exampleProject } from "./exampleProject.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
@@ -6,7 +7,6 @@ import {
   prepareCatalogPlacement
 } from "../src/pages/planner/helpers/catalogSelection.ts";
 import {
-  initialProject,
   positionsFor,
   purchaseTotal,
   validateImport
@@ -31,7 +31,7 @@ const offer: CatalogOffer = {
 const search: CatalogSearch = { city: "moscow", category: "chair", quantity: 2, maxTotal: 12000 };
 
 test("checks the total, exact-variant stock and material before placing an order", () => {
-  const project = initialProject();
+  const project = exampleProject();
   assert.equal(getCatalogProblem(offer, search, project), undefined);
   assert.match(
     getCatalogProblem({ ...offer, price: 6001 }, search, project) ?? "",
@@ -53,7 +53,7 @@ test("checks the total, exact-variant stock and material before placing an order
 });
 
 test("places and persists two distinct objects without moving the existing ones", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const positions = positionsFor(project);
   const change = prepareCatalogPlacement({
     project,
@@ -75,7 +75,7 @@ test("places and persists two distinct objects without moving the existing ones"
 });
 
 test("requires room for both chairs, and a replacement releases the old item and budget", () => {
-  const project = initialProject();
+  const project = exampleProject();
   project.room = { ...project.room, points: rect(0.7, 0.7), openings: [] };
   project.budget = 6000;
   const demo = {
@@ -122,7 +122,7 @@ test("requires room for both chairs, and a replacement releases the old item and
 });
 
 test("keeps new copies visible on saved alternatives without moving existing furniture", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const active = positionsFor(project);
   const alternate = positionsFor(project, 1);
   project.layouts = { retail: { 0: active, 1: alternate } };

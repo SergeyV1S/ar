@@ -54,7 +54,7 @@
       @apply grid gap-3;
     }
     .estimate-layout tr {
-      @apply block border border-solid border-border rounded-xl p-3;
+      @apply grid grid-cols-2 gap-x-3 border border-solid border-border rounded-xl p-3;
     }
     .estimate-layout td {
       @apply block border-0 px-0 py-1.5 text-sm;
@@ -65,6 +65,9 @@
     }
     .estimate-layout .estimate-item > strong {
       @apply text-base;
+    }
+    .estimate-layout td:is(.estimate-item, [data-label="Проверка"], [colspan]) {
+      @apply col-span-2;
     }
     .estimate-edit {
       @apply flex w-fit;

@@ -59,7 +59,7 @@ export const readCatalogVoice = (
   const itemClause = purchaseClause.slice((found.match.index ?? 0) + found.match[0].length);
   const after = itemClause.match(/^\s*(\d+)\s*(?:шт\.?|штук[аи]?)(?=[^а-яё]|$)/u)?.[1];
   const priceClause = itemClause.replace(
-    /(?:ширин|глубин|высот)[а-яё]*\s*(?:до\s*|не более\s*|[:=]\s*)?\d+(?:\.\d+)?\s*(?:сантиметр[а-яё]*|метр[а-яё]*|см|м)(?=[^а-яё]|$)/gu,
+    /(?:ширин|длин|глубин|высот)[а-яё]*\s*(?:до\s*|не более\s*|[:=]\s*)?\d+(?:\.\d+)?\s*(?:сантиметр[а-яё]*|метр[а-яё]*|см|м)(?=[^а-яё]|$)/gu,
     ""
   );
   const limit = priceClause.match(
@@ -73,7 +73,7 @@ export const readCatalogVoice = (
     maxUnit: limit?.[3] ? budget : undefined,
     material: materialOptions.find((material) => purchaseClause.includes(material.toLowerCase())),
     maxWidth: readLimit(itemClause, "ширин(?:ой|а|у)"),
-    maxDepth: readLimit(itemClause, "глубин(?:ой|а|у)"),
+    maxDepth: readLimit(itemClause, "(?:длин|глубин)(?:ой|а|у)"),
     maxHeight: readLimit(itemClause, "высот(?:ой|а|у)")
   };
 };

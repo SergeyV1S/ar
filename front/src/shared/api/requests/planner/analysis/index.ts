@@ -8,7 +8,6 @@ type Params = {
   items: { id: string; name: string; kind: string; owned: boolean; material: string;
     w: number; d: number; h: number; position?: { x: number; y: number; r: number } }[];
   passage: number;
-  budget: number;
 };
 
 export const postPlannerAnalysis = async ({ params, config }: ApiRequest<Params>): Promise<PlanAnalysis> => {

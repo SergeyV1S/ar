@@ -1,11 +1,21 @@
+import { exampleProject } from "./exampleProject.ts";
+import { getPurchaseBudget, initialProject } from "../src/pages/planner/mock/index.ts";
+
+test("starts without a purchase budget and ignores the former default in legacy projects", () => {
+  const project = initialProject();
+  assert.equal(project.budget, undefined);
+  assert.equal(getPurchaseBudget(project.budget, []).difference, undefined);
+  assert.equal(validateImport({ ...project, budget: 80000 }).budget, undefined);
+  assert.equal(validateImport({ ...project, budget: 80000, budgetConfirmed: true }).budget, 80000);
+});
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { getWishSearch, makeProjectBrief, prepareWishPurchase } from "../src/pages/planner/helpers/wishes.ts";
-import { initialProject, positionsFor, validateImport } from "../src/pages/planner/mock/index.ts";
+import { positionsFor, validateImport } from "../src/pages/planner/mock/index.ts";
 
 test("keeps wishlist identity, retains the owner's other furniture and exports confirmed purchases", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const analysis = { summary: "Заменить диван и подобрать два стула", wishes: [
     { name: "Новый диван", query: "диван", category: "sofa" as const, quantity: 1, replaceId: "sofa" },
     { name: "Стул", query: "стул", category: "chair" as const, quantity: 2, maxTotal: 20000 }

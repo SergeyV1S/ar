@@ -80,7 +80,7 @@ export const useOutline = ({ project, save }: OutlineProps) => {
   const roomForSave = () => {
     const points = scaleRoomStroke(outline, Number(width), Number(depth));
     if (!points) {
-      setError("Нарисуйте контур без пересечений и укажите ширину и глубину от 0,7 до 35 м.");
+      setError("Нарисуйте контур без пересечений и укажите ширину и длину от 0,7 до 35 м.");
       return null;
     }
     return {

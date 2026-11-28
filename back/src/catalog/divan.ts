@@ -2,6 +2,7 @@ import { load } from "cheerio";
 import type { CheerioAPI } from "cheerio";
 
 import { getPublishedDimensions } from "./publicProduct.ts";
+import { photoFrom } from "./photo.ts";
 
 const STORE = "https://www.divan.ru";
 const CITIES_PATH = "/category/stulya";
@@ -272,10 +273,16 @@ const getProduct = ($: CheerioAPI, path: string) => {
         /^(?:без|по) промокод[ау]/iu.test(normalizeText($(node).text())),
     );
   const name = normalizeText(product.name);
+  const images = Array.isArray(product.image) ? product.image : [product.image];
+  const photo = images.map((image: unknown) => photoFrom(
+    typeof image === "string" ? image : record(image).url,
+    /^(?:cdn\.servicecdn\.ru|(?:[\w-]+\.)*divan\.ru)$/i
+  )).find(Boolean);
   return {
     conditionalPromotion,
     sku: product.sku,
     name,
+    photo,
     w,
     d,
     h,

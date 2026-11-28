@@ -11,7 +11,7 @@ export const usePurchaseConditions = () => {
     const raw = event.target.value.replace(/\D/g, "").slice(0, 10);
     const budget = Math.min(1e9, Number(raw));
     setBudgetEntry(Number(raw) > 1e9 ? String(budget) : raw);
-    update({ budget });
+    update({ budget: raw ? budget : undefined, budgetConfirmed: Boolean(raw) });
   };
   const formatBudget = () => setBudgetEntry(null);
   const changeMaterial = (event: ChangeEvent<HTMLSelectElement>) =>
@@ -19,6 +19,6 @@ export const usePurchaseConditions = () => {
   const changeMode = (event: ChangeEvent<HTMLSelectElement>) =>
     update({ mode: event.target.value });
 
-  const budgetValue = budgetEntry ?? project.budget.toLocaleString("ru-RU");
+  const budgetValue = budgetEntry ?? project.budget?.toLocaleString("ru-RU") ?? "";
   return { project, budgetValue, changeBudget, formatBudget, changeMaterial, changeMode };
 };

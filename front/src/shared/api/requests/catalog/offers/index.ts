@@ -1,6 +1,6 @@
 import type { ApiRequest } from "@/shared/api";
 import { api } from "@/shared/api/instance";
-import { isRecord } from "@/shared/helpers";
+import { catalogPhotoUrl, isRecord } from "@/shared/helpers";
 
 import type { CatalogOffer, CatalogPage } from "../types.ts";
 
@@ -27,6 +27,7 @@ const isOffer = (offer: unknown): offer is CatalogOffer =>
   offer.materials.every((material: unknown) => typeof material === "string") &&
   typeof offer.url === "string" &&
   /^https:\/\/www\.divan\.ru\/product\/[a-z0-9-]+$/.test(offer.url) &&
+  (offer.photo === undefined || Boolean(catalogPhotoUrl(offer.photo))) &&
   typeof offer.checkedAt === "string" &&
   Number.isFinite(Date.parse(offer.checkedAt));
 

@@ -1,6 +1,7 @@
 import { Button, Icon } from "@/shared/components";
 
 import { useCatalogPanel } from "../hooks/useCatalogPanel.ts";
+import { Thumbnail } from "./Thumbnail.tsx";
 
 export const RetailCatalog = ({ showHeading = true }: { showHeading?: boolean }) => {
   const {
@@ -63,6 +64,7 @@ export const RetailCatalog = ({ showHeading = true }: { showHeading?: boolean })
           {offerCards.map(
             ({ offer, unitPrice, placedPrice, dates, size, availability, addOffer }) => (
               <article className='catalog-card' key={offer.sku}>
+                <Thumbnail item={{ photo: offer.photo }} />
                 <div className='catalog-card-body'>
                   <h3>{offer.name}</h3>
                   <p>

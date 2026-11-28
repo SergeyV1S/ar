@@ -57,7 +57,8 @@ export type Item = {
 export type Project = {
   version: number;
   room: Room;
-  budget: number;
+  budget?: number;
+  budgetConfirmed?: boolean;
   catalogCity?: string;
   material: string;
   mode: string;

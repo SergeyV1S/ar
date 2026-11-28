@@ -18,7 +18,7 @@ export const makeCsv = (project: Project, bought: Item[], positions: Positions) 
     "Позиция",
     "Статус",
     "Ширина, м",
-    "Глубина, м",
+    "Длина, м",
     "Высота, м",
     "Материал",
     "Цена за единицу, ₽",

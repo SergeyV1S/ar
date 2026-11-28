@@ -136,7 +136,12 @@ export const RoomEditor = (props: RoomEditorProps) => {
       autoComplete='off'
       onSubmit={submit}
     >
-      {!guided && measureButtons}
+      {guided ? (
+        <div className='guided-measure-options'>
+          {measureButtons}
+          <p>Или введите размеры вручную</p>
+        </div>
+      ) : measureButtons}
       <Field label='Название комнаты'>
         <input name='name' required maxLength={80} defaultValue={project.room.name} />
       </Field>
@@ -150,11 +155,11 @@ export const RoomEditor = (props: RoomEditorProps) => {
             max='35'
             step='.01'
             onChange={markForReview}
-            defaultValue={extent.w.toFixed(2)}
+            defaultValue={project.room.source === "draft" ? undefined : extent.w.toFixed(2)}
             required
           />
         </Field>
-        <Field label={guided ? "Длина, м" : "Глубина, м"}>
+        <Field label='Длина, м'>
           <input
             type='number'
             inputMode='decimal'
@@ -163,7 +168,7 @@ export const RoomEditor = (props: RoomEditorProps) => {
             max='35'
             step='.01'
             onChange={markForReview}
-            defaultValue={extent.d.toFixed(2)}
+            defaultValue={project.room.source === "draft" ? undefined : extent.d.toFixed(2)}
             required
           />
         </Field>
@@ -222,15 +227,9 @@ export const RoomEditor = (props: RoomEditorProps) => {
         </p>
       )}
       {guided ? (
-        <>
-          <Button type='submit' className='primary guided-room-submit'>
-            Сохранить и продолжить <Icon name='chevron' />
-          </Button>
-          <div className='guided-measure-options'>
-            <p>Другие способы ввода</p>
-            {measureButtons}
-          </div>
-        </>
+        <Button type='submit' className='primary guided-room-submit'>
+          Сохранить и продолжить <Icon name='chevron' />
+        </Button>
       ) : (
         <Submit close={close} />
       )}

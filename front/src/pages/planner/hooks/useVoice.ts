@@ -198,7 +198,6 @@ export const useVoice = ({ project, apply, wishes }: VoiceProps) => {
           phrase: phrase.trim(),
           room: project.room,
           passage: project.passage,
-          budget: project.budget,
           items: wishes.items.map(({ id, name, kind, owned, material, w, d, h }) => ({
             id, name, kind, owned, material, w, d, h, position: wishes.positions[id]
           }))

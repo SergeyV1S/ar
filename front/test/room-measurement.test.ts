@@ -1,3 +1,4 @@
+import { exampleProject } from "./exampleProject.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -11,7 +12,6 @@ import {
   scaleRoomStroke,
   simplifyRoomStroke
 } from "../src/pages/planner/helpers/index.ts";
-import { initialProject } from "../src/pages/planner/mock/index.ts";
 import { centeredPosition, inspect, rect, round } from "../src/pages/planner/planning/index.ts";
 import type { Item } from "../src/pages/planner/types/index.ts";
 
@@ -152,7 +152,7 @@ test("a continuous room stroke simplifies and keeps a concave corner", () => {
 });
 
 test("collision checks use rotated footprints and resizing a measured item preserves its center", () => {
-  const project = initialProject();
+  const project = exampleProject();
   const table: Item = {
     id: "a",
     name: "Стол",

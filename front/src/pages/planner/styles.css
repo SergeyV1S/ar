@@ -961,6 +961,19 @@
     color: var(--planner-muted);
   }
 
+  .planner-hero.planner-hero-compact {
+    min-height: 104px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+  }
+
+  .planner-hero-compact .planner-hero-copy,
+  .planner-hero-compact p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   .planner-hero-image {
     position: absolute;
     inset: 0 0 0 auto;
@@ -1028,6 +1041,11 @@
     border-radius: 14px;
     background: var(--planner-card);
     box-shadow: none;
+  }
+
+  .planner-flow .estimate-totals > div {
+    background: var(--planner-paper);
+    border: 1px solid var(--planner-edge);
   }
 
   .planner-step-panel {
@@ -1452,14 +1470,14 @@
     }
 
     .planner-hero {
-      min-height: 148px;
-      margin-block: 14px 12px;
+      min-height: 0;
+      margin-block: 12px;
       padding: 14px;
     }
 
     .planner-hero-copy {
       position: static;
-      max-width: 72%;
+      max-width: 100%;
     }
 
     .planner-hero-copy :is(h1, p) {
@@ -1474,13 +1492,11 @@
 
     .planner-hero p {
       font-size: .86rem;
-      max-width: 170px;
+      max-width: 100%;
     }
 
     .planner-hero-image {
-      width: 68%;
-      object-position: 79% center;
-      mask-image: linear-gradient(to right, transparent 29%, black 90%);
+      display: none;
     }
 
     .planner-steps {
@@ -1494,8 +1510,12 @@
     }
 
     .planner-step span {
-      width: 19px;
-      height: 19px;
+      display: none;
+    }
+
+    .planner-step {
+      justify-content: center;
+      text-align: center;
     }
 
     .planner-step-panel > h2 {

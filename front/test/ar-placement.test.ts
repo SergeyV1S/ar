@@ -9,9 +9,19 @@ import {
 import { getScanLayout } from "../src/pages/planner/ar/geometry.ts";
 import { projectToFloor } from "../src/pages/planner/ar/projection.ts";
 import { createViewAnchor } from "../src/pages/planner/ar/viewAnchor.ts";
-import { getARLayoutUpdate } from "../src/pages/planner/helpers/index.ts";
+import { getARLayoutUpdate, getScanLayoutUpdate } from "../src/pages/planner/helpers/index.ts";
 import { initialProject, positionsFor, validateImport } from "../src/pages/planner/mock/index.ts";
 import { round } from "../src/pages/planner/planning/index.ts";
+import { exampleProject } from "./exampleProject.ts";
+
+test("an empty AR scan does not place legacy sample furniture or delete user furniture", () => {
+  const example = exampleProject();
+  const custom = { ...example.items[1], id: "user-chair", name: "Моё кресло" };
+  assert.deepEqual(initialProject().items, []);
+  const update = getScanLayoutUpdate({ ...example, items: [...example.items, custom] }, {}, []);
+  assert.deepEqual(update.items, [custom]);
+  assert.deepEqual(positionsFor({ ...example, ...update }), {});
+});
 
 test("a rotated item is saved in normalized plan coordinates even if the scan starts elsewhere", () => {
   const angle = Math.PI / 3;

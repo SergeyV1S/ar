@@ -24,6 +24,7 @@ export const types: Record<string, string> = {
   other: "Другая мебель"
 };
 export const sourceLabel: Record<string, string> = {
+  draft: "Черновик",
   manual: "Ручной ввод",
   xr: "AR-обмер",
   photo: "Разметка по фото",

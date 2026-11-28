@@ -188,7 +188,11 @@ export const usePlanner = (showLayouts: boolean) => {
     a.unplaced - b.unplaced || a.warnings - b.warnings ||
     Number(b.index === advice?.variant) - Number(a.index === advice?.variant))[0];
   const variantOptions = variants.map((variant, i) => {
-    const chooseVariant = () => action("variant", i);
+    const chooseVariant = () => {
+      action("variant", i);
+      if (window.matchMedia("(max-width: 760px)").matches)
+        canvas.current?.scrollIntoView({ block: "center" });
+    };
     const check = layoutChecks[i];
     return { ...variant, index: i, chooseVariant, check,
       recommended: items.length > 0 && recommended?.index === i };

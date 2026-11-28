@@ -1,5 +1,7 @@
 import { Router } from "express";
 
+import { photoFrom } from "./photo.ts";
+
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {};
 const text = (value: unknown, length: number) =>
@@ -16,6 +18,8 @@ const titleByCategory = new Map<string, RegExp>([
   ["dresser", /комод/iu],
   ["shelving", /стеллаж|этажерк|полк/iu]
 ]);
+const rental = /(?:^|[^а-яё])(?:аренд[ауы]|прокат|напрокат|сдам|сда[её]тся|посуточно|за сутки|₽\s*\/\s*(?:сут|час|день))/iu;
+const avitoPhoto = (value: unknown) => photoFrom(value, /^(?:[\w-]+\.)*avito\.st$/i);
 
 const listingUrl = (value: unknown) => {
   if (typeof value !== "string" || value.length > 500) return;
@@ -46,7 +50,7 @@ const readSize = (description: string, name: string) => {
 
 const publishedSizes = (description: string) => ({
   w: readSize(description, "ширина"),
-  d: readSize(description, "глубина"),
+  d: readSize(description, "глубина") ?? readSize(description, "длина"),
   h: readSize(description, "высота")
 });
 
@@ -168,10 +172,11 @@ export const createAvitoRouter = (endpoint?: string) => {
         const price = readPrice(item.price);
         const description = text(item.description, 400);
         if (!url || !name || price === undefined || urls.has(url) ||
+          rental.test(name) || rental.test(description) ||
           (titlePattern && !titlePattern.test(name)) || readCondition(description) === "new") return [];
         if (maxPrice && price > Number(maxPrice)) return [];
         urls.add(url);
-        return [{ url, name, price, location: text(item.location, 100), ...publishedSizes(description) }];
+        return [{ url, name, price, location: text(item.location, 100), photo: avitoPhoto(item.photo), ...publishedSizes(description) }];
       }).slice(0, 8);
       response.json({ offers });
     } catch {
@@ -196,8 +201,13 @@ export const createAvitoRouter = (endpoint?: string) => {
         return;
       }
       const details = [text(item.params, 1000), text(item.description, 1500)].join("\n");
+      if (rental.test(text(item.title, 100)) || rental.test(details)) {
+        response.status(422).json({ code: "AVITO_RENTAL" });
+        return;
+      }
+      const photo = Array.isArray(item.photos) ? item.photos.map(avitoPhoto).find(Boolean) : undefined;
       response.json({ url, name: text(item.title, 100), price: readPrice(item.price),
-        condition: readCondition(details), ...publishedSizes(details) });
+        condition: readCondition(details), photo, ...publishedSizes(details) });
     } catch {
       response.status(502).json({ code: "AVITO_UNAVAILABLE" });
     }

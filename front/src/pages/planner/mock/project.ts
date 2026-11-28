@@ -3,51 +3,32 @@ import { arrange, dimensions, rect, round } from "../planning/index.ts";
 import type { Item, Project, Room } from "../types/index.ts";
 import { materials, procurementFields } from "./catalog.ts";
 
+export const legacyStarterItems = (): Item[] => [
+  {
+    id: "sofa", name: "Диван", kind: "sofa", w: 2.2, d: 0.9, h: 0.83,
+    material: "Ткань", owned: true, source: "manual", verified: "review"
+  },
+  {
+    id: "chair", name: "Кресло", kind: "chair", w: 0.76, d: 0.78, h: 0.81,
+    material: "Ткань", owned: true, source: "manual", verified: "review"
+  }
+];
+
 export const initialProject = (): Project => {
   return {
     version: 1,
     room: {
-      name: "Гостиная",
+      name: "Комната",
       points: rect(5.2, 3.8),
-      source: "manual",
+      source: "draft",
       verified: "review",
-      openings: [
-        { id: "window", type: "window", wall: 0, offset: 1.36, width: 2.42, hinge: "start" },
-        { id: "door", type: "door", wall: 2, offset: 0.23, width: 0.9, hinge: "start" },
-        { id: "socket", type: "socket", wall: 1, offset: 0.97, width: 0.08, hinge: "start" }
-      ]
+      openings: []
     },
-    budget: 80000,
     material: materials[0],
     mode: "retail",
     passage: 0.8,
     variant: 0,
-    items: [
-      {
-        id: "sofa",
-        name: "Диван",
-        kind: "sofa",
-        w: 2.2,
-        d: 0.9,
-        h: 0.83,
-        material: "Ткань",
-        owned: true,
-        source: "manual",
-        verified: "review"
-      },
-      {
-        id: "chair",
-        name: "Кресло",
-        kind: "chair",
-        w: 0.76,
-        d: 0.78,
-        h: 0.81,
-        material: "Ткань",
-        owned: true,
-        source: "manual",
-        verified: "review"
-      }
-    ],
+    items: [],
     layouts: {},
     procurement: {}
   };
@@ -104,11 +85,11 @@ export const resizeRoom = (room: Room, width: number, depth: number) => {
 export const purchaseTotal = (items: Item[]) =>
   items.reduce((sum, item) => sum + lineTotal(item), 0);
 
-export const getPurchaseBudget = (budget: number, items: Item[]) => {
+export const getPurchaseBudget = (budget: number | undefined, items: Item[]) => {
   const total = purchaseTotal(items);
   return {
     total,
-    difference: budget - total,
+    difference: budget === undefined ? undefined : budget - total,
     hasUnknownPrices: items.some((item) => item.price === undefined)
   };
 };

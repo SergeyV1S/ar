@@ -10,6 +10,7 @@ export type CatalogOffer = {
   h: number;
   materials: string[];
   url: string;
+  photo?: string;
   checkedAt: string;
 };
 export type CatalogPage = {

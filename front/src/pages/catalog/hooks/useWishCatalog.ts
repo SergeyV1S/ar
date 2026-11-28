@@ -33,6 +33,7 @@ const avitoError = (error: unknown) => {
   if (code === "AVITO_VERIFICATION") return "Авито просит пройти проверку в браузере MCP. После проверки повторите поиск.";
   if (code === "AVITO_DISABLED") return "Авито пока не подключён.";
   if (code === "AVITO_NOT_FOUND") return "Объявление больше недоступно.";
+  if (code === "AVITO_RENTAL") return "В объявлении предлагают аренду. Выберите другой предмет.";
   return "Не удалось получить данные Авито.";
 };
 
@@ -56,7 +57,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
   const maxPrice = getWishPurchaseLimit(project, search);
   const chosen = getWishPurchases(project, wish);
   const replaced = project.items.find((item) => item.id === search.replaceId);
-  const allowsSearch = Boolean(city) && search.quantity > 0 && maxPrice > 0;
+  const allowsSearch = Boolean(city) && search.quantity > 0 && maxPrice !== 0;
   const usedQuery = /б\s*[/.]\s*у/iu.test(wish.query) ? wish.query : `${wish.query} б/у`;
 
   useEffect(() => {
@@ -161,7 +162,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
       const d = Number(form.get("depth")) / 100;
       const h = Number(form.get("height")) / 100;
       if (![w, d, h].every((val) => Number.isFinite(val) && val >= 0.05 && val <= 20)) {
-        setSelectionError("Укажите ширину, глубину и высоту в сантиметрах.");
+        setSelectionError("Укажите ширину, длину и высоту в сантиметрах.");
         return;
       }
       if (condition === "unknown" && !form.has("used")) {
@@ -172,7 +173,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
         setSelectionError("Проверьте материал мебели в объявлении или у продавца.");
         return;
       }
-      if (price === undefined || price > maxPrice ||
+      if (price === undefined || (maxPrice !== undefined && price > maxPrice) ||
         (search.maxWidth !== undefined && w > search.maxWidth) ||
         (search.maxDepth !== undefined && d > search.maxDepth) ||
         (search.maxHeight !== undefined && h > search.maxHeight)) {
@@ -185,6 +186,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
       }
       purchases = [{
         id: newId(), name, url, price, w, d, h, kind: catalogKinds[search.category],
+        photo: selectedListing.photo ?? selection.offer.photo,
         owned: false, quantity: 1, material: search.material ?? "Другое", source: "avito", verified: "review",
         seller: "Avito", mode: project.mode, availability: "Б/у", wishId: wish.id,
         catalogCity: city.name, catalogCityId: city.id, catalogCheckedAt: new Date().toISOString()
@@ -192,7 +194,7 @@ export const useWishCatalog = (wish: ProjectWish, divanCities: CatalogCity[]) =>
     }
     const budget = visibleItems(project).filter((item) => !item.owned && item.id !== search.replaceId)
       .reduce((sum, item) => sum + lineTotal(item), 0);
-    if (budget + purchases.reduce((sum, item) => sum + lineTotal(item), 0) > project.budget) {
+    if (project.budget !== undefined && budget + purchases.reduce((sum, item) => sum + lineTotal(item), 0) > project.budget) {
       setSelectionError("Покупка выходит за бюджет проекта.");
       return;
     }

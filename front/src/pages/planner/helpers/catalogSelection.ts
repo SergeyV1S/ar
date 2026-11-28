@@ -57,9 +57,9 @@ export const getCatalogProblem = (offer: CatalogOffer, search: CatalogSearch, pr
     (search.maxTotal !== undefined && total > search.maxTotal)
   )
     return "Цена превышает лимит позиции";
-  if (purchases.some((item) => item.price === undefined))
+  if (project.budget !== undefined && purchases.some((item) => item.price === undefined))
     return "Укажите цены уже добавленных покупок";
-  if (purchases.reduce((sum, item) => sum + lineTotal(item), total) > project.budget)
+  if (project.budget !== undefined && purchases.reduce((sum, item) => sum + lineTotal(item), total) > project.budget)
     return "Сумма превышает остаток бюджета проекта";
   const material = search.material ?? project.material;
   if (material !== "Любой материал" && !offer.materials.includes(material))
@@ -96,6 +96,7 @@ export const makeCatalogItems = (offer: CatalogOffer, search: CatalogSearch, ids
     availability: offer.availability === "in-stock" ? "В наличии" : "Под заказ",
     sku: offer.sku,
     url: offer.url,
+    photo: offer.photo,
     catalogCity: cityName,
     catalogCityId: search.city,
     catalogCheckedAt: offer.checkedAt,

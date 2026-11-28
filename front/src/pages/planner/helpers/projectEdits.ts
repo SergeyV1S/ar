@@ -1,4 +1,4 @@
-import { resizeRoom } from "../mock/index.ts";
+import { legacyStarterItems, resizeRoom } from "../mock/index.ts";
 import { bounds, centeredPosition, distance } from "../planning/index.ts";
 import type { Item, Positions, Project, Room, VoicePatch } from "../types/index.ts";
 
@@ -21,7 +21,7 @@ export const applyVoicePatch = (
   project: Project,
   { size, sofa, budget, material, mode }: VoicePatch
 ) => ({
-  ...(budget === undefined ? {} : { budget }),
+  ...(budget === undefined ? {} : { budget, budgetConfirmed: true }),
   ...(material === undefined ? {} : { material }),
   ...(mode === undefined ? {} : { mode }),
   room: size ? resizeRoomFromVoice(project.room, size) : project.room,
@@ -68,3 +68,19 @@ export const getARLayoutUpdate = (
   items: [...project.items, ...starterItems.filter((item) => Object.hasOwn(positions, item.id))],
   layouts: { [project.mode]: { [project.variant]: positions } }
 });
+
+export const getScanLayoutUpdate = (project: Project, positions: Positions, measured: Item[]) => {
+  const samples = legacyStarterItems();
+  const existing = project.items.filter((item) => !samples.some((sample) =>
+    item.id === sample.id && item.name === sample.name && item.kind === sample.kind &&
+    item.w === sample.w && item.d === sample.d && item.h === sample.h &&
+    item.material === sample.material && item.owned && item.source === sample.source &&
+    item.verified === sample.verified && !item.photo &&
+    !Object.values(project.layouts).some((variants) => Object.values(variants).some(
+      (layout) => Object.hasOwn(layout, item.id)
+    ))
+  ));
+  const ids = new Set([...existing, ...measured].map(({ id }) => id));
+  const placed = Object.fromEntries(Object.entries(positions).filter(([id]) => ids.has(id)));
+  return getARLayoutUpdate({ ...project, items: existing }, placed, measured);
+};

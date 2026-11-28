@@ -113,7 +113,7 @@ export const CatalogSearchForm = ({ initial, projectMaterial, start }: Props) =>
               defaultValue={initial.maxWidth === undefined ? undefined : initial.maxWidth * 100}
             />
           </Field>
-          <Field label='Глубина'>
+          <Field label='Длина'>
             <input
               name='maxDepth'
               type='number'

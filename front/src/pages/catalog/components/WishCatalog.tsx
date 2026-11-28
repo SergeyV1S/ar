@@ -1,6 +1,7 @@
 import { use } from "react";
 import { Link } from "react-router";
 
+import { Thumbnail } from "@/pages/planner/components/index.ts";
 import { getItemPath } from "@/pages/planner/helpers";
 import type { ProjectWish } from "@/pages/planner/types";
 import type { CatalogCity } from "@/shared/api/requests";
@@ -53,7 +54,7 @@ export const WishCatalog = ({
           </Field>
           <p className='support-text'>
             Осталось выбрать {search.quantity} шт.
-            {maxPrice > 0 && ` · до ${money(maxPrice)} за предмет`}
+            {maxPrice !== undefined && maxPrice > 0 && ` · до ${money(maxPrice)} за предмет`}
             {wish.material && ` · ${wish.material}`}
           </p>
           {city && maxPrice === 0 && <p className='notice'>В бюджете не осталось средств на эту позицию.</p>}
@@ -63,6 +64,9 @@ export const WishCatalog = ({
       {selection && (
         <form className='notice grid gap-3' onSubmit={selectPurchase}>
           <h3 ref={confirmation} tabIndex={-1}>{selection.offer.name}</h3>
+          {(selectedListing?.photo ?? selection.offer.photo) && (
+            <Thumbnail className='catalog-selection-photo' item={{ photo: selectedListing?.photo ?? selection.offer.photo }} />
+          )}
           {selection.source === "divan" && (
             <p>{sizeLabel(selection.offer)} · {money(selection.offer.price * search.quantity)}</p>
           )}
@@ -77,7 +81,7 @@ export const WishCatalog = ({
                   <input name='width' type='number' min='5' max='2000' step='any' required
                     defaultValue={selectedListing.w === undefined ? undefined : centimeters(selectedListing.w)} />
                 </Field>
-                <Field label='Глубина, см'>
+                <Field label='Длина, см'>
                   <input name='depth' type='number' min='5' max='2000' step='any' required
                     defaultValue={selectedListing.d === undefined ? undefined : centimeters(selectedListing.d)} />
                 </Field>
@@ -130,6 +134,7 @@ export const WishCatalog = ({
             <div className='catalog-grid'>
               {divanCards.map(({ offer, preview }) => (
                 <article className='catalog-card' key={offer.sku}>
+                  <Thumbnail item={{ photo: offer.photo, kind: wish.category }} />
                   <div className='catalog-card-body'>
                     <h3>{offer.name}</h3>
                     <p>{sizeLabel(offer)}{offer.materials.length > 0 && ` · ${offer.materials.join(", ")}`}</p>
@@ -153,6 +158,7 @@ export const WishCatalog = ({
             <div className='catalog-grid'>
               {avitoCards.map(({ offer, preview }) => (
                 <article className='catalog-card' key={offer.url}>
+                  <Thumbnail item={{ photo: offer.photo, kind: wish.category }} />
                   <div className='catalog-card-body'>
                     <h3>{offer.name}</h3>
                     <p>{listingSize(offer) ?? "Размеры уточняются в объявлении"}{offer.location && ` · ${offer.location}`}</p>

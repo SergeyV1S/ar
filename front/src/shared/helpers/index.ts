@@ -33,3 +33,4 @@ export const download = (name: string, content: string | Blob, type: string) => 
 };
 export { boundedAnalysisNumber, hasAnalysisText, isFurnitureWish, isLayoutAdvice } from "./planAnalysis.ts";
 export type { FurnitureWish, LayoutAdvice, PlanAnalysis } from "./planAnalysis.ts";
+export { catalogPhotoUrl } from "./catalogPhoto.ts";

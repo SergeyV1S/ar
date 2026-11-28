@@ -1,17 +1,28 @@
 import type { ApiRequest } from "@/shared/api";
 import { api } from "@/shared/api/instance";
-import { isRecord } from "@/shared/helpers";
+import { catalogPhotoUrl, isRecord } from "@/shared/helpers";
 
 type Dimensions = { w?: number; d?: number; h?: number };
-type Listing = Dimensions & { url: string; name: string; price?: number };
+type Listing = Dimensions & { url: string; name: string; price?: number; photo?: string };
 export type AvitoOffer = Listing & { price: number; location: string };
 export type AvitoListing = Listing & { condition: "used" | "new" | "unknown" };
 
 const validSize = (value: unknown) => value === undefined ||
   (typeof value === "number" && value >= 0.05 && value <= 20);
+const isAvitoListingUrl = (value: unknown) => {
+  if (typeof value !== "string" || value.length > 500) return false;
+  try {
+    const url = new URL(value);
+    return url.origin === "https://www.avito.ru" && !url.username && !url.password &&
+      !url.search && !url.hash && /_\d{6,}$/.test(url.pathname);
+  } catch {
+    return false;
+  }
+};
 const isListing = (value: unknown): value is Listing => isRecord(value) &&
-  typeof value.url === "string" && /^https:\/\/www\.avito\.ru\/[\w%/-]+_\d{6,}$/.test(value.url) &&
+  isAvitoListingUrl(value.url) &&
   typeof value.name === "string" && value.name.length > 0 &&
+  (value.photo === undefined || Boolean(catalogPhotoUrl(value.photo))) &&
   (value.price === undefined || typeof value.price === "number" && value.price > 0 && value.price <= 1e9) &&
   validSize(value.w) && validSize(value.d) && validSize(value.h);
 const isOffer = (value: unknown): value is AvitoOffer =>

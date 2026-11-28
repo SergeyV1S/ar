@@ -1,4 +1,4 @@
-import { isFurnitureWish, isLayoutAdvice, isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
+import { catalogPhotoUrl, isFurnitureWish, isLayoutAdvice, isRecord, newId, safeUrl } from "../../../shared/helpers/index.ts";
 import { dimensions, maxOutlinePoints, normalize, validPolygon } from "../planning/index.ts";
 import type { Item, Project, ProjectWish } from "../types/index.ts";
 import { materials, modes, procurementFields, sourceLabel, types } from "./catalog.ts";
@@ -76,7 +76,7 @@ const normalizeItem = (item: ImportItem): Item => ({
     /^data:image\/(png|jpeg|webp);base64,/i.test(item.photo) &&
     item.photo.length <= 260000
       ? item.photo
-      : undefined
+      : catalogPhotoUrl(item.photo)
 });
 
 const readBrief = (input: unknown) => {
@@ -89,24 +89,6 @@ const readBrief = (input: unknown) => {
   if (new Set(wishes.map((wish) => wish.id)).size !== wishes.length) return;
   return { phrase: brief.phrase.slice(0, 4000), summary: brief.summary.slice(0, 600), wishes,
     layout: isLayoutAdvice(brief.layout) ? brief.layout : undefined };
-};
-
-export const parseOffers = (raw: unknown) => {
-  if (
-    !Array.isArray(raw) ||
-    !raw.every(isImportItem) ||
-    new Set(raw.map((item) => item.id)).size !== raw.length ||
-    !raw.every(
-      (item) =>
-        item.owned === false &&
-        item.demo === true &&
-        typeof item.seller === "string" &&
-        typeof item.availability === "string" &&
-        (item.mode === "used" || item.mode === "office")
-    )
-  )
-    throw new Error("Файл демонстрационных предложений повреждён.");
-  return raw.map(normalizeItem);
 };
 
 export const validateImport = (input: unknown): Project => {
@@ -200,7 +182,9 @@ export const validateImport = (input: unknown): Project => {
     },
     catalogCity: typeof raw.catalogCity === "string" &&
       /^[a-z][a-z0-9-]{1,60}$/.test(raw.catalogCity) ? raw.catalogCity : undefined,
-    budget: numeric(raw.budget, 0, 1e9) ? raw.budget : 80000,
+    budget: numeric(raw.budget, 0, 1e9) && (raw.budget !== 80000 || raw.budgetConfirmed === true)
+      ? raw.budget : undefined,
+    budgetConfirmed: raw.budgetConfirmed === true,
     passage: numeric(raw.passage, 0.45, 2) ? raw.passage : 0.8,
     material:
       typeof raw.material === "string" && materials.includes(raw.material)

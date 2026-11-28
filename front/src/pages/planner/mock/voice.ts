@@ -93,7 +93,7 @@ export const parseVoice = (phrase: string, project: Project) => {
         source: "voice",
         verified: "review"
       };
-      notes.push(`Диван ${itemSize(patch.sofa)}${sofa[3] ? "" : " (глубину проверьте)"}`);
+      notes.push(`Диван ${itemSize(patch.sofa)}${sofa[3] ? "" : " (проверьте длину)"}`);
     }
   }
   if (mat && !purchase) {

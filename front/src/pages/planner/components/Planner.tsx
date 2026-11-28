@@ -50,7 +50,13 @@ export const Planner = () => {
       </nav>
       <div className='workgrid'>
         <PlanSidebar planner={planner} workflow={workflow} />
-        <section className='panel planner' aria-labelledby='room-plan-title'>
+        {planner.project.room.source === "draft" && (
+          <section className='panel editor-panel plan-draft' aria-labelledby='empty-plan-title'>
+            <h2 id='empty-plan-title'>План комнаты</h2>
+            <p className='support-text'>План появится после обмера или ввода размеров.</p>
+          </section>
+        )}
+        {planner.project.room.source !== "draft" && <section className='panel planner' aria-labelledby='room-plan-title'>
           <div className='planner-heading'>
             <div>
               <h2 id='room-plan-title'>План комнаты</h2>
@@ -140,7 +146,7 @@ export const Planner = () => {
               <Button onClick={addOwned}>Добавить мебель</Button>
             </div>
           )}
-        </section>
+        </section>}
       </div>
     </>
   );

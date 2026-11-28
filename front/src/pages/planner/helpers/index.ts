@@ -14,6 +14,7 @@ export {
 export {
   applyVoicePatch,
   getARLayoutUpdate,
+  getScanLayoutUpdate,
   getItemLayoutUpdate,
   upsertItem
 } from "./projectEdits.ts";

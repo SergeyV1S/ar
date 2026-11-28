@@ -1,0 +1,26 @@
+--- a/src/avito_mcp/extract.py
++++ b/src/avito_mcp/extract.py
+@@ -93,6 +93,15 @@
+     const all = c.innerText;
+     const sl = [...c.querySelectorAll('a')].find(x => /\/(brands|user)\//.test(x.getAttribute('href') || ''));
+     const dm = c.querySelector('meta[itemprop="description"]');
++    const images = [...c.querySelectorAll('[data-marker^="slider-image"] img, img')];
++    const candidates = [
++      c.querySelector('meta[itemprop="image"]')?.content,
++      ...images.flatMap(img => [
++        img.currentSrc, img.getAttribute('src'), img.getAttribute('data-src'),
++        ...(img.getAttribute('srcset') || '').split(',').map(part => part.trim().split(/\s+/)[0]),
++      ]),
++    ];
++    const photo = candidates.find(src => /^(https:)?\/\/(?:[\w-]+\.)*avito\.st\//i.test(src || ''));
+     return {
+       id: c.getAttribute('data-item-id') || '',
+       position: i + 1,
+@@ -104,6 +113,7 @@
+         || ((all.match(/(\d[\d\s\u00a0]*)\s?₽/) || [''])[0]).replace(/\s+/g, ' ').trim(),
+       price_list: tx(c.querySelector('[data-marker="price-lists-block"]')),
+       description: dm ? dm.content.slice(0, 400) : '',
++      photo: photo ? new URL(photo, location.href).href : '',
+       location: tx(c.querySelector('[data-marker="item-address"], [data-marker="item-location"]')),
+       date: tx(c.querySelector('[data-marker="item-date"]')),
+       promoted: /Продвинуто/.test(all),

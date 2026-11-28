@@ -1,4 +1,7 @@
 @layer components {
+  .purchase-settings > summary {
+    @apply min-h-11 cursor-pointer content-center font-bold;
+  }
   .purchase-conditions {
     @apply grid grid-cols-3 gap-3 mt-3;
   }
@@ -25,7 +28,14 @@
     @apply flex-wrap;
   }
   .catalog-card-body {
-    @apply wrap-anywhere;
+    @apply min-w-0 wrap-break-word;
+  }
+  .catalog-card .product-image img,
+  .catalog-selection-photo img {
+    @apply w-full h-full object-contain;
+  }
+  .catalog-selection-photo {
+    @apply min-h-24 max-h-44;
   }
   .catalog-card-body > p {
     @apply text-sm;
@@ -66,11 +76,11 @@
     .catalog-grid {
       @apply grid-cols-1;
     }
-    .catalog-card {
-      @apply grid grid-cols-[minmax(5.5rem,25%)_minmax(0,1fr)];
+    .catalog-card:has(> .product-image) {
+      @apply grid grid-cols-[28%_minmax(0,1fr)] items-start;
     }
     .catalog-card .product-image {
-      @apply h-auto aspect-square bg-size-[200%_auto];
+      @apply h-auto aspect-square self-start bg-size-[200%_auto];
     }
     .catalog-card .image-table {
       @apply bg-top;

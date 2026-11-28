@@ -46,7 +46,7 @@ export const Outline = (props: OutlineProps) => {
       <p className='support-text'>
         {room
           ? "Выберите мебель из проекта или протяните рамку нового предмета. Предметы можно перетаскивать."
-          : "Обведите комнату одним движением мыши или пальца. Можно также отметить углы. Затем укажите ширину и глубину комнаты."}
+          : "Обведите комнату одним движением или отметьте углы. Затем укажите ширину и длину комнаты."}
       </p>
       {!room && <ImagePicker onPhoto={changePhoto} label='Загрузить план или фото' />}
       <canvas
@@ -135,7 +135,7 @@ export const Outline = (props: OutlineProps) => {
                 onChange={changeWidth}
               />
             </Field>
-            <Field label='Глубина по контуру, м'>
+            <Field label='Длина по контуру, м'>
               <input
                 type='number'
                 min='.7'

@@ -5,10 +5,10 @@ import type { CatalogCity } from "@/shared/api/requests";
 import type { PlanAnalysis } from "@/shared/helpers";
 
 import { getReplacementCriteria, isLegacyRetailOffer } from "../helpers/catalogSelection.ts";
-import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, makeProjectBrief, upsertItem } from "../helpers/index.ts";
+import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, getScanLayoutUpdate, makeProjectBrief, upsertItem } from "../helpers/index.ts";
 import type { readLocal } from "../mock/index.ts";
 import { initialProject, planItems, positionsFor, visibleItems } from "../mock/index.ts";
-import { area, arrange, clamp, dimensions, inspect, rect, variants } from "../planning/index.ts";
+import { area, arrange, clamp, dimensions, inspect, variants } from "../planning/index.ts";
 import { isCatalogCategory } from "../types/index.ts";
 import type {
   ARMode,
@@ -184,11 +184,10 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       source: "xr",
       verified: "review"
     };
-    if (data.positions) {
-      update({ room, ...getARLayoutUpdate(project, data.positions, starterItems) });
-      setSelected(null);
-    } else saveRoom(room, project.passage);
-    const message = data.positions ? "Контур и расстановка сохранены." : "Контур измерен.";
+    const positions = data.positions ?? {};
+    update({ room, ...getScanLayoutUpdate(project, positions, starterItems) });
+    setSelected(null);
+    const message = Object.keys(positions).length ? "Контур и расстановка сохранены." : "Контур измерен.";
     notify(
       data.skipped
         ? `${message} Проёмов вдали от измеренных стен пропущено: ${data.skipped}.`
@@ -214,7 +213,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     notify("Комната и мебель сохранены.");
   };
 
-  const storeItem = (item: Item, fromCatalog = false) => {
+  const storeItem = (item: Item) => {
     const old = project.items.find((candidate) => candidate.id === item.id);
     if (!old && project.items.length >= 60) {
       notify("В одном проекте можно хранить до 60 предметов.");
@@ -228,22 +227,13 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
       !old || (["w", "d", "access", "kind"] as const).some((key) => old[key] !== item[key]);
     update({
       items: upsertItem(project.items, item),
-      ...(fromCatalog && item.mode === "office"
-        ? {
-            procurement: {
-              ...project.procurement,
-              reason: project.procurement.reason || item.offerReason || "",
-              offer: project.procurement.offer || item.url || ""
-            }
-          }
-        : {}),
       ...getItemLayoutUpdate(
         project,
         item,
         redraw && (item.kind !== "service" || Boolean(old && old.kind !== "service"))
       )
     });
-    if (!fromCatalog) close();
+    close();
     notify(old ? "Изменения сохранены." : "Мебель добавлена в проект.");
   };
 
@@ -280,7 +270,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   const acceptWishes = (phrase: string, analysis: PlanAnalysis) => {
     update({
       brief: makeProjectBrief(project.brief, phrase, analysis),
-      ...(analysis.budget === undefined ? {} : { budget: analysis.budget })
+      ...(analysis.budget === undefined ? {} : { budget: analysis.budget, budgetConfirmed: true })
     });
     close();
     notify("Пожелания сохранены.");
@@ -337,19 +327,8 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     close();
     notify("Данные закупки сохранены.");
   };
-  const addCatalogItem = (entry: Item) => storeItem(entry, true);
   const createProject = () => {
-    change({
-      ...initialProject(),
-      room: {
-        name: "Новая комната",
-        points: rect(4, 3),
-        openings: [],
-        source: "manual",
-        verified: "review"
-      },
-      items: []
-    });
+    change(initialProject());
     setSelected(null);
     action("room");
     notify("Новый проект создан.");
@@ -405,7 +384,6 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     importProject,
     exportData,
     saveProcurement,
-    addCatalogItem,
     controlAR,
     createProject,
     openProcurement,

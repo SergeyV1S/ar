@@ -32,22 +32,22 @@ export const EstimateContent = (props: EstimateContentProps) => {
       <div className='estimate-totals'>
         <div>
           <span>Бюджет</span>
-          <strong>{money(project.budget)}</strong>
+          <strong>{project.budget === undefined ? "Не задан" : money(project.budget)}</strong>
         </div>
         <div>
           <span>{hasUnknownPrices ? "Сумма известных цен" : "Итого к покупке"}</span>
           <strong>{money(total)}</strong>
         </div>
-        <div>
+        {difference !== undefined && <div>
           <span>{difference >= 0 ? "Остаток" : "Превышение"}</span>
           <strong className={difference < 0 ? "form-error" : ""}>
             {money(Math.abs(difference))}
           </strong>
-        </div>
+        </div>}
       </div>
       {hasUnknownPrices && (
         <p className='notice estimate-price-note'>
-          Сравнение с бюджетом предварительное. Для расчёта учтены позиции с указанными ценами.
+          В итог включены только позиции с указанными ценами.
         </p>
       )}
       <div className='estimate-rows'>

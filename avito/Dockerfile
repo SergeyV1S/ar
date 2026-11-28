@@ -6,9 +6,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv==0.9.26
 
 WORKDIR /app
+COPY search-photos.patch /tmp/search-photos.patch
 RUN git init . \
     && git fetch --depth=1 https://github.com/ermizin/avito-mcp.git 99a37a0497088d8f5ae73d19694f92568b18350f \
     && git checkout FETCH_HEAD \
+    && git apply /tmp/search-photos.patch \
     && uv sync --locked --no-dev \
     && rm -rf .git \
     && useradd --create-home avito \
