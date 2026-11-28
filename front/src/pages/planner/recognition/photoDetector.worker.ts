@@ -1,10 +1,9 @@
 /// <reference lib="webworker" />
-import loaderUrl from "onnxruntime-web/ort-wasm-simd-threaded.mjs?url";
-import wasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.wasm?url";
-import { InferenceSession, Tensor, env } from "onnxruntime-web/wasm";
+import { Tensor } from "onnxruntime-web/wasm";
 
 import { decodeDetections } from "./detections.ts";
-import type { DetectionRequest, DetectionResponse, ImageRotation } from "./types.ts";
+import type { DetectionResponse } from "./types.ts";
+import { loadModel } from "./wasmRuntime.ts";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -14,35 +13,13 @@ const patchSize = 16;
 const mean = [0.48145466, 0.4578275, 0.40821073];
 const deviation = [0.26862954, 0.26130258, 0.27577711];
 
-env.wasm.wasmPaths = {
-  mjs: new URL(loaderUrl, self.location.origin),
-  wasm: new URL(wasmUrl, self.location.origin)
-};
-env.wasm.numThreads = self.crossOriginIsolated ? 4 : 1;
-
-let model: Promise<InferenceSession> | undefined;
-
-const getModel = () => {
-  model ??= InferenceSession.create(
-    `${import.meta.env.BASE_URL}furniture-model/owlv2-furniture-v1.onnx`,
-    { executionProviders: ["wasm"] }
-  ).catch((error: unknown) => {
-    model = undefined;
-    throw error;
-  });
-  return model;
-};
-
-const tensorFromImage = (bitmap: ImageBitmap, rotation: ImageRotation) => {
-  const swapAxes = rotation === 90 || rotation === 270;
+const tensorFromImage = (bitmap: ImageBitmap) => {
   const scale = Math.min(
     maxEdge / Math.max(bitmap.width, bitmap.height),
     Math.sqrt(maxPixels / (bitmap.width * bitmap.height))
   );
-  const rawWidth = Math.max(1, Math.round(bitmap.width * scale));
-  const rawHeight = Math.max(1, Math.round(bitmap.height * scale));
-  const width = swapAxes ? rawHeight : rawWidth;
-  const height = swapAxes ? rawWidth : rawHeight;
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
   const inputWidth = Math.ceil(width / patchSize) * patchSize;
   const inputHeight = Math.ceil(height / patchSize) * patchSize;
   const canvas = new OffscreenCanvas(inputWidth, inputHeight);
@@ -51,11 +28,8 @@ const tensorFromImage = (bitmap: ImageBitmap, rotation: ImageRotation) => {
 
   context.fillStyle = "#808080";
   context.fillRect(0, 0, inputWidth, inputHeight);
-  if (rotation === 90 || rotation === 180) context.translate(width, 0);
-  if (rotation === 180 || rotation === 270) context.translate(0, height);
-  context.rotate((rotation * Math.PI) / 180);
   context.imageSmoothingQuality = "high";
-  context.drawImage(bitmap, 0, 0, rawWidth, rawHeight);
+  context.drawImage(bitmap, 0, 0, width, height);
 
   const { data } = context.getImageData(0, 0, inputWidth, inputHeight);
   const pixels = inputWidth * inputHeight;
@@ -70,10 +44,10 @@ const tensorFromImage = (bitmap: ImageBitmap, rotation: ImageRotation) => {
   return { tensor, width, height };
 };
 
-const detect = async ({ bitmap, rotation }: DetectionRequest) => {
-  const { tensor, width, height } = tensorFromImage(bitmap, rotation);
+const detect = async (bitmap: ImageBitmap) => {
+  const { tensor, width, height } = tensorFromImage(bitmap);
   try {
-    const detector = await getModel();
+    const detector = await loadModel("owlv2-furniture-v1.onnx");
     const output = await detector.run({ pixel_values: tensor });
     try {
       const { logits, pred_boxes: boxes } = output;
@@ -90,16 +64,14 @@ const detect = async ({ bitmap, rotation }: DetectionRequest) => {
   }
 };
 
-self.onmessage = async (event: MessageEvent<DetectionRequest>) => {
-  const request = event.data;
-  let matches: DetectionResponse["matches"] = null;
+self.onmessage = async ({ data: bitmap }: MessageEvent<ImageBitmap>) => {
+  let matches: DetectionResponse = null;
   try {
-    matches = await detect(request);
+    matches = await detect(bitmap);
   } catch (error) {
-    console.error("Furniture detection failed", error);
+    console.error("Photo furniture detection failed", error);
   } finally {
-    request.bitmap.close();
-    const response: DetectionResponse = { id: request.id, matches };
-    self.postMessage(response);
+    bitmap.close();
+    self.postMessage(matches);
   }
 };

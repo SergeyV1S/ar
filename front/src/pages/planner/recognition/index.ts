@@ -1,68 +1,38 @@
-import type { FurnitureMatch } from "./detections.ts";
-import type { DetectionRequest, DetectionResponse, ImageRotation } from "./types.ts";
+import type { ImageRotation, LiveFrame } from "./types.ts";
+import { createDetectionClient } from "./workerClient.ts";
 
-export type { FurnitureMatch } from "./detections.ts";
-export type { ImageRotation } from "./types.ts";
+export { cameraImagePoint } from "./imageRotation.ts";
+export type { FurnitureMatch, ImageRotation } from "./types.ts";
 
-let worker: Worker | undefined;
-let sequence = 0;
-
-const pending = new Map<
-  number,
-  {
-    resolve: (matches: FurnitureMatch[]) => void;
-    reject: (error: Error) => void;
-  }
->();
-
-const getWorker = () => {
-  if (worker) return worker;
-  const detector = new Worker(new URL("./detector.worker.ts", import.meta.url), { type: "module" });
-  detector.onmessage = ({ data }: MessageEvent<DetectionResponse>) => {
-    const request = pending.get(data.id);
-    pending.delete(data.id);
-    if (data.matches) request?.resolve(data.matches);
-    else request?.reject(new Error("Furniture detection failed"));
-  };
-  detector.onerror = () => {
-    if (worker !== detector) return;
-    detector.terminate();
-    worker = undefined;
-    for (const request of pending.values())
-      request.reject(new Error("Furniture detector unavailable"));
-    pending.clear();
-  };
-  worker = detector;
-  return detector;
+export const createLiveFurnitureDetector = () => {
+  const detector = createDetectionClient<LiveFrame>(
+    new Worker(new URL("./liveDetector.worker.ts", import.meta.url), { type: "module" })
+  );
+  const detect = ({ data, width, height }: ImageData, rotation: ImageRotation = 0) =>
+    detector.detect({ data, width, height, rotation }, [data.buffer]);
+  return { detect, dispose: detector.dispose };
 };
 
-export const recognizeFurniture = async (
-  image: HTMLImageElement | ImageData,
-  rotation: ImageRotation = 0
-) => {
-  const detector = getWorker();
-  const bitmap = await createImageBitmap(image);
-  if (detector !== worker) {
-    bitmap.close();
-    throw new Error("Furniture detector unavailable");
-  }
-  return new Promise<FurnitureMatch[]>((resolve, reject) => {
-    const id = ++sequence;
-    pending.set(id, { resolve, reject });
-    const request: DetectionRequest = { id, bitmap, rotation };
-    try {
-      detector.postMessage(request, [bitmap]);
-    } catch (error) {
-      pending.delete(id);
-      bitmap.close();
-      reject(error);
-    }
-  });
-};
-
-export const identifyFurniture = async (uri: string) => {
+export const identifyFurniture = async (uri: string, signal?: AbortSignal) => {
+  signal?.throwIfAborted();
   const image = new Image();
   image.src = uri;
   await image.decode();
-  return recognizeFurniture(image);
+  signal?.throwIfAborted();
+  const bitmap = await createImageBitmap(image);
+  try {
+    signal?.throwIfAborted();
+    const detector = createDetectionClient<ImageBitmap>(
+      new Worker(new URL("./photoDetector.worker.ts", import.meta.url), { type: "module" })
+    );
+    signal?.addEventListener("abort", detector.dispose, { once: true });
+    try {
+      return await detector.detect(bitmap, [bitmap]);
+    } finally {
+      signal?.removeEventListener("abort", detector.dispose);
+      detector.dispose();
+    }
+  } finally {
+    bitmap.close();
+  }
 };

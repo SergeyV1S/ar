@@ -1,5 +1,8 @@
+import { cameraImagePoint } from "../recognition/index.ts";
 import type { ImageRotation } from "../recognition/index.ts";
 import type { Point } from "../types/index.ts";
+
+export { cameraImagePoint };
 
 export type CameraPose = {
   transform: Float32Array;
@@ -15,17 +18,6 @@ export const getCameraRotation = (matrix: Float32Array): ImageRotation => {
   if (Math.max(Math.abs(rightUp), Math.abs(screenUp)) < 0.1) return 0;
   if (Math.abs(rightUp) > Math.abs(screenUp)) return rightUp > 0 ? 270 : 90;
   return screenUp < 0 ? 180 : 0;
-};
-
-export const cameraImagePoint = (
-  rotation: ImageRotation,
-  u: number,
-  v: number
-): [number, number] => {
-  if (rotation === 90) return [v, 1 - u];
-  if (rotation === 180) return [1 - u, 1 - v];
-  if (rotation === 270) return [1 - v, u];
-  return [u, v];
 };
 
 export const viewRay = (

@@ -1,4 +1,5 @@
 import { newId } from "../../../shared/helpers/index.ts";
+import { createLiveFurnitureDetector } from "../recognition/index.ts";
 import type { ScanLayout } from "./geometry.ts";
 import type { ObjectMeasurement } from "./objectMeasurement.ts";
 import {
@@ -63,11 +64,16 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
   let process: ReturnType<typeof createObjectTracks> | null = null;
   let lastCapture: number | null = null;
   let waitSince: number | null = null;
-  let inFlight = false;
+  let detector: ReturnType<typeof createLiveFurnitureDetector> | null = null;
+  let isDetecting = false;
   const stop = () => {
     process = null;
+    isDetecting = false;
+    detector?.dispose();
+    detector = null;
   };
   const start = () => {
+    stop();
     process = createObjectTracks();
     lastCapture = null;
     waitSince = null;
@@ -77,7 +83,7 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
     onError(message);
   };
   const update = (time: number, frame: XRFrame, view: XRView, layout: ScanLayout) => {
-    if (!process || inFlight || (lastCapture !== null && time - lastCapture < 650)) return;
+    if (!process || isDetecting || (lastCapture !== null && time - lastCapture < 650)) return;
     lastCapture = time;
     let image: ImageData | null;
     try {
@@ -111,9 +117,13 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
       }
     }
     const request = process;
-    inFlight = true;
-    void import("../recognition/index.ts")
-      .then(({ recognizeFurniture }) => recognizeFurniture(image, rotation))
+    isDetecting = true;
+    void Promise.resolve()
+      .then(() => {
+        if (process !== request) return [];
+        detector ??= createLiveFurnitureDetector();
+        return detector.detect(image, rotation);
+      })
       .then((matches) => {
         if (process !== request) return;
         const objects = matches
@@ -129,7 +139,7 @@ export const createObjectScanner = ({ readImage, publish, onError }: Options) =>
           fail("Не удалось распознать мебель. Выделите предмет вручную или повторите поиск.");
       })
       .finally(() => {
-        inFlight = false;
+        if (process === request) isDetecting = false;
       });
   };
   return { start, stop, update };

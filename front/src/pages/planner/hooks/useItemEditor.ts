@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { newId, readNumber, readText, safeUrl } from "../../../shared/helpers/index.ts";
 import type { ItemEditorProps } from "../components/index.ts";
+import { identifyFurniture } from "../recognition/index.ts";
 import type { FurnitureMatch } from "../recognition/index.ts";
 
 export const useItemEditor = ({ item, project, owned, save, remove }: ItemEditorProps) => {
@@ -17,29 +18,32 @@ export const useItemEditor = ({ item, project, owned, save, remove }: ItemEditor
     status: "idle",
     matches: []
   });
-  const scanNumber = useRef(0);
+  const activeScan = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
-      scanNumber.current++;
+      activeScan.current?.abort();
     },
     []
   );
   const setImage = (value: string) => {
-    scanNumber.current++;
+    activeScan.current?.abort();
     setDetection({ status: "idle", matches: [] });
     setPhoto(value);
     setSource(value ? "photo" : "manual");
     setVerified("review");
   };
   const scanImage = async () => {
-    const run = ++scanNumber.current;
+    activeScan.current?.abort();
+    const scan = new AbortController();
+    activeScan.current = scan;
     setDetection({ status: "loading", matches: [] });
     try {
-      const { identifyFurniture } = await import("../recognition/index.ts");
-      const matches = await identifyFurniture(photo);
-      if (scanNumber.current === run) setDetection({ status: "ready", matches });
+      const matches = await identifyFurniture(photo, scan.signal);
+      if (!scan.signal.aborted) setDetection({ status: "ready", matches });
     } catch {
-      if (scanNumber.current === run) setDetection({ status: "error", matches: [] });
+      if (!scan.signal.aborted) setDetection({ status: "error", matches: [] });
+    } finally {
+      if (activeScan.current === scan) activeScan.current = null;
     }
   };
   const submit = (event: FormEvent<HTMLFormElement>) => {
