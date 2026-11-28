@@ -1,6 +1,7 @@
 import { Button, Field, Icon } from "../../../shared/components/index.ts";
 import { useVoice } from "../hooks/index.ts";
 import type { Project, VoicePatch } from "../types/index.ts";
+import { CHUNK_SECONDS } from "../voice/index.ts";
 
 export type VoiceProps = {
   project: Project;
@@ -12,6 +13,7 @@ export const Voice = (props: VoiceProps) => {
     phrase,
     message,
     canRecord,
+    isDraft,
     isBusy,
     isRecording,
     buttonLabel,
@@ -38,7 +40,9 @@ export const Voice = (props: VoiceProps) => {
           <span className='sr-only' role='status'>
             {isBusy && buttonLabel}
           </span>
-          <p className='support-text'>Запись отправляется в Groq для распознавания.</p>
+          <p className='support-text'>
+            Аудио отправляется в Groq каждые {CHUNK_SECONDS} секунды и целиком после остановки.
+          </p>
         </>
       ) : (
         <p className='notice'>
@@ -54,6 +58,7 @@ export const Voice = (props: VoiceProps) => {
           placeholder='Комната 4 на 3…'
         />
       </Field>
+      {isDraft && <p className='support-text'>Черновик распознавания</p>}
       {message && (
         <p className='form-error' role='alert'>
           {message}
@@ -69,6 +74,7 @@ export const Voice = (props: VoiceProps) => {
           ))}
         </div>
       ) : (
+        !isBusy &&
         phrase.trim() && (
           <p className='support-text'>
             Попробуйте указать комнату, размеры дивана или бюджет цифрами.

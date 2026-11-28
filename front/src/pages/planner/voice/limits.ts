@@ -1,0 +1,3 @@
+export const CHUNK_SECONDS = 3;
+export const RECORDING_SECONDS = 60;
+export const MAX_DRAFT_CHUNKS = RECORDING_SECONDS / CHUNK_SECONDS - 1;

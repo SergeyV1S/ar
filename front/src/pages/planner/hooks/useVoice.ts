@@ -1,165 +1,186 @@
-import axios from "axios";
 import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { postSpeechTranscriptions } from "@/shared/api/requests";
+import axios from "axios";
 
 import type { VoiceProps } from "../components/index.ts";
-import { getRecordingType, getTranscriptionError } from "../helpers/index.ts";
+import { NO_SPEECH_MESSAGE, getTranscriptionError } from "../helpers/index.ts";
 import { parseVoice } from "../mock/index.ts";
+import {
+  CHUNK_SECONDS,
+  MAX_DRAFT_CHUNKS,
+  canCaptureVoice,
+  encodeVoiceWav,
+  startVoiceCapture
+} from "../voice/index.ts";
 
-const RECORDING_LIMIT_MS = 60_000;
 const RECORDING_ERROR = "Не удалось записать звук. Попробуйте ещё раз или введите фразу вручную.";
 
 const BUTTON_LABELS = {
   idle: "Говорить",
   requesting: "Ожидание доступа к микрофону…",
   recording: "Остановить запись",
-  transcribing: "Распознаём запись…"
+  transcribing: "Уточняем запись…"
 } as const;
 
 type VoiceStage = keyof typeof BUTTON_LABELS;
+type Transcript = { text: string; draftOf?: symbol };
 
 type VoiceSession = {
+  id: symbol;
   controller: AbortController;
-  stream?: MediaStream;
-  recorder?: MediaRecorder;
-  timer?: number;
-  stopRequested?: boolean;
+  capture?: Awaited<ReturnType<typeof startVoiceCapture>>;
+  chunks: Float32Array[];
+  nextDraftChunk: number;
+  draftRequest?: AbortController;
+  finishing: boolean;
 };
 
-const stopTracks = (stream?: MediaStream) => stream?.getTracks().forEach((track) => track.stop());
-
-const releaseMicrophone = (session: VoiceSession) => {
-  window.clearTimeout(session.timer);
-  const recorder = session.recorder;
-  if (recorder) {
-    recorder.ondataavailable = null;
-    recorder.onstop = null;
-    recorder.onerror = null;
-    if (recorder.state !== "inactive") recorder.stop();
-  }
-  stopTracks(session.stream);
-  session.stream = undefined;
-  session.recorder = undefined;
+const cancelSession = (session: VoiceSession) => {
+  session.controller.abort();
+  session.draftRequest?.abort();
+  session.chunks.length = 0;
 };
 
 export const useVoice = ({ project, apply }: VoiceProps) => {
-  const [phrase, setPhrase] = useState("");
+  const [transcript, setTranscript] = useState<Transcript>({ text: "" });
   const [stage, setStage] = useState<VoiceStage>("idle");
   const [message, setMessage] = useState("");
   const activeSession = useRef<VoiceSession | null>(null);
-  const recordingType = getRecordingType();
-  const { patch, notes } = parseVoice(phrase, project);
+  const canRecord = canCaptureVoice();
+  const phrase = transcript.text;
+  const { patch, notes } = parseVoice(stage === "idle" ? phrase : "", project);
 
-  useEffect(() => () => {
-    const session = activeSession.current;
-    if (!session) return;
-    activeSession.current = null;
-    session.controller.abort();
-    releaseMicrophone(session);
-  }, []);
+  useEffect(
+    () => () => {
+      const session = activeSession.current;
+      activeSession.current = null;
+      if (session) cancelSession(session);
+    },
+    []
+  );
 
-  const finishSession = (session: VoiceSession) => {
+  const finishSession = (session: VoiceSession, error?: string) => {
     if (activeSession.current !== session) return;
     activeSession.current = null;
-    releaseMicrophone(session);
+    cancelSession(session);
+    if (error) setMessage(error);
     setStage("idle");
   };
 
-  const failRecording = (session: VoiceSession, error: string) => {
-    if (activeSession.current !== session) return;
-    setMessage(error);
-    finishSession(session);
-  };
+  const transcribeNextChunk = async (session: VoiceSession) => {
+    if (activeSession.current !== session || session.finishing || session.draftRequest) return;
+    if (session.nextDraftChunk >= MAX_DRAFT_CHUNKS) return;
+    const chunk = session.chunks[session.nextDraftChunk];
+    const sampleRate = session.capture?.sampleRate;
+    if (!chunk || !sampleRate || chunk.length !== sampleRate * CHUNK_SECONDS) return;
 
-  const transcribe = async (session: VoiceSession, recording: Blob) => {
-    if (activeSession.current !== session) return;
-    if (recording.size === 0) {
-      failRecording(session, RECORDING_ERROR);
-      return;
-    }
-    releaseMicrophone(session);
+    const request = new AbortController();
+    session.draftRequest = request;
+    session.nextDraftChunk += 1;
     try {
-      const { text } = await postSpeechTranscriptions({
+      const recording = await encodeVoiceWav([chunk], sampleRate);
+      if (!recording || request.signal.aborted) return;
+      const result = await postSpeechTranscriptions({
         params: { recording },
-        config: { signal: session.controller.signal }
+        config: { signal: request.signal }
       });
-      if (activeSession.current === session) setPhrase(text);
+      if (!result || request.signal.aborted) return;
+      setTranscript((current) => ({
+        text: current.draftOf === session.id ? `${current.text} ${result.text}` : result.text,
+        draftOf: session.id
+      }));
     } catch (error: unknown) {
-      if (!axios.isCancel(error) && activeSession.current === session) {
-        setMessage(getTranscriptionError(error));
-      }
+      if (!axios.isCancel(error) && !request.signal.aborted)
+        finishSession(session, getTranscriptionError(error));
     } finally {
-      finishSession(session);
+      session.draftRequest = undefined;
+      void transcribeNextChunk(session);
     }
   };
 
-  const stopRecording = (session: VoiceSession) => {
-    if (activeSession.current !== session || session.recorder?.state !== "recording") return;
-    session.stopRequested = true;
-    session.recorder.stop();
+  const beginFinalTranscription = (session: VoiceSession) => {
+    session.finishing = true;
+    session.draftRequest?.abort();
     setStage("transcribing");
   };
 
-  const startRecording = async (mimeType: string) => {
+  const transcribeFullRecording = async (session: VoiceSession) => {
+    if (activeSession.current !== session || !session.capture) return;
+    beginFinalTranscription(session);
+    const { signal } = session.controller;
+    try {
+      const recording = await encodeVoiceWav(session.chunks, session.capture.sampleRate);
+      if (signal.aborted) return;
+      if (!recording) {
+        finishSession(session, RECORDING_ERROR);
+        return;
+      }
+      const result = await postSpeechTranscriptions({ params: { recording }, config: { signal } });
+      if (signal.aborted) return;
+      if (result) setTranscript({ text: result.text });
+      finishSession(session, result ? undefined : NO_SPEECH_MESSAGE);
+    } catch (error: unknown) {
+      if (!axios.isCancel(error) && !signal.aborted)
+        finishSession(session, getTranscriptionError(error));
+    }
+  };
+
+  const startRecording = async () => {
     if (activeSession.current) return;
-    const session: VoiceSession = { controller: new AbortController() };
+    const session: VoiceSession = {
+      id: Symbol(),
+      controller: new AbortController(),
+      chunks: [],
+      nextDraftChunk: 0,
+      finishing: false
+    };
     activeSession.current = session;
     setMessage("");
     setStage("requesting");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (activeSession.current !== session) {
-        stopTracks(stream);
-        return;
-      }
-      session.stream = stream;
-      const recorder = new MediaRecorder(stream, { mimeType });
-      session.recorder = recorder;
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = ({ data }) => {
-        if (data.size > 0) chunks.push(data);
-      };
-      recorder.onerror = () => failRecording(session, RECORDING_ERROR);
-      recorder.onstop = () => {
-        if (!session.stopRequested) {
-          failRecording(session, RECORDING_ERROR);
-          return;
-        }
-        const type = (recorder.mimeType || mimeType).split(";")[0];
-        void transcribe(session, new Blob(chunks, { type }));
-      };
-
-      recorder.start();
-      session.timer = window.setTimeout(() => stopRecording(session), RECORDING_LIMIT_MS);
-      setStage("recording");
+      session.capture = await startVoiceCapture({
+        signal: session.controller.signal,
+        onChunk: (samples) => {
+          session.chunks.push(samples);
+          void transcribeNextChunk(session);
+        },
+        onStop: () => void transcribeFullRecording(session),
+        onError: () => finishSession(session, RECORDING_ERROR)
+      });
+      if (activeSession.current === session) setStage("recording");
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "NotAllowedError") {
-        failRecording(session, "Доступ к микрофону запрещён. Введите фразу вручную.");
+        finishSession(session, "Доступ к микрофону запрещён. Введите фразу вручную.");
         return;
       }
-      failRecording(session, RECORDING_ERROR);
+      finishSession(session, RECORDING_ERROR);
     }
   };
 
   const toggleRecording = () => {
-    if (stage === "recording" && activeSession.current) {
-      stopRecording(activeSession.current);
+    const session = activeSession.current;
+    if (stage === "recording" && session?.capture) {
+      beginFinalTranscription(session);
+      session.capture.stop();
       return;
     }
-    if (recordingType) void startRecording(recordingType);
+    if (canRecord) void startRecording();
   };
 
-  const changePhrase = (event: ChangeEvent<HTMLTextAreaElement>) => setPhrase(event.target.value);
+  const changePhrase = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const text = event.target.value;
+    setTranscript((current) => ({ ...current, text }));
+  };
   const applyVoice = () => apply(patch);
 
   return {
     phrase,
     message,
-    canRecord: Boolean(recordingType),
+    canRecord,
+    isDraft: transcript.draftOf !== undefined,
     isBusy: stage !== "idle",
     isRecording: stage === "recording",
     buttonLabel: BUTTON_LABELS[stage],

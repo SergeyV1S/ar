@@ -7,6 +7,7 @@ const AUDIO_EXTENSIONS = new Map([
   ["audio/webm", "webm"],
   ["audio/mp4", "mp4"],
   ["audio/ogg", "ogg"],
+  ["audio/wav", "wav"],
   ["video/mp4", "mp4"],
   ["video/webm", "webm"]
 ]);
