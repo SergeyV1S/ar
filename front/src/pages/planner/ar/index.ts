@@ -19,6 +19,7 @@ import type {
 import { createArrangement, getItemTarget } from "./arrangement.ts";
 import { createARCamera } from "./camera.ts";
 import { furnitureMesh } from "./furniture.ts";
+import { createFurnitureModels } from "./furnitureModels/index.ts";
 import { getScanLayout, getScanResult, getWallTarget, worldPoint } from "./geometry.ts";
 import { getInstructions } from "./getInstructions.ts";
 import { traceBase, traceHeight } from "./itemTrace.ts";
@@ -107,6 +108,10 @@ export const startAR = async ({
   });
   const canvas = document.createElement("canvas");
   let tracker: Tracker | null = null;
+  let modelsDirty = false;
+  const models = createFurnitureModels(() => {
+    modelsDirty = true;
+  });
   try {
     const gl = canvas.getContext("webgl", {
       xrCompatible: true,
@@ -126,7 +131,7 @@ export const startAR = async ({
     ]);
     const renderer = createRenderer(gl);
     const viewAnchor = createViewAnchor(space);
-    let model = mode === "view" ? furnitureMesh(items, positions) : emptyMesh;
+    let model = mode === "view" ? furnitureMesh(items, positions, models.get) : emptyMesh;
     let viewPositions = positions;
     let viewItem: Item | undefined;
     let viewEdited = false;
@@ -141,7 +146,7 @@ export const startAR = async ({
       );
     }
     const plan = planMesh.finish();
-    const furniture = createArrangement(items);
+    const furniture = createArrangement(items, models.get);
     const camera = mode === "scan" ? createARCamera(session, gl) : null;
     const accent = rgb("#9b67ff"),
       accentSoft = rgb("#c4a9ff"),
@@ -488,6 +493,12 @@ export const startAR = async ({
       help();
       if (!layer) return;
 
+      if (modelsDirty) {
+        modelsDirty = false;
+        if (mode === "view") model = furnitureMesh(items, viewPositions, models.get);
+        else furniture.refreshModels();
+      }
+
       if (sceneDirty) {
         sceneMesh.reset();
         const level = frameLevel() ?? hit?.[1] ?? 0;
@@ -584,11 +595,13 @@ export const startAR = async ({
       "end",
       () => {
         ended = true;
+        models.dispose();
         finishFinding();
         camera?.dispose();
         viewAnchor.set();
         active.cancel();
         overlay.removeEventListener("beforexrselect", click);
+        renderer.dispose();
         gl.getExtension("WEBGL_lose_context")?.loseContext();
         onEnd();
       },
@@ -687,7 +700,7 @@ export const startAR = async ({
               ...viewPositions,
               [viewItem.id]: rotatePosition(viewItem, previous, angle)
             };
-            model = furnitureMesh(items, viewPositions);
+            model = furnitureMesh(items, viewPositions, models.get);
             viewEdited = true;
           } else rotation = normalizeAngle(angle);
         }
@@ -749,6 +762,7 @@ export const startAR = async ({
       }
     };
   } catch (error) {
+    models.dispose();
     tracker?.cancel();
     await session.end().catch(() => {});
     throw error;

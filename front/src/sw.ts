@@ -4,6 +4,7 @@ declare const self: ServiceWorkerGlobalScope;
 const CACHE = "metrika-offline-v3";
 const SCOPE = self.registration.scope;
 const entry = new URL("./", SCOPE);
+const modelDirectory = new URL("models/furniture/", entry);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -78,6 +79,15 @@ self.addEventListener("fetch", (event) => {
           return response;
         } catch {
           return (await cache.match(entry)) ?? Response.error();
+        }
+      }
+      if (url.pathname.endsWith(".glb") && url.href.startsWith(modelDirectory.href)) {
+        try {
+          const response = await fetch(request, { cache: "no-cache" });
+          if (response.ok) await cache.put(request, response.clone());
+          return response;
+        } catch {
+          return (await cache.match(request)) ?? Response.error();
         }
       }
       const cached = await cache.match(request);

@@ -9,6 +9,7 @@ import {
 } from "../planning/index.ts";
 import type { Item, Point, Position, Positions } from "../types/index.ts";
 import { furnitureMesh } from "./furniture.ts";
+import type { FurnitureModelLookup } from "./furnitureModels/index.ts";
 import type { ScanLayout } from "./geometry.ts";
 import { roomPoint, worldPoint } from "./geometry.ts";
 
@@ -41,7 +42,7 @@ export const getItemTarget = (layout: ScanLayout, item: Item, hit: Point, rotati
   };
 };
 
-export const createArrangement = (initialItems: Item[]) => {
+export const createArrangement = (initialItems: Item[], getModel?: FurnitureModelLookup) => {
   const items = new Map(initialItems.map((item) => [item.id, item]));
   const added = new Set<string>();
   const placed = new Map<string, Position>();
@@ -57,21 +58,26 @@ export const createArrangement = (initialItems: Item[]) => {
   const updateModel = () => {
     const visible = [...items.values()].filter(({ id }) => placed.has(id));
     const layout = positions();
-    model = furnitureMesh(visible, layout);
+    model = furnitureMesh(visible, layout, getModel);
     withoutSelection =
       selected && placed.has(selected.id)
         ? furnitureMesh(
             visible.filter(({ id }) => id !== selected?.id),
-            layout
+            layout,
+            getModel
           )
         : model;
+  };
+  const refreshModels = () => {
+    if (selected)
+      preview = furnitureMesh([selected], { [selected.id]: { x: 0, y: 0, r: 0 } }, getModel);
+    updateModel();
   };
   const select = (id?: string) => {
     selected = id ? items.get(id) : undefined;
     rotating = false;
     rotation = selected ? (placed.get(selected.id)?.r ?? 0) : 0;
-    if (selected) preview = furnitureMesh([selected], { [selected.id]: { x: 0, y: 0, r: 0 } });
-    updateModel();
+    refreshModels();
   };
   const place = (position: Position) => {
     if (!selected) return;
@@ -115,6 +121,7 @@ export const createArrangement = (initialItems: Item[]) => {
     undo,
     removeSelected,
     positions,
+    refreshModels,
     rotate: (angle: number) => {
       rotation = normalizeAngle(angle);
       if (!selected) return;

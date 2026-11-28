@@ -1,3 +1,7 @@
+import type { FurnitureInstance } from "./furnitureModels/index.ts";
+import { createModelRenderer } from "./modelRenderer.ts";
+import { createProgram } from "./webgl.ts";
+
 const vertexShader = `
 attribute vec3 vertex;
 attribute vec4 tint;
@@ -29,40 +33,16 @@ void main() {
   gl_FragColor = vec4(color.rgb * fade, color.a * opacity);
 }`;
 
-export type Mesh = { solid: Float32Array; glass: Float32Array };
+export type Mesh = { solid: Float32Array; glass: Float32Array; models?: FurnitureInstance[] };
 
 const stride = 7 * 4;
 
 export const createRenderer = (gl: WebGLRenderingContext) => {
-  const compile = (kind: number, source: string) => {
-    const shader = gl.createShader(kind);
-    if (!shader) throw new Error("Не удалось создать шейдер.");
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      const log = gl.getShaderInfoLog(shader) ?? "";
-      gl.deleteShader(shader);
-      throw new Error(`Не удалось подготовить 3D-графику. ${log}`);
-    }
-    return shader;
-  };
-  const program = gl.createProgram();
-  if (!program) throw new Error("Не удалось создать 3D-программу.");
-  const vertex = compile(gl.VERTEX_SHADER, vertexShader);
-  const fragment = compile(gl.FRAGMENT_SHADER, fragmentShader);
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-    throw new Error("Не удалось запустить 3D-графику.");
+  const program = createProgram(gl, vertexShader, fragmentShader);
   gl.useProgram(program);
 
   const position = gl.getAttribLocation(program, "vertex");
   const tint = gl.getAttribLocation(program, "tint");
-  gl.enableVertexAttribArray(position);
-  gl.enableVertexAttribArray(tint);
   const projection = gl.getUniformLocation(program, "projection");
   const camera = gl.getUniformLocation(program, "camera");
   const frame = gl.getUniformLocation(program, "frame");
@@ -71,12 +51,20 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
   gl.uniform1f(opacity, 1);
   const buffer = gl.createBuffer();
   if (!buffer) throw new Error("Не удалось выделить буфер 3D-графики.");
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.vertexAttribPointer(position, 3, gl.FLOAT, false, stride, 0);
-  gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 12);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
   gl.clearColor(0, 0, 0, 0);
+  let currentView: XRView | undefined;
+  let modelRenderer: ReturnType<typeof createModelRenderer> | undefined;
+
+  const bindFlat = () => {
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(position);
+    gl.enableVertexAttribArray(tint);
+    gl.vertexAttribPointer(position, 3, gl.FLOAT, false, stride, 0);
+    gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 12);
+  };
 
   const upload = (data: Float32Array) => {
     if (!data.length) return;
@@ -101,17 +89,13 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
 
   return {
     view(view: XRView) {
+      currentView = view;
       gl.uniformMatrix4fv(projection, false, view.projectionMatrix);
       gl.uniformMatrix4fv(camera, false, view.transform.inverse.matrix);
     },
     clear(framebuffer: WebGLFramebuffer | null) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-      gl.useProgram(program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.enableVertexAttribArray(position);
-      gl.enableVertexAttribArray(tint);
-      gl.vertexAttribPointer(position, 3, gl.FLOAT, false, stride, 0);
-      gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 12);
+      bindFlat();
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
     drawScene(mesh: Mesh) {
@@ -131,16 +115,24 @@ export const createRenderer = (gl: WebGLRenderingContext) => {
         sin = Math.sin(angle);
       const nextCos = Math.cos(total),
         nextSin = Math.sin(total);
-      place(
-        [
-          origin[0] + pivot[0] * cos - pivot[1] * sin - (pivot[0] * nextCos - pivot[1] * nextSin),
-          origin[1],
-          origin[2] + pivot[0] * sin + pivot[1] * cos - (pivot[0] * nextSin + pivot[1] * nextCos)
-        ],
-        total
-      );
+      const position: [number, number, number] = [
+        origin[0] + pivot[0] * cos - pivot[1] * sin - (pivot[0] * nextCos - pivot[1] * nextSin),
+        origin[1],
+        origin[2] + pivot[0] * sin + pivot[1] * cos - (pivot[0] * nextSin + pivot[1] * nextCos)
+      ];
+      place(position, total);
       if (mesh.solid.length) upload(mesh.solid);
+      if (mesh.models?.length && currentView) {
+        modelRenderer ??= createModelRenderer(gl);
+        modelRenderer.draw(mesh.models, currentView, position, nextCos, nextSin);
+        bindFlat();
+      }
       translucent(mesh);
+    },
+    dispose() {
+      modelRenderer?.dispose();
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
     }
   };
 };
