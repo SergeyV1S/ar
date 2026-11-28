@@ -10,7 +10,7 @@ import { checkLabel, modes, sourceLabel } from "./mock/index.ts";
 import { variants } from "./planning/index.ts";
 
 export const PlannerLayout = () => {
-  const content = usePlannerLayout();
+  const { content, isPlannerPage } = usePlannerLayout();
   const {
     project,
     locked,
@@ -64,8 +64,11 @@ export const PlannerLayout = () => {
       <a className='skip-link' href='#main-content'>
         К содержанию
       </a>
-      <Header status={status} />
+      <Header />
       <main className='shell' id='main-content' ref={content} tabIndex={-1}>
+        <div role='status'>
+          {status.includes("ошибка") && <p className='form-error'>{status}</p>}
+        </div>
         <Outlet />
         <footer className='footer'>
           <span>
@@ -88,7 +91,7 @@ export const PlannerLayout = () => {
         onChange={importProject}
         hidden
       />
-      {toast && (
+      {toast && !isPlannerPage && (
         <div role='status' className='toast'>
           <Icon name='info' />
           {toast}

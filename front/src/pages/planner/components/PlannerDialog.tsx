@@ -111,27 +111,43 @@ export const PlannerDialog = () => {
       case "projects":
         return (
           <>
-            <div className='notice'>
+            <div className='notice wrap-anywhere'>
               <Icon name='folder' />
               {project.room.name} · {decimal(roomArea)} м² · {project.items.length} поз.
             </div>
-            <p className='support-text'>
-              Импорт JSON заменит открытый проект. Его можно заранее скачать как копию.
-            </p>
-            <div className='form-actions'>
-              <Button icon='plus' className='mr-auto' onClick={openNewProject}>
+            <div
+              className='project-actions project-actions-quiet'
+              role='group'
+              aria-label='Управление проектом'
+            >
+              <Button icon='plus' onClick={openNewProject}>
                 Новый проект
               </Button>
-              <Button icon='download' onClick={exportCopy}>
-                Скачать копию JSON
-              </Button>
-              <Button icon='upload' className='primary' onClick={chooseImportFile}>
-                Импорт проекта
+              <Button icon='shield' onClick={openPrivacy}>
+                Хранение и защита
               </Button>
             </div>
-            <Button icon='shield' onClick={openPrivacy}>
-              Хранение и защита проекта
-            </Button>
+            <div
+              className='mt-3 border-t border-border pt-3'
+              role='group'
+              aria-label='Файл проекта'
+            >
+              <div className='project-actions'>
+                <Button icon='download' onClick={exportCopy}>
+                  Скачать копию JSON
+                </Button>
+                <Button
+                  icon='upload'
+                  aria-describedby='project-import-note'
+                  onClick={chooseImportFile}
+                >
+                  Импортировать JSON
+                </Button>
+              </div>
+              <p id='project-import-note' className='mt-2 text-sm text-muted'>
+                Импорт заменит текущий проект. Скачайте копию, чтобы сохранить его.
+              </p>
+            </div>
           </>
         );
       case "new-project":

@@ -2,7 +2,7 @@ import type { ChangeEvent, KeyboardEvent, PointerEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { getPlanStatus } from "../helpers/index.ts";
-import { area, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
+import { area, dimensions, pointIn, rotatePosition, round, variants } from "../planning/index.ts";
 import type { Drawing } from "../planning/index.ts";
 import { drawPlan } from "../planning/index.ts";
 import type { Position } from "../types/index.ts";
@@ -30,6 +30,7 @@ export const usePlanner = () => {
     move,
     action
   } = usePlannerContext();
+  const scaleLabel = useRef<HTMLSpanElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null),
     drawing = useRef<Drawing | null>(null),
     drag = useRef<{
@@ -51,8 +52,13 @@ export const usePlanner = () => {
         zoom,
         selected: chosen
       });
-      if (drawing.current)
-        node.parentElement?.style.setProperty("--scale-line", `${drawing.current.scale}px`);
+      if (!drawing.current || !scaleLabel.current) return;
+      const { scale } = drawing.current;
+      const limit = Math.min(node.clientWidth / 2, 135);
+      const meters =
+        [1, 0.5, 0.25, 0.1, 0.05, 0.02, 0.01].find((unit) => unit * scale <= limit) ?? 0.01;
+      node.parentElement?.style.setProperty("--scale-line", `${scale * meters}px`);
+      scaleLabel.current.textContent = meters === 1 ? "1 м" : `${meters * 100} см`;
     };
     paint();
     const observer = new ResizeObserver(paint);
@@ -114,19 +120,18 @@ export const usePlanner = () => {
     if (pointer?.latest && event.type !== "pointercancel") move(pointer.id, pointer.latest);
   };
   const current = items.find((item) => item.id === chosen);
+  const currentPosition = current ? positions[current.id] : undefined;
   const nudgeItem = (direction: (typeof moveDirections)[number], step: number) => {
-    if (!current) return;
-    const position = positions[current.id];
-    if (!position) return;
+    if (!current || !currentPosition) return;
     move(current.id, {
-      ...position,
-      x: round(position.x + direction.x * step),
-      y: round(position.y + direction.y * step)
+      ...currentPosition,
+      x: round(currentPosition.x + direction.x * step),
+      y: round(currentPosition.y + direction.y * step)
     });
   };
   const handleCanvasKey = (event: KeyboardEvent<HTMLCanvasElement>) => {
     const direction = moveDirections.find((option) => option.key === event.key);
-    if (!direction || !current || !positions[current.id] || view !== "2d") return;
+    if (!direction || !currentPosition || view !== "2d") return;
     event.preventDefault();
     nudgeItem(direction, event.shiftKey ? 0.15 : 0.03);
   };
@@ -146,17 +151,18 @@ export const usePlanner = () => {
   const editItem = () => {
     if (current) action("item", current.id);
   };
-  const rotateItem = (event: ChangeEvent<HTMLInputElement>) => {
-    if (!current) return;
-    const pos = positions[current.id];
-    if (pos) move(current.id, rotatePosition(current, pos, event.target.valueAsNumber));
+  const rotateTo = (angle: number) => {
+    if (!current || !currentPosition) return;
+    move(current.id, rotatePosition(current, currentPosition, angle));
+  };
+  const rotateItem = () => {
+    if (currentPosition) rotateTo(currentPosition.r + 90);
+  };
+  const changeItemAngle = (event: ChangeEvent<HTMLInputElement>) => {
+    rotateTo(event.currentTarget.valueAsNumber);
   };
   const clearSelection = () => setChosen(null);
   const openChecks = () => action("checks");
-  const editRoom = () => action("room");
-  const drawRoom = () => action("outline");
-  const scanRoom = () => action("ar-scan");
-  const dictate = () => action("voice");
   const addOwned = () => action("add-owned");
   const replan = () => action(project.layouts[project.mode] ? "replan-confirm" : "replan");
 
@@ -173,11 +179,13 @@ export const usePlanner = () => {
   });
   const planStatus = getPlanStatus(inspection, project.passage);
   const roomArea = area(project.room.points);
+  const roomSize = dimensions(project.room.points);
 
   return {
     project,
     positions,
     canvas,
+    scaleLabel,
     view,
     start,
     track,
@@ -190,18 +198,16 @@ export const usePlanner = () => {
     viewOptions,
     variantOptions,
     roomArea,
+    roomSize,
     openAR,
     zoomIn,
     zoomOut,
     resetZoom,
     editItem,
     rotateItem,
+    changeItemAngle,
     clearSelection,
     openChecks,
-    editRoom,
-    drawRoom,
-    scanRoom,
-    dictate,
     addOwned,
     replan
   };

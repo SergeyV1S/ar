@@ -27,14 +27,14 @@ export type Target = {
 export type Drawing = { targets: Target[]; scale: number; to: Projection };
 
 const timber = ["#eee5d9", "#f0e8de", "#eae0d4", "#eee4d8", "#f3ebe1"];
-const purple = "#7546e8";
+const selectionInk = "#80532d";
 const palette: Record<string, string> = {
   sofa: "#e4d7c4",
   chair: "#aeb698",
   table: "#c69a69",
   cabinet: "#ba9270",
-  pouf: "#d3c2e3",
-  other: "#bab0cc"
+  pouf: "#c1ad99",
+  other: "#a89e92"
 };
 
 export const canvasContext = (
@@ -217,12 +217,12 @@ const furniture = (
       couch ? "#d1c3b0" : "#a0ab8e"
     );
     if (couch) {
-      [[w * 0.21, "#bba5ca", -0.24] as const, [w * 0.81, "#a2a98b", 0.34] as const].forEach(
+      [[w * 0.21, "#c4a487", -0.24] as const, [w * 0.81, "#a2a98b", 0.34] as const].forEach(
         ([x, color, rotation]) => {
           c.save();
           c.translate(x, h * 0.43);
           c.rotate(rotation);
-          c.shadowColor = "#64536938";
+          c.shadowColor = "#54443338";
           c.shadowBlur = 3;
           c.shadowOffsetY = 1;
           shape(c, -h * 0.2, -h * 0.17, h * 0.39, h * 0.38, h * 0.09, color);
@@ -236,11 +236,11 @@ const furniture = (
     }
   } else if (item.kind === "table" || item.kind === "pouf") {
     const table = item.kind === "table";
-    oval(c, w / 2, h / 2, w / 2, h / 2, table ? "#ac7d52" : "#b4a2c6");
+    oval(c, w / 2, h / 2, w / 2, h / 2, table ? "#ac7d52" : "#ac9884");
     c.shadowColor = "transparent";
     const gradient = c.createLinearGradient(0, 0, w, h);
-    gradient.addColorStop(0, table ? "#e5bc8d" : "#efe4f6");
-    gradient.addColorStop(1, table ? "#c89865" : "#cbb8dd");
+    gradient.addColorStop(0, table ? "#e5bc8d" : "#efe6d8");
+    gradient.addColorStop(1, table ? "#c89865" : "#cbb8a4");
     oval(
       c,
       w / 2,
@@ -248,7 +248,7 @@ const furniture = (
       w / 2 - 0.75,
       h / 2 - 0.9,
       gradient,
-      table ? "#b3865f" : "#bba6cd"
+      table ? "#b3865f" : "#b3a189"
     );
     c.save();
     c.clip();
@@ -263,7 +263,7 @@ const furniture = (
       oval(c, w * 0.67, h * 0.61, w * 0.094, h * 0.094, "#f1ead8", "#a87e58");
       oval(c, w * 0.67, h * 0.61, w * 0.048, h * 0.048, "#7d5f49");
     } else {
-      oval(c, w / 2, h / 2, w * 0.41, h * 0.41, "#ffffff15", "#fff7ff66");
+      oval(c, w / 2, h / 2, w * 0.41, h * 0.41, "#ffffff15", "#fff8ed66");
       for (let i = 0; i < 39; i++) {
         oval(
           c,
@@ -271,15 +271,15 @@ const furniture = (
           (((i * 13) % 43) / 42) * h,
           0.54,
           0.5,
-          i % 2 ? "#ffffff51" : "#9f8eae44"
+          i % 2 ? "#ffffff51" : "#957f6a44"
         );
       }
     }
     c.restore();
   } else {
-    shape(c, 0, 0, w, h, 3, item.kind === "cabinet" ? "#ae8159" : "#ada0c3");
+    shape(c, 0, 0, w, h, 3, item.kind === "cabinet" ? "#ae8159" : "#a59886");
     c.shadowColor = "transparent";
-    shape(c, 1, 1, w - 2, h - 2, 2, item.kind === "cabinet" ? "#d3a679" : "#d4c9e4", "#ad927b");
+    shape(c, 1, 1, w - 2, h - 2, 2, item.kind === "cabinet" ? "#d3a679" : "#d9cebe", "#ad927b");
     if (item.kind === "cabinet") {
       woodgrain(c, 0, 0, w, h, 0.17);
       shape(c, w * 0.15, h * 0.36, w * 0.7, h * 0.3, 1.6, "#4a4240", "#302e2c");
@@ -311,7 +311,7 @@ const rug = (
   const [x, y] = to([w * 0.16, d * 0.24]);
   const rw = w * 0.46 * scale,
     rh = d * 0.6 * scale;
-  shape(c, x, y, rw, rh, 4, "#ded4e7", "#bfb0cd");
+  shape(c, x, y, rw, rh, 4, "#ddd0bc", "#b7a58e");
   for (let i = 1; i < rh - 3; i += 2.5)
     line(
       c,
@@ -319,10 +319,10 @@ const rug = (
         [x + 2, y + i],
         [x + rw - 2, y + i]
       ],
-      i % 3 ? "#f3e9f271" : "#bdaec442",
+      i % 3 ? "#f8efe571" : "#b19a8042",
       0.7
     );
-  shape(c, x + 5, y + 5, rw - 10, rh - 10, 3, "#fff5ff20", "#f7f0f8");
+  shape(c, x + 5, y + 5, rw - 10, rh - 10, 3, "#fffdf820", "#f6ede0");
   for (const edge of [x, x + rw]) {
     for (let j = 4; j < rh - 3; j += 3)
       line(
@@ -331,7 +331,7 @@ const rug = (
           [edge - 2.2, y + j],
           [edge + 2.2, y + j + 0.3]
         ],
-        "#d1c4dc",
+        "#c5b29a",
         0.8
       );
   }
@@ -346,8 +346,8 @@ const guide = (
   room: Room
 ) => {
   const dim = dimensions(room.points),
-    color = "#b3acbf",
-    ink = "#686377";
+    color = "#9a8e7e",
+    ink = "#5d5247";
   line(
     c,
     [
@@ -388,11 +388,11 @@ const guide = (
     ],
     color
   );
-  c.font = "700 11px Manrope Variable, Arial";
+  c.font = "750 12px Manrope Variable, Arial";
   c.textAlign = "center";
   c.textBaseline = "middle";
   const text = `${decimal(dim.w, 2)} м`;
-  shape(c, x + w / 2 - 25, y - 28, 50, 15, 4, "#f7f6fa");
+  shape(c, x + w / 2 - 25, y - 28, 50, 15, 4, "#ebe6de");
   c.fillStyle = ink;
   c.fillText(text, x + w / 2, y - 20);
   line(
@@ -422,10 +422,44 @@ const guide = (
   c.save();
   c.translate(x - 21, y + h / 2);
   c.rotate(-Math.PI / 2);
-  shape(c, -25, -7.5, 50, 15, 4, "#f7f6fa");
+  shape(c, -25, -7.5, 50, 15, 4, "#ebe6de");
   c.fillStyle = ink;
   c.fillText(`${decimal(dim.d, 2)} м`, 0, 0);
   c.restore();
+};
+
+const markOwnership = (c: CanvasRenderingContext2D, target: Target) => {
+  const { item, x, y, w, h, polygon } = target;
+  const center = polygon?.length
+    ? polygon.reduce(
+        ([sumX, sumY], [px, py]) => [sumX + px / polygon.length, sumY + py / polygon.length],
+        [0, 0]
+      )
+    : undefined;
+  const cx = x !== undefined && w !== undefined ? x + Math.min(11, w / 2) : center?.[0];
+  const cy = y !== undefined && h !== undefined ? y + Math.min(11, h / 2) : center?.[1];
+  if (
+    cx === undefined ||
+    cy === undefined ||
+    (w !== undefined && w < 13) ||
+    (h !== undefined && h < 13)
+  )
+    return;
+  if (item.owned) {
+    oval(c, cx, cy, 4.5, 4.5, "#554c42", "#fffdf8");
+    return;
+  }
+  fill(
+    c,
+    [
+      [cx, cy - 5.5],
+      [cx + 5.5, cy],
+      [cx, cy + 5.5],
+      [cx - 5.5, cy]
+    ],
+    "#80532d",
+    "#fffdf8"
+  );
 };
 
 const iso = (
@@ -461,14 +495,14 @@ const iso = (
   room.points.forEach((p, i) => {
     const q = room.points[(i + 1) % room.points.length];
     if (i > 0 && i < room.points.length - 1) {
-      line(c, [to(p), to(q)], "#655b70", 2);
+      line(c, [to(p), to(q)], "#61594f", 2);
       return;
     }
     const wallHeight = 1.5;
     fill(
       c,
       [to(p), to(q), to(q, wallHeight), to(p, wallHeight)],
-      i === 0 ? "#eae5f3" : "#ddd5eb",
+      i === 0 ? "#ede5d8" : "#ded4c4",
       "#b2a7c2"
     );
     room.openings
@@ -507,7 +541,7 @@ const iso = (
         return [side];
       });
       const top = base.map((p) => to(p, z));
-      fill(c, top, color, selected === item.id ? purple : "#8e7d73");
+      fill(c, top, color, selected === item.id ? selectionInk : "#8e7d73");
       fill(c, top, "#ffffff37");
       if (["sofa", "chair", "stool"].includes(item.kind)) {
         const cx = box.x + box.w / 2;
@@ -521,6 +555,7 @@ const iso = (
       }
       targets.push({ item, polygon: top, sides, box });
     });
+  targets.forEach((target) => markOwnership(c, target));
   return { targets, scale, to };
 };
 
@@ -557,7 +592,7 @@ export const drawPlan = (
   const floor = room.points.map(to);
   guide(c, origin[0], origin[1], w * scale, d * scale, room);
   c.save();
-  c.shadowColor = "#43344e38";
+  c.shadowColor = "#4c403338";
   c.shadowBlur = 16;
   c.shadowOffsetY = 6;
   fill(c, floor, "#efe6da");
@@ -590,23 +625,23 @@ export const drawPlan = (
   if (route.length) {
     c.lineCap = "round";
     c.lineJoin = "round";
-    line(c, route, "#8fbe9e39", Math.max(11, project.passage * scale * 0.46));
+    line(c, route, "#81a88b40", Math.max(11, project.passage * scale * 0.46));
     c.setLineDash([4, 5]);
-    line(c, route, "#5b9e76a1", 1.25);
+    line(c, route, "#345f43", 1.25);
     c.setLineDash([]);
     const [x, y] = route[route.length - 1];
-    oval(c, x, y, 3.1, 3.1, "#6ca681");
+    oval(c, x, y, 3.1, 3.1, "#345f43");
   }
   c.restore();
   const wall = Math.max(4, Math.min(7, scale * 0.072));
   c.lineJoin = "round";
   c.lineCap = "square";
   path(c, floor);
-  c.strokeStyle = "#61596d";
+  c.strokeStyle = "#554c42";
   c.lineWidth = wall;
   c.stroke();
   path(c, floor);
-  c.strokeStyle = "#81758a";
+  c.strokeStyle = "#877a6b";
   c.lineWidth = wall * 0.28;
   c.stroke();
   room.openings.forEach((opening) => {
@@ -627,15 +662,15 @@ export const drawPlan = (
         1
       );
     } else if (opening.type === "door") {
-      line(c, [a, b], "#f7f6fa", wall + 0.7);
+      line(c, [a, b], "#ebe6de", wall + 0.7);
       const arc = feature.arc.map(to);
-      fill(c, [to(feature.hinge), ...arc], "#bda9d42a");
+      fill(c, [to(feature.hinge), ...arc], "#b993682a");
       c.setLineDash([3, 2]);
-      line(c, arc, "#9682aa", 1);
+      line(c, arc, "#907356", 1);
       c.setLineDash([]);
-      line(c, [to(feature.hinge), arc[arc.length - 1]], "#756783", 1.65);
+      line(c, [to(feature.hinge), arc[arc.length - 1]], "#72583f", 1.65);
       const [x, y] = to(feature.hinge);
-      oval(c, x, y, 2.3, 2.3, "#746482");
+      oval(c, x, y, 2.3, 2.3, "#72583f");
     } else {
       const [x, y] = to(feature.middle),
         [ix, iy] = feature.inward;
@@ -653,11 +688,12 @@ export const drawPlan = (
       c.beginPath();
       c.roundRect(x - 3, y - 3, width + 6, h + 6, 6);
       c.lineWidth = 1.7;
-      c.strokeStyle = warning ? "#cb6653" : purple;
+      c.strokeStyle = warning ? "#a24632" : selectionInk;
       c.setLineDash([3, 3]);
       c.stroke();
       c.setLineDash([]);
     }
   });
+  targets.forEach((target) => markOwnership(c, target));
   return { targets, scale, to };
 };

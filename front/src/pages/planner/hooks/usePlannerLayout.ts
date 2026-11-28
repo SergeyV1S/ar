@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router";
 
+import { PATHS } from "@/shared/constants/index.ts";
+
 export const usePlannerLayout = () => {
   const { pathname } = useLocation();
   const previousPage = useRef(pathname);
@@ -10,5 +12,5 @@ export const usePlannerLayout = () => {
     previousPage.current = pathname;
     content.current?.focus({ preventScroll: true });
   }, [pathname]);
-  return content;
+  return { content, isPlannerPage: pathname === PATHS.planner };
 };

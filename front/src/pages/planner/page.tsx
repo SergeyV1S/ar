@@ -1,17 +1,10 @@
-import { Planner, ProjectHeader, RetailCatalog } from "./components/index.ts";
-import { usePlannerContext } from "./hooks/index.ts";
+import { Planner, ProjectHeader } from "./components/index.ts";
 
 export const PlannerPage = () => {
-  const { project, action } = usePlannerContext();
   return (
-    <>
-      <ProjectHeader room={project.room} action={action} />
+    <div className='planner-flow'>
+      <ProjectHeader />
       <Planner />
-      {project.mode === "retail" && (
-        <section className='panel editor-panel mt-4' aria-label='Подбор новой мебели'>
-          <RetailCatalog />
-        </section>
-      )}
-    </>
+    </div>
   );
 };

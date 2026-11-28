@@ -14,7 +14,6 @@ export type { LockedProps } from "./Locked.tsx";
 export type { OutlineProps } from "./Outline.tsx";
 export type { PrivacyProps } from "./Privacy.tsx";
 export type { ProcurementProps } from "./Procurement.tsx";
-export type { ProjectHeaderProps } from "./ProjectHeader.tsx";
 export type { RoomEditorProps } from "./RoomEditor.tsx";
 export type { VoiceProps } from "./Voice.tsx";
 export type { XRControlsProps } from "./XRControls.tsx";

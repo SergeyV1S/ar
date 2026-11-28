@@ -14,9 +14,12 @@ self.addEventListener("install", (event) => {
       await cache.put(entry, page.clone());
       const html = await page.text();
       const assets = new Set(
-        ["./icon.svg", "./app.webmanifest", "./catalog-furniture.png"].map(
-          (asset) => new URL(asset, entry).href
-        )
+        [
+          "./icon.svg",
+          "./app.webmanifest",
+          "./catalog-furniture.png",
+          "./planner-living-room.webp"
+        ].map((asset) => new URL(asset, entry).href)
       );
       for (const match of html.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g))
         assets.add(new URL(match[1], entry).href);
@@ -58,7 +61,12 @@ self.addEventListener("activate", (event) =>
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  if (request.method !== "GET" || url.pathname.startsWith("/api/") || url.origin !== entry.origin || !url.href.startsWith(entry.href))
+  if (
+    request.method !== "GET" ||
+    url.pathname.startsWith("/api/") ||
+    url.origin !== entry.origin ||
+    !url.href.startsWith(entry.href)
+  )
     return;
   event.respondWith(
     (async () => {

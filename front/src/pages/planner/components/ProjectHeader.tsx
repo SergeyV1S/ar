@@ -1,21 +1,18 @@
-import { Button } from "@/shared/components/index.ts";
-
-import { useProjectHeader } from "../hooks/index.ts";
-import type { Action, Room } from "../types/index.ts";
-
-export type ProjectHeaderProps = { room: Room; action: Action };
-
-export const ProjectHeader = (props: ProjectHeaderProps) => {
-  const { openProjects } = useProjectHeader(props);
+export const ProjectHeader = () => {
   return (
-    <header className='project-head'>
-      <div>
-        <h1>План</h1>
-        <p>{props.room.name}</p>
+    <header className='planner-hero'>
+      <div className='planner-hero-copy'>
+        <h1>Планировщик комнаты</h1>
+        <p>Задайте размеры и расставьте мебель на плане.</p>
       </div>
-      <Button icon='folder' onClick={openProjects}>
-        Проект
-      </Button>
+      <img
+        className='planner-hero-image'
+        src={`${import.meta.env.BASE_URL}planner-living-room.webp`}
+        width={1680}
+        height={600}
+        fetchPriority='high'
+        alt=''
+      />
     </header>
   );
 };

@@ -13,7 +13,7 @@ type DraftOpening = Omit<Opening, "offset" | "width"> & {
   width: number | string;
 };
 
-export const useRoomEditor = ({ project, save, action }: RoomEditorProps) => {
+export const useRoomEditor = ({ project, save, action, guided }: RoomEditorProps) => {
   const [openings, setOpenings] = useState<DraftOpening[]>(project.room.openings);
   const [status, setStatus] = useState(project.room.verified);
   const [error, setError] = useState("");
@@ -23,7 +23,8 @@ export const useRoomEditor = ({ project, save, action }: RoomEditorProps) => {
     const data = new FormData(event.currentTarget),
       width = readNumber(data, "width"),
       depth = readNumber(data, "depth");
-    const room = resizeRoom(project.room, width, depth);
+    const resized = width !== Number(extent.w.toFixed(2)) || depth !== Number(extent.d.toFixed(2));
+    const room = resized ? resizeRoom(project.room, width, depth) : project.room;
     const normalizedOpenings = openings.map((opening) => ({
       ...opening,
       offset: Number(opening.offset),
@@ -60,7 +61,7 @@ export const useRoomEditor = ({ project, save, action }: RoomEditorProps) => {
       setError("Два проёма перекрываются на одной стене.");
       return;
     }
-    const changed = width !== extent.w || depth !== extent.d || openings !== project.room.openings;
+    const changed = resized || openings !== project.room.openings;
     save(
       {
         ...room,
@@ -71,6 +72,8 @@ export const useRoomEditor = ({ project, save, action }: RoomEditorProps) => {
       },
       readNumber(data, "passage") / 100
     );
+    const submitter = event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
+    guided?.onSaved(submitter instanceof HTMLButtonElement ? submitter.value : undefined);
   };
   const change = (id: string, patch: Partial<DraftOpening>) => {
     setOpenings((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -86,8 +89,14 @@ export const useRoomEditor = ({ project, save, action }: RoomEditorProps) => {
 
   const scanRoom = () => action("ar-scan");
   const drawOutline = () => action("outline");
+  const dictate = () => action("voice");
   const markForReview = () => setStatus("review");
   const changeStatus = (e: ChangeEvent<HTMLSelectElement>) => setStatus(e.target.value);
+  const changeVerified = (e: ChangeEvent<HTMLInputElement>) =>
+    setStatus(e.target.checked ? "checked" : "review");
+  const revealOpeningFields = (event: FormEvent<HTMLDetailsElement>) => {
+    event.currentTarget.open = true;
+  };
 
   const openingRows = openings.map((opening) => {
     const remove = () => {
@@ -123,7 +132,10 @@ export const useRoomEditor = ({ project, save, action }: RoomEditorProps) => {
     add,
     scanRoom,
     drawOutline,
+    dictate,
     markForReview,
-    changeStatus
+    changeStatus,
+    changeVerified,
+    revealOpeningFields
   };
 };

@@ -1,14 +1,14 @@
 import { NavLink } from "react-router";
 
-import { Icon } from "@/shared/components/index.ts";
+import { Button, Icon } from "@/shared/components/index.ts";
 import { PATHS } from "@/shared/constants/index.ts";
 
 import { getItemPath } from "../helpers/index.ts";
 import { usePlannerContext } from "../hooks/index.ts";
 import { Brand } from "./Brand.tsx";
 
-export const Header = ({ status }: { status: string }) => {
-  const { selected } = usePlannerContext();
+export const Header = () => {
+  const { selected, openProjects } = usePlannerContext();
   return (
     <header className='topbar'>
       <div className='top-inner'>
@@ -28,10 +28,9 @@ export const Header = ({ status }: { status: string }) => {
           </NavLink>
         </nav>
         <div className='top-actions'>
-          <span className='save-state' role='status'>
-            <i className={status.includes("ошибка") ? "warning" : ""} aria-hidden='true' />
-            {status}
-          </span>
+          <Button icon='folder' className='planner-project-button' onClick={openProjects}>
+            Проект
+          </Button>
         </div>
       </div>
     </header>

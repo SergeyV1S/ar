@@ -1,4 +1,5 @@
-import { Button, Field, IconButton, Select } from "../../../shared/components/index.ts";
+import { Button, Field, Icon, IconButton, Select } from "../../../shared/components/index.ts";
+import { ROOM_FORM_ID } from "../helpers/index.ts";
 import { useRoomEditor } from "../hooks/index.ts";
 import { checkLabel, sourceLabel } from "../mock/index.ts";
 import type { RoomProps } from "../types/index.ts";
@@ -7,10 +8,13 @@ import { Submit } from "./Submit.tsx";
 
 const featureTypes: Record<string, string> = { door: "Дверь", window: "Окно", socket: "Розетка" };
 
-export type RoomEditorProps = RoomProps & { action: Action };
+export type RoomEditorProps = RoomProps & {
+  action: Action;
+  guided?: { onSaved: (target: string | undefined) => void };
+};
 
 export const RoomEditor = (props: RoomEditorProps) => {
-  const { project, close } = props;
+  const { project, close, guided } = props;
   const {
     openingRows,
     status,
@@ -20,61 +24,29 @@ export const RoomEditor = (props: RoomEditorProps) => {
     add,
     scanRoom,
     drawOutline,
+    dictate,
     markForReview,
-    changeStatus
+    changeStatus,
+    changeVerified,
+    revealOpeningFields
   } = useRoomEditor(props);
-  return (
-    <form onSubmit={submit}>
-      <div className='inline-actions'>
-        <Button icon='scan' className='ar-soft' onClick={scanRoom}>
-          AR-обмер
+  const measureButtons = (
+    <div className='inline-actions'>
+      <Button icon='scan' className={guided ? undefined : "ar-soft"} onClick={scanRoom}>
+        AR-обмер
+      </Button>
+      {guided && (
+        <Button icon='mic' onClick={dictate}>
+          Голосовой ввод
         </Button>
-        <Button icon='camera' onClick={drawOutline}>
-          Обвести по фото
-        </Button>
-      </div>
-      <Field label='Название комнаты'>
-        <input name='name' required maxLength={80} defaultValue={project.room.name} />
-      </Field>
-      <div className='form-grid three'>
-        <Field label='Ширина, м'>
-          <input
-            type='number'
-            inputMode='decimal'
-            name='width'
-            min='.7'
-            max='35'
-            step='.01'
-            onChange={markForReview}
-            defaultValue={extent.w.toFixed(2)}
-            required
-          />
-        </Field>
-        <Field label='Глубина, м'>
-          <input
-            type='number'
-            inputMode='decimal'
-            name='depth'
-            min='.7'
-            max='35'
-            step='.01'
-            onChange={markForReview}
-            defaultValue={extent.d.toFixed(2)}
-            required
-          />
-        </Field>
-        <Field label='Мин. проход, см'>
-          <input
-            type='number'
-            inputMode='numeric'
-            name='passage'
-            min='45'
-            max='200'
-            defaultValue={Math.round(project.passage * 100)}
-            required
-          />
-        </Field>
-      </div>
+      )}
+      <Button icon='pencil' onClick={drawOutline}>
+        Нарисовать комнату
+      </Button>
+    </div>
+  );
+  const openingFields = (
+    <>
       <div className='row-title form-section-title'>
         <h3>Двери, окна и розетки</h3>
         <Button icon='plus' onClick={add}>
@@ -155,27 +127,113 @@ export const RoomEditor = (props: RoomEditorProps) => {
           </fieldset>
         )
       )}
-      <div className='form-grid mt-3'>
-        <Field label='Статус размеров'>
-          <Select value={status} onChange={changeStatus}>
-            {Object.entries(checkLabel).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </Select>
+    </>
+  );
+  return (
+    <form
+      id={guided ? ROOM_FORM_ID : undefined}
+      className={guided ? "guided-room-editor" : undefined}
+      autoComplete='off'
+      onSubmit={submit}
+    >
+      {!guided && measureButtons}
+      <Field label='Название комнаты'>
+        <input name='name' required maxLength={80} defaultValue={project.room.name} />
+      </Field>
+      <div className='form-grid three'>
+        <Field label='Ширина, м'>
+          <input
+            type='number'
+            inputMode='decimal'
+            name='width'
+            min='.7'
+            max='35'
+            step='.01'
+            onChange={markForReview}
+            defaultValue={extent.w.toFixed(2)}
+            required
+          />
         </Field>
-        <div className='field source-field'>
-          <span>Источник</span>
-          <strong>{sourceLabel[project.room.source]}</strong>
-        </div>
+        <Field label={guided ? "Длина, м" : "Глубина, м"}>
+          <input
+            type='number'
+            inputMode='decimal'
+            name='depth'
+            min='.7'
+            max='35'
+            step='.01'
+            onChange={markForReview}
+            defaultValue={extent.d.toFixed(2)}
+            required
+          />
+        </Field>
+        <Field label={guided ? "Минимальный проход, см" : "Мин. проход, см"}>
+          <input
+            type='number'
+            inputMode='numeric'
+            name='passage'
+            min='45'
+            max='200'
+            defaultValue={Math.round(project.passage * 100)}
+            required
+          />
+        </Field>
       </div>
+      {guided ? (
+        <>
+          <label className='check-field'>
+            <input type='checkbox' checked={status === "checked"} onChange={changeVerified} />
+            Размеры сверены с замерами
+          </label>
+          <details
+            className='guided-openings'
+            open={error ? true : undefined}
+            onInvalid={revealOpeningFields}
+          >
+            <summary>
+              Двери, окна и розетки <span>{openingRows.length}</span>
+            </summary>
+            {openingFields}
+          </details>
+        </>
+      ) : (
+        openingFields
+      )}
+      {!guided && (
+        <div className='form-grid mt-3'>
+          <Field label='Статус размеров'>
+            <Select value={status} onChange={changeStatus}>
+              {Object.entries(checkLabel).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className='field source-field'>
+            <span>Источник</span>
+            <strong>{sourceLabel[project.room.source]}</strong>
+          </div>
+        </div>
+      )}
       {error && (
         <p className='form-error' role='alert'>
           {error}
         </p>
       )}
-      <Submit close={close} />
+      {guided ? (
+        <>
+          <Button type='submit' className='primary guided-room-submit'>
+            Сохранить и продолжить <Icon name='chevron' />
+          </Button>
+          <div className='guided-measure-options'>
+            <p>Другие способы ввода</p>
+            {measureButtons}
+          </div>
+        </>
+      ) : (
+        <Submit close={close} />
+      )}
     </form>
   );
 };
