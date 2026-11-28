@@ -2,5 +2,13 @@ services:
   metrika:
     build: ./front
     restart: unless-stopped
+    depends_on:
+      - back
     ports:
       - "${METRIKA_BIND:-127.0.0.1}:${METRIKA_PORT:-4178}:80"
+  back:
+    build: ./back
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      GROQ_API_KEY: ${GROQ_API_KEY:-}

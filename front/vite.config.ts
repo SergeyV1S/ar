@@ -7,6 +7,11 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": "http://127.0.0.1:3000"
+    }
+  },
   build: {
     rolldownOptions: {
       input: {
