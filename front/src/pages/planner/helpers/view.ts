@@ -23,8 +23,14 @@ export const getOpeningWidth = (
   return opening.width;
 };
 
-export const getARCollectLabel = (mode: ARMode | null, { positioned, count, kind, closing }: XRState) => {
+export const getARCollectLabel = (
+  mode: ARMode | null,
+  { positioned, count, kind, closing, arranging, itemId, placedIds }: XRState
+) => {
   if (mode === "scan") {
+    if (arranging) {
+      return itemId && placedIds?.includes(itemId) ? "Переместить сюда" : "Поставить сюда";
+    }
     if (closing) return "Замкнуть контур";
     if (kind === "socket") return "Отметить розетку";
     if (kind === "door" || kind === "window") return "Отметить край";

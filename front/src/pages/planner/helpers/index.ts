@@ -9,5 +9,5 @@ export {
   getPlanStatus,
   getThumbnailClass
 } from "./view.ts";
-export { applyVoicePatch, getItemLayoutUpdate, upsertItem } from "./projectEdits.ts";
+export { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, upsertItem } from "./projectEdits.ts";
 export { getTranscriptionError, NO_SPEECH_MESSAGE } from "./voice.ts";

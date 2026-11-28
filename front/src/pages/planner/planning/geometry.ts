@@ -45,11 +45,16 @@ export const dimensions = (points: Point[]) => {
   return { w: Math.max(...xs) - Math.min(...xs), d: Math.max(...ys) - Math.min(...ys) };
 };
 
-export const normalize = (points: Point[]) => {
+export const normalizeWithOrigin = (points: Point[]) => {
   const left = Math.min(...points.map((p) => p[0]));
   const top = Math.min(...points.map((p) => p[1]));
-  return points.map(([x, y]) => [round(x - left), round(y - top)]);
+  return {
+    origin: [left, top],
+    points: points.map(([x, y]) => [round(x - left), round(y - top)])
+  };
 };
+
+export const normalize = (points: Point[]) => normalizeWithOrigin(points).points;
 
 const segmentDistance = (p: Point, a: Point, b: Point) => {
   const dx = b[0] - a[0],
@@ -108,7 +113,7 @@ export const corners = ({ x, y, w, d }: Box) => {
   ];
 };
 
-const fits = (box: Box, room: Point[]) => {
+export const fits = (box: Box, room: Point[]) => {
   const footprint = corners(box);
   if (!footprint.every((point) => pointIn(point, room))) return false;
   return footprint.every((a, i) =>

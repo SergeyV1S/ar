@@ -3,7 +3,7 @@ import {
   clamp,
   dimensions,
   maxOutlinePoints,
-  normalize,
+  normalizeWithOrigin,
   round,
   validPolygon
 } from "../planning/index.ts";
@@ -105,15 +105,33 @@ const mergeOpenings = (openings: Opening[]) => {
   return result;
 };
 
-export const analyzeScan = (corners: Point[], features: ScanFeature[]): ScanResult | null => {
+export const getScanLayout = (corners: Point[]) => {
   if (corners.length < 3) return null;
   const frame = roomFrame(corners);
   if (!frame) return null;
   const raw = corners.map((corner) => toRoom(frame, corner));
-  const points = normalize(straighten(raw));
+  const { origin: [x, z], points } = normalizeWithOrigin(straighten(raw));
   const extent = dimensions(points);
   if (extent.w < 0.7 || extent.d < 0.7 || extent.w > 35 || extent.d > 35 || !validPolygon(points))
     return null;
+  const origin: Point = [
+    frame.x + x * frame.cos - z * frame.sin,
+    corners[0][1],
+    frame.z + x * frame.sin + z * frame.cos
+  ];
+  const angle = Math.atan2(frame.sin, frame.cos);
+  return { points, raw, frame, origin, angle };
+};
+
+export const analyzeScan = (corners: Point[], features: ScanFeature[]): ScanResult | null => {
+  const layout = getScanLayout(corners);
+  return layout && getScanResult(layout, features);
+};
+
+export const getScanResult = (
+  { raw, points, frame }: NonNullable<ReturnType<typeof getScanLayout>>,
+  features: ScanFeature[]
+): ScanResult => {
   const openings: Opening[] = [];
   let skipped = 0;
   for (const feature of features) {

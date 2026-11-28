@@ -73,10 +73,13 @@ export const createTracker = async ({
   let confidence = 0;
   const gap = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 
-  const score = (point: Point, up: boolean) => {
+  const score = (point: Point, up: boolean, cameraHeight: number | undefined) => {
     const floor = floorLevel();
     if (acceptAnyHeight()) return up ? 1 : 0.85;
-    if (floor === undefined) return up ? 1 : 0;
+    if (floor === undefined) {
+      const belowCamera = cameraHeight === undefined || point[1] < cameraHeight - 0.1;
+      return up && belowCamera ? 1 : 0;
+    }
     const height = Math.abs(point[1] - floor);
     if (height > 0.45) return 0;
     return (up ? 1 : 0.6) * (1 - height / 0.9);
@@ -84,6 +87,7 @@ export const createTracker = async ({
 
   const update = (frame: XRFrame, view: XRView | undefined): TrackedHit | null => {
     const candidates: { point: Point; weight: number; floor: boolean }[] = [];
+    const cameraHeight = view?.transform.matrix[13];
     if (hitSource) {
       for (const result of frame.getHitTestResults(hitSource)) {
         const pose = result.getPose(space);
@@ -91,7 +95,7 @@ export const createTracker = async ({
         const matrix = pose.transform.matrix;
         const point: Point = [matrix[12], matrix[13], matrix[14]];
         const floor = upFacing(matrix);
-        const weight = score(point, floor);
+        const weight = score(point, floor, cameraHeight);
         if (weight > 0) candidates.push({ point, weight, floor });
       }
     }
@@ -99,7 +103,7 @@ export const createTracker = async ({
       const depth = depthAtCenter(frame, view);
       const point = depth === null ? null : unproject(view, depth, 0, 0);
       if (point) {
-        const weight = score(point, false);
+        const weight = score(point, false, cameraHeight);
         if (weight > 0) candidates.push({ point, weight, floor: false });
       }
     }

@@ -4,7 +4,7 @@ import { maxCorners } from "./geometry.ts";
 export const getInstructions = (
   mode: ARMode,
   origin: Point | null,
-  { positioned, kind, count = 0, ready, closed, closing }: XRState,
+  { positioned, kind, count = 0, ready, closed, closing, arranging, itemId }: XRState,
   pending: number
 ) => {
   if (mode === "view") {
@@ -13,8 +13,13 @@ export const getInstructions = (
     if (origin) return "Отметьте вторую точку вдоль стены вправо от начала плана.";
     return "Наведите прицел на угол пола, соответствующий началу плана.";
   }
+  if (arranging) {
+    if (!itemId) return "Выберите предмет. Чтобы передвинуть мебель, выберите её снова.";
+    if (!ready) return "Наведите прицел на свободное место внутри контура, где поместится предмет.";
+    return "Подтвердите положение или поверните предмет.";
+  }
   if (kind === "corner") {
-    if (closed) return "Контур замкнут. Добавьте проёмы или сохраните комнату.";
+    if (closed) return "Контур замкнут. Отметьте проёмы, расставьте мебель или сохраните комнату.";
     if (!count && !ready) return "Наведите камеру на пол и медленно подвигайте телефоном.";
     if (!count) return "Наведите прицел на стык стен с полом и отметьте первый угол.";
     if (closing) return "Прицел на первом углу. Замкните контур.";

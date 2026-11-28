@@ -3,11 +3,12 @@ import type { RefObject } from "react";
 import { Button, Field, IconButton, Select } from "../../../shared/components/index.ts";
 import type { ARController } from "../ar/index.ts";
 import { useXRControls } from "../hooks/index.ts";
-import type { ARMode, XRState } from "../types/index.ts";
+import type { ARMode, Item, XRState } from "../types/index.ts";
 
 export type XRControlsProps = {
   mode: ARMode | null;
   state: XRState;
+  items: Item[];
   overlayRef: RefObject<HTMLDivElement | null>;
   control: (method: keyof ARController, value?: string) => void;
 };
@@ -23,10 +24,25 @@ const metrics = (props: XRState) => {
 const meters = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const XRControls = (props: XRControlsProps) => {
-  const { mode, state, overlayRef } = props;
+  const { mode, state, items, overlayRef } = props;
   const {
-    scan, collectLabel, showCollect, canClose, snap, changeKind, exit, undo, save, closeOutline,
-    collect, toggleSnap, rotate
+    scan,
+    collectLabel,
+    showCollect,
+    canClose,
+    canUndo,
+    canRotate,
+    snap,
+    changeKind,
+    changeItem,
+    arrange,
+    exit,
+    undo,
+    save,
+    closeOutline,
+    collect,
+    toggleSnap,
+    rotate
   } = useXRControls(props);
   const rows = metrics(state);
   return (
@@ -37,7 +53,7 @@ export const XRControls = (props: XRControlsProps) => {
     >
       <div className='xr-head'>
         <div>
-          <strong>{scan ? "Обмер комнаты" : "Расстановка в AR"}</strong>
+          <strong>{scan && !state.arranging ? "Обмер комнаты" : "Расстановка в AR"}</strong>
           <p aria-live='polite'>{state.text ?? "Подключаем камеру…"}</p>
         </div>
         <IconButton className='xr-exit' icon='close' label='Выйти из AR' onClick={exit} />
@@ -61,7 +77,7 @@ export const XRControls = (props: XRControlsProps) => {
             ))}
           </dl>
         )}
-        {scan && state.closed && (
+        {scan && state.closed && !state.arranging && (
           <Field label='Проёмы и розетки'>
             <Select value={state.kind ?? "corner"} onChange={changeKind}>
               <option value='corner'>Только стены</option>
@@ -71,16 +87,29 @@ export const XRControls = (props: XRControlsProps) => {
             </Select>
           </Field>
         )}
+        {state.arranging && (
+          <Field label='Предмет мебели'>
+            <Select value={state.itemId ?? ""} onChange={changeItem}>
+              <option value=''>Выберите предмет</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                  {state.placedIds?.includes(item.id) ? " · размещён" : ""}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <div className='xr-actions'>
           {scan && !state.closed && (state.count ?? 0) >= 2 && (
             <Button className={snap ? "xr-toggle on" : "xr-toggle"} onClick={toggleSnap} aria-pressed={snap}>
               {snap ? "Привязка вкл." : "Привязка выкл."}
             </Button>
           )}
-          <Button icon='rotate' onClick={undo} disabled={scan && !state.count}>
+          <Button icon='rotate' onClick={undo} disabled={!canUndo}>
             {scan ? "Отменить" : "Сбросить"}
           </Button>
-          {!scan && state.positioned && (
+          {canRotate && (
             <Button icon='rotate' onClick={rotate}>
               Повернуть
             </Button>
@@ -91,9 +120,20 @@ export const XRControls = (props: XRControlsProps) => {
             </Button>
           )}
           {scan && state.closed && (
-            <Button icon='check' className={showCollect ? undefined : "primary xr-primary"} onClick={save}>
-              Сохранить комнату
-            </Button>
+            <>
+              {items.length > 0 && (
+                <Button onClick={arrange}>
+                  {state.arranging ? "К обмеру" : "Расставить мебель"}
+                </Button>
+              )}
+              <Button
+                icon='check'
+                className={showCollect ? undefined : "primary xr-primary"}
+                onClick={save}
+              >
+                {state.placedIds?.length ? "Сохранить план" : "Сохранить комнату"}
+              </Button>
+            </>
           )}
           {showCollect && (
             <Button

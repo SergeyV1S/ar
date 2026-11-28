@@ -1,6 +1,6 @@
 import { resizeRoom } from "../mock/index.ts";
 import { distance } from "../planning/index.ts";
-import type { Item, Project, Room, VoicePatch } from "../types/index.ts";
+import type { Item, Positions, Project, Room, VoicePatch } from "../types/index.ts";
 
 const resizeRoomFromVoice = (room: Room, [width, depth]: [number, number]): Room => {
   const resized = resizeRoom(room, width, depth);
@@ -29,3 +29,8 @@ export const getItemLayoutUpdate = (project: Project, item: Item, redraw: boolea
   if (item.owned) return { layouts: {} };
   return { layouts: { ...project.layouts, [project.mode]: {} } };
 };
+
+export const getARLayoutUpdate = (project: Project, positions: Positions, starterItems: Item[]) => ({
+  items: [...project.items, ...starterItems.filter((item) => Object.hasOwn(positions, item.id))],
+  layouts: { [project.mode]: { [project.variant]: positions } }
+});

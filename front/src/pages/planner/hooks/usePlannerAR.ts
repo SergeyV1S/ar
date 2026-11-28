@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-import { arHelp, startAR, supportsAR } from "../ar/index.ts";
+import { arHelp, createARStarterItems, startAR, supportsAR } from "../ar/index.ts";
 import type { ARController } from "../ar/index.ts";
-import type { ARMode, Item, Positions, Project, Room, XRState } from "../types/index.ts";
+import type { ARMode, Item, Positions, Project, ScanResult, XRState } from "../types/index.ts";
 
 type Options = {
   project: Project;
@@ -11,7 +11,7 @@ type Options = {
   positions: Positions;
   close: () => void;
   openHelp: (mode: ARMode) => void;
-  saveRoom: (room: Room, passage: number) => void;
+  saveScan: (result: ScanResult, starterItems: Item[]) => void;
   notify: (message: string) => void;
 };
 
@@ -21,13 +21,14 @@ export const usePlannerAR = ({
   positions,
   close,
   openHelp,
-  saveRoom,
+  saveScan,
   notify
 }: Options) => {
   const [arSupport, setArSupport] = useState<boolean | null>(null),
     [arError, setArError] = useState("");
   const [xrMode, setXrMode] = useState<ARMode | null>(null),
     [xrState, setXrState] = useState<XRState>({});
+  const [xrItems, setXrItems] = useState<Item[]>([]);
 
   const overlay = useRef<HTMLDivElement>(null);
   const controller = useRef<ARController | null>(null);
@@ -50,9 +51,13 @@ export const usePlannerAR = ({
     if (pending.current || controller.current) return;
     const attempt = new AbortController();
     pending.current = attempt;
+    const starterItems =
+      mode === "scan" && !allItems.length ? createARStarterItems(60 - project.items.length) : [];
+    const items = starterItems.length ? starterItems : allItems;
     flushSync(() => {
       setXrMode(mode);
       setXrState({});
+      setXrItems(items);
       setArError("");
       close();
     });
@@ -63,28 +68,15 @@ export const usePlannerAR = ({
       const started = await startAR({
         mode,
         overlay: root,
-        items: allItems,
+        items,
         positions,
+        roomPoints: project.room.points,
         onState: (state) => {
           if (!attempt.signal.aborted) setXrState(state);
         },
         onScan: (data) => {
           if (attempt.signal.aborted) return;
-          saveRoom(
-            {
-              ...project.room,
-              points: data.points,
-              openings: data.openings,
-              source: "xr",
-              verified: "review"
-            },
-            project.passage
-          );
-          notify(
-            data.skipped
-              ? `Контур сохранён. Проёмов вдали от измеренных стен пропущено: ${data.skipped}.`
-              : "Контур измерен. Проверьте размеры и проёмы на плане."
-          );
+          saveScan(data, starterItems);
         },
         onEnd: () => {
           ended = true;
@@ -121,5 +113,5 @@ export const usePlannerAR = ({
   };
 
   const resetARError = () => setArError("");
-  return { arSupport, arError, xrMode, xrState, overlay, launchAR, controlAR, resetARError };
+  return { arSupport, arError, xrMode, xrState, xrItems, overlay, launchAR, controlAR, resetARError };
 };

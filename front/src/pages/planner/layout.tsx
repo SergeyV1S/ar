@@ -24,6 +24,7 @@ export const PlannerLayout = () => {
     toast,
     xrMode,
     xrState,
+    xrItems,
     overlay,
     controlAR,
     printImage,
@@ -93,7 +94,7 @@ export const PlannerLayout = () => {
           {toast}
         </div>
       )}
-      <XRControls mode={xrMode} state={xrState} overlayRef={overlay} control={controlAR} />
+      <XRControls mode={xrMode} state={xrState} items={xrItems} overlayRef={overlay} control={controlAR} />
       {printImage && (
         <section id='print-view' aria-hidden='true'>
           <h1>{project.room.name} — план и смета</h1>

@@ -86,7 +86,7 @@ type DialogName =
 export type PlannerModal = { name: DialogName; id?: string | number };
 export type Action = (name: DialogName | "variant" | "replan", id?: string | number) => void;
 export type ScanFeature = { type: string; points: Point[] };
-export type ScanResult = { points: Point[]; openings: Opening[]; skipped: number };
+export type ScanResult = { points: Point[]; openings: Opening[]; skipped: number; positions?: Positions };
 export type XRState = {
   text?: string;
   kind?: string;
@@ -100,6 +100,9 @@ export type XRState = {
   perimeter?: number;
   rotation?: number;
   snap?: boolean;
+  arranging?: boolean;
+  itemId?: string;
+  placedIds?: string[];
 };
 export type ARMode = "scan" | "view";
 export type ExportFormat = "pdf" | "csv" | "json";

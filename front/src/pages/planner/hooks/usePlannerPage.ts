@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
-import { applyVoicePatch, getItemLayoutUpdate, upsertItem } from "../helpers/index.ts";
+import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, upsertItem } from "../helpers/index.ts";
 import type { readLocal } from "../mock/index.ts";
 import { initialProject, planItems, positionsFor, visibleItems } from "../mock/index.ts";
 import { area, arrange, clamp, dimensions, inspect, rect, variants } from "../planning/index.ts";
@@ -13,6 +13,7 @@ import type {
   Position,
   Project,
   Room,
+  ScanResult,
   VoicePatch
 } from "../types/index.ts";
 import { usePlannerAR } from "./usePlannerAR.ts";
@@ -147,6 +148,26 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     notify("Параметры комнаты сохранены.");
   };
 
+  const saveARScan = (data: ScanResult, starterItems: Item[]) => {
+    const room: Room = {
+      ...project.room,
+      points: data.points,
+      openings: data.openings,
+      source: "xr",
+      verified: "review"
+    };
+    if (data.positions) {
+      update({ room, ...getARLayoutUpdate(project, data.positions, starterItems) });
+      setSelected(null);
+    } else saveRoom(room, project.passage);
+    const message = data.positions ? "Контур и расстановка сохранены." : "Контур измерен.";
+    notify(
+      data.skipped
+        ? `${message} Проёмов вдали от измеренных стен пропущено: ${data.skipped}.`
+        : message
+    );
+  };
+
   const storeItem = (item: Item, fromCatalog = false) => {
     const old = project.items.find((candidate) => candidate.id === item.id);
     if (!old && project.items.length >= 60) {
@@ -207,14 +228,14 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   const openARHelp = (mode: ARMode) => setModal({ name: mode === "scan" ? "ar-scan" : "ar-view" });
   const clearSelection = () => setSelected(null);
 
-  const { arSupport, arError, xrMode, xrState, overlay, launchAR, controlAR, resetARError } =
+  const { arSupport, arError, xrMode, xrState, xrItems, overlay, launchAR, controlAR, resetARError } =
     usePlannerAR({
       project,
       items: allItems,
       positions,
       close,
       openHelp: openARHelp,
-      saveRoom,
+      saveScan: saveARScan,
       notify
     });
   const { printImage, fileInput, importProject, exportData, chooseImportFile, exportCopy } =
@@ -293,6 +314,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     arError,
     xrMode,
     xrState,
+    xrItems,
     overlay,
     fileInput,
     allItems,
