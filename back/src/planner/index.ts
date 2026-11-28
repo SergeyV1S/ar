@@ -90,7 +90,7 @@ const readJson = (output: string) => {
   return record(JSON.parse(output.slice(start, end + 1)));
 };
 
-type PlanContext = NonNullable<ReturnType<typeof analysisInput>>;
+export type PlanContext = NonNullable<ReturnType<typeof analysisInput>>;
 
 const readAnalysis = (output: string, input: PlanContext) => {
   const parsed = readJson(output);

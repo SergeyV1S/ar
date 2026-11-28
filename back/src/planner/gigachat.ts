@@ -102,12 +102,12 @@ export const createGigaChat = (key: string, send: typeof fetch = fetch) => {
       { temperature: 0.15, max_tokens: maxTokens });
 
   const describe = (instruction: string, scene: string, photos: { label: string; id: string }[],
-    signal: AbortSignal) => completeMessages([
+    signal: AbortSignal, roomId?: string) => completeMessages([
     { role: "system", content: instruction },
     ...photos.map(({ label, id }): Message => ({
       role: "user", content: label, attachments: [id]
     })),
-    { role: "user", content: scene }
+    { role: "user", content: scene, attachments: roomId ? [roomId] : undefined }
   ], signal, { temperature: 0.15, max_tokens: 2200 });
 
   const generate = async (content: string, signal: AbortSignal) => {

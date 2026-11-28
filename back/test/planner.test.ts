@@ -65,6 +65,10 @@ test("retries individual Ultra stages and deletes temporary visuals", async (t) 
       assert.equal(request.model, "GigaChat-3-Ultra");
       requests++;
       if (request.function_call === undefined) {
+        if (request.messages.at(-1).content.startsWith("Опиши кадр")) {
+          assert.equal(request.messages.at(-1).attachments.length, 1);
+          return Response.json({ choices: [{ message: { content: "Бирюзовое окно слева" } }] });
+        }
         if (!descriptionThrottled) {
           descriptionThrottled = true;
           return Response.json({}, { status: 429, headers: { "Retry-After": "0" } });
@@ -72,6 +76,8 @@ test("retries individual Ultra stages and deletes temporary visuals", async (t) 
         const attachments = request.messages.flatMap((message: { attachments?: string[] }) => message.attachments ?? []);
         assert.deepEqual(new Set(attachments), new Set(ids.slice(0, 2)));
         const sceneText = request.messages.at(-1).content;
+        assert.equal(request.messages.at(-1).attachments.length, 1);
+        assert.match(sceneText, /приложено исходное фото комнаты/);
         assert(!sceneText.includes(roomPhoto) && !sceneText.includes(catalogPhoto));
         const scene = JSON.parse(sceneText.slice(sceneText.indexOf("{")));
         assert.equal(scene.items.length, 1);
@@ -81,6 +87,9 @@ test("retries individual Ultra stages and deletes temporary visuals", async (t) 
       assert.equal(request.function_call, "auto");
       assert.equal(request.messages.length, 1);
       assert.match(request.messages[0].content, /Синий стул у окна/);
+      assert.match(request.messages[0].content, /Бирюзовое окно слева/);
+      assert.match(request.messages[0].content, /центр \(1, 0\.4\), поворот 37°/);
+      assert.match(request.messages[0].content, /ближайшая стена №0, 1 м от её начала, 0\.4 м от стены до центра/);
       if (!missingImage) {
         missingImage = true;
         return Response.json({ choices: [{ message: { content: "Не удалось создать изображение" } }] });
@@ -110,7 +119,7 @@ test("retries individual Ultra stages and deletes temporary visuals", async (t) 
   assert.equal(response.headers.get("Content-Type"), "image/jpeg");
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), jpeg);
-  assert.equal(requests, 4);
+  assert.equal(requests, 5);
   assert.equal(uploads, 2);
   assert.equal(downloads, 1);
   assert.deepEqual(deleted, new Set(ids));
