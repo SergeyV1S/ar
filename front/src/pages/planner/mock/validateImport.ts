@@ -86,6 +86,11 @@ const normalizeItem = (item: ImportItem): Item => ({
   arMesh: itemMesh(item),
   quantity: typeof item.quantity === "number" ? item.quantity : 1,
   demo: item.demo === true,
+  catalogCity: typeof item.catalogCity === "string" ? item.catalogCity.slice(0, 100) : undefined,
+  catalogCityId: typeof item.catalogCityId === "string" &&
+    /^[a-z][a-z0-9-]{1,60}$/.test(item.catalogCityId) ? item.catalogCityId : undefined,
+  catalogCheckedAt: typeof item.catalogCheckedAt === "string" &&
+    Number.isFinite(Date.parse(item.catalogCheckedAt)) ? item.catalogCheckedAt : undefined,
   offerReason: String(item.offerReason ?? "").slice(0, 1500),
   price: numeric(item.price, 0, 1e9) ? item.price : undefined,
   cap: numeric(item.cap, 0, 1e9) ? item.cap : 0,
@@ -130,9 +135,7 @@ export const parseOffers = (raw: unknown) => {
         item.demo === true &&
         typeof item.seller === "string" &&
         typeof item.availability === "string" &&
-        (item.mode !== "retail" ||
-          (item.seller === "Hoff" &&
-            new URL(safeUrl(item.url) || "about:blank").hostname === "hoff.ru"))
+        (item.mode === "used" || item.mode === "office")
     )
   )
     throw new Error("Файл демонстрационных предложений повреждён.");
@@ -228,6 +231,8 @@ export const validateImport = (input: unknown): Project => {
           hinge: o.hinge === "end" ? "end" : "start"
         }))
     },
+    catalogCity: typeof raw.catalogCity === "string" &&
+      /^[a-z][a-z0-9-]{1,60}$/.test(raw.catalogCity) ? raw.catalogCity : undefined,
     budget: numeric(raw.budget, 0, 1e9) ? raw.budget : 80000,
     passage: numeric(raw.passage, 0.45, 2) ? raw.passage : 0.8,
     material:

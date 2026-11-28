@@ -17,8 +17,13 @@ export const upsertItem = (items: Item[], candidate: Item) => {
   return items.map((item) => (item.id === candidate.id ? candidate : item));
 };
 
-export const applyVoicePatch = (project: Project, { size, sofa, ...fields }: VoicePatch) => ({
-  ...fields,
+export const applyVoicePatch = (
+  project: Project,
+  { size, sofa, budget, material, mode }: VoicePatch
+) => ({
+  ...(budget === undefined ? {} : { budget }),
+  ...(material === undefined ? {} : { material }),
+  ...(mode === undefined ? {} : { mode }),
   room: size ? resizeRoomFromVoice(project.room, size) : project.room,
   items: sofa ? upsertItem(project.items, sofa) : project.items,
   ...(size || sofa ? { layouts: {} } : {})

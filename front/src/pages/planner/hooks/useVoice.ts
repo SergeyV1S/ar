@@ -185,6 +185,7 @@ export const useVoice = ({ project, apply }: VoiceProps) => {
     isRecording: stage === "recording",
     buttonLabel: BUTTON_LABELS[stage],
     notes,
+    hasPurchase: Boolean(patch.purchase),
     toggleRecording,
     changePhrase,
     applyVoice

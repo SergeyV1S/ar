@@ -2,6 +2,8 @@ import express from "express";
 import type { RequestHandler } from "express";
 import multer from "multer";
 
+import { createCatalogRouter } from "./catalog/index.ts";
+
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const AUDIO_EXTENSIONS = new Map([
   ["audio/webm", "webm"],
@@ -32,18 +34,21 @@ const receiveAudio: RequestHandler = (request, response, next) => {
 };
 
 type AppOptions = {
+  fetchFromDivan?: typeof fetch;
   groqApiKey?: string;
   fetchFromGroq?: typeof fetch;
   groqTimeoutMs?: number;
 };
 
 export const createApp = ({
+  fetchFromDivan,
   groqApiKey,
   fetchFromGroq = fetch,
   groqTimeoutMs = 30_000
 }: AppOptions = {}) => {
   const app = express();
   app.disable("x-powered-by");
+  app.use("/api/catalog", createCatalogRouter(fetchFromDivan));
 
   app.post("/api/speech/transcriptions", receiveAudio, async (request, response) => {
     const file = request.file;

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
+import type { CatalogCity } from "@/shared/api/requests";
+
+import { getReplacementCriteria, isLegacyRetailOffer } from "../helpers/catalogSelection.ts";
 import { applyVoicePatch, getARLayoutUpdate, getItemLayoutUpdate, upsertItem } from "../helpers/index.ts";
 import type { readLocal } from "../mock/index.ts";
 import { initialProject, planItems, positionsFor, visibleItems } from "../mock/index.ts";
@@ -8,6 +11,7 @@ import { area, arrange, clamp, dimensions, inspect, rect, variants } from "../pl
 import type {
   ARMode,
   Action,
+  CatalogSearch,
   Item,
   PlannerModal,
   Position,
@@ -19,6 +23,7 @@ import type {
 import { usePlannerAR } from "./usePlannerAR.ts";
 import { useProjectFiles } from "./useProjectFiles.ts";
 import { useProjectStorage } from "./useProjectStorage.ts";
+import { useRetailCatalog } from "./useRetailCatalog.ts";
 
 export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   const { pathname } = useLocation();
@@ -43,6 +48,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   const close = () => setModal(null);
   const {
     project,
+    revision,
     locked,
     isProtected,
     privacyError,
@@ -84,6 +90,23 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
     () => inspect(room, allItems, positions, passage),
     [room, allItems, positions, passage]
   );
+  const retail = useRetailCatalog({
+    project, positions, revision, enabled: mode === "retail" && !locked && !pendingProtection, update, notify
+  });
+  const [catalogDraft, setCatalogDraft] = useState<Partial<CatalogSearch>>({});
+  const openCatalogDraft = (draft?: Partial<CatalogSearch>) => {
+    setCatalogDraft({ city: project.catalogCity, ...draft });
+    setModal({ name: "catalog-search" });
+  };
+  const openCatalogSearch = () => openCatalogDraft(retail.search);
+  const replaceCatalogItem = (id: string) => {
+    const item = project.items.find((item) => item.id === id && isLegacyRetailOffer(item));
+    if (item) openCatalogDraft({ ...getReplacementCriteria(item), replaceId: id });
+  };
+  const confirmCatalogSearch = (search: CatalogSearch, city: CatalogCity) => {
+    retail.start(search, city);
+    close();
+  };
   const action: Action = (name, id) => {
     if (name === "variant") {
       if (typeof id !== "number" || !variants[id]) return;
@@ -220,9 +243,16 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   };
 
   const acceptVoice = (patch: VoicePatch) => {
-    update(applyVoicePatch(project, patch));
+    if (patch.size || patch.sofa || patch.budget !== undefined || patch.material || patch.mode)
+      update(applyVoicePatch(project, patch));
+    if (patch.purchase && (patch.mode ?? project.mode) === "retail") {
+      openCatalogDraft(patch.purchase);
+      return;
+    }
     close();
-    notify("Голосовой ввод применён. Проверьте размеры на плане.");
+    notify(patch.purchase
+      ? "Подбор Divan.ru доступен в режиме «Новая покупка»."
+      : "Голосовой ввод применён. Проверьте размеры на плане.");
   };
 
   const openARHelp = (mode: ARMode) => setModal({ name: mode === "scan" ? "ar-scan" : "ar-view" });
@@ -277,7 +307,7 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
   };
   const addCatalogItem = (entry: Item) => storeItem(entry, true);
   const createProject = () => {
-    change(() => ({
+    change({
       ...initialProject(),
       room: {
         name: "Новая комната",
@@ -287,13 +317,18 @@ export const usePlannerPage = (initial: ReturnType<typeof readLocal>) => {
         verified: "review"
       },
       items: []
-    }));
+    });
     setSelected(null);
     action("room");
     notify("Новый проект создан.");
   };
   return {
     project,
+    retail,
+    catalogDraft,
+    openCatalogSearch,
+    replaceCatalogItem,
+    confirmCatalogSearch,
     locked,
     pendingProtection,
     canCancelProtection,

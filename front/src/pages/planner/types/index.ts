@@ -1,3 +1,8 @@
+import type { CatalogCriteria } from "./catalog.ts";
+
+export { CATALOG_CATEGORIES, isCatalogCategory } from "./catalog.ts";
+export type { CatalogCategory, CatalogCriteria, CatalogSearch } from "./catalog.ts";
+
 export type Point = number[];
 export type Position = { x: number; y: number; r: number };
 export type Positions = Record<string, Position>;
@@ -35,6 +40,9 @@ export type Item = {
   quantity?: number;
   offerReason?: string;
   demo?: boolean;
+  catalogCity?: string;
+  catalogCityId?: string;
+  catalogCheckedAt?: string;
   cap?: number;
   access?: number;
   material: string;
@@ -51,6 +59,7 @@ export type Project = {
   version: number;
   room: Room;
   budget: number;
+  catalogCity?: string;
   material: string;
   mode: string;
   passage: number;
@@ -62,6 +71,7 @@ export type Project = {
 export type VoicePatch = Partial<Pick<Project, "budget" | "material" | "mode">> & {
   size?: [number, number];
   sofa?: Item;
+  purchase?: CatalogCriteria;
 };
 export type Protection = { salt: Uint8Array<ArrayBuffer>; key: CryptoKey };
 export type EncryptedRecord = { encrypted: true; salt: string; iv: string; body: string };
@@ -76,6 +86,7 @@ type DialogName =
   | "voice"
   | "add-owned"
   | "add-buy"
+  | "catalog-search"
   | "item"
   | "procurement"
   | "checks"

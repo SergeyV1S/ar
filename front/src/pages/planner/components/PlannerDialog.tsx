@@ -3,6 +3,7 @@ import { decimal } from "../../../shared/helpers/index.ts";
 import { usePlannerContext } from "../hooks/index.ts";
 import type { PlannerModal } from "../types/index.ts";
 import { ARHelp } from "./ARHelp.tsx";
+import { CatalogSearchForm } from "./CatalogSearchForm.tsx";
 import { CheckReport } from "./CheckReport.tsx";
 import { Dialog } from "./Dialog.tsx";
 import { ItemEditor } from "./ItemEditor.tsx";
@@ -18,6 +19,7 @@ const dialogTitles = {
   voice: ["Голосовой ввод", "mic"],
   "add-owned": ["Добавить свою мебель", "plus"],
   "add-buy": ["Добавить к покупке", "bag"],
+  "catalog-search": ["Подбор на Divan.ru", "spark"],
   item: ["Редактировать мебель", "pencil"],
   procurement: ["Служебная закупка", "receipt"],
   checks: ["Проверка плана", "checkCircle"],
@@ -37,6 +39,8 @@ export const PlannerDialog = () => {
     saveRoom,
     acceptVoice,
     storeItem,
+    catalogDraft,
+    confirmCatalogSearch,
     removeItem,
     inspection,
     saveProcurement,
@@ -67,6 +71,8 @@ export const PlannerDialog = () => {
         return <Outline project={project} save={saveRoom} close={close} />;
       case "voice":
         return <Voice project={project} apply={acceptVoice} />;
+      case "catalog-search":
+        return <CatalogSearchForm initial={catalogDraft} projectMaterial={project.material} start={confirmCatalogSearch} />;
       case "add-owned":
       case "add-buy":
       case "item":

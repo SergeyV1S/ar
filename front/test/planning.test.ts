@@ -141,6 +141,7 @@ test("office export requires procurement information and supplier details", () =
     ...lastItem,
     id: "supplier-offer",
     mode: "office",
+    owned: false,
     seller: "ООО Компания"
   });
   assert.equal(procurementMissing(project).length, 6);
@@ -253,8 +254,7 @@ test("office backups require the original password and retain partial procuremen
 
 test("a project can retain missing prices without treating a free item as unknown", () => {
   const project = initialProject();
-  const base = project.items.find((item) => !item.owned && item.mode === project.mode);
-  assert(base);
+  const base = { ...project.items[0], owned: false, mode: project.mode };
   const draft = {
     ...project,
     items: [
@@ -433,4 +433,37 @@ test("a socket and a window on the same wall are not deduplicated", () => {
       ["socket", 0.08]
     ]
   );
+});
+
+test("a voice request for two chairs applies the limit to both and keeps the project budget", () => {
+  const { patch } = parseVoice("Хочу добавить два стула, бюджет 12 000 ₽", initialProject());
+  assert.equal(patch.purchase?.category, "chair");
+  assert.equal(patch.purchase?.quantity, 2);
+  assert.equal(patch.purchase?.maxTotal, 12000);
+  assert.equal(patch.budget, undefined);
+});
+
+test("the spoken unit limit is separate from size and project limits", () => {
+  const { patch } = parseVoice(
+    "Подбери стул 2 шт. шириной до 50 см, бюджет 6 тысяч за штуку, бюджет проекта 50 тысяч",
+    initialProject()
+  );
+  assert.equal(patch.purchase?.quantity, 2);
+  assert.equal(patch.purchase?.maxUnit, 6000);
+  assert.equal(patch.purchase?.maxTotal, undefined);
+  assert.equal(patch.purchase?.maxWidth, 0.5);
+  assert.equal(patch.budget, 50000);
+});
+
+test("voice separates furniture already in the room from a new purchase", () => {
+  const { patch } = parseVoice(
+    "Комната 4 на 3, диван 220 см, хочу купить два стула из массива до 12 тысяч",
+    initialProject()
+  );
+  assert.deepEqual(patch.size, [4, 3]);
+  assert.equal(patch.sofa?.w, 2.2);
+  assert.equal(patch.purchase?.category, "chair");
+  assert.equal(patch.purchase?.quantity, 2);
+  assert.equal(patch.purchase?.maxTotal, 12000);
+  assert.equal(patch.purchase?.material, "Массив");
 });

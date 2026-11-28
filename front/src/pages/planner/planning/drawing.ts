@@ -175,7 +175,7 @@ const furniture = (
       palette[item.kind] ?? palette.other,
       "#7c6b68"
     );
-  } else if (item.kind === "sofa" || item.kind === "chair") {
+  } else if (item.kind === "sofa" || item.kind === "chair" || item.kind === "stool") {
     const couch = item.kind === "sofa";
     shape(c, 0, 0, w, h, h * 0.18, couch ? "#c7b8a6" : "#909a7e");
     c.shadowColor = "transparent";
@@ -546,7 +546,7 @@ const iso = (
       const top = base.map((p) => to(p, z));
       fill(c, top, color, selected === item.id ? purple : "#8e7d73");
       fill(c, top, "#ffffff37");
-      if (["sofa", "chair"].includes(item.kind)) {
+      if (["sofa", "chair", "stool"].includes(item.kind)) {
         const inset = {
           x: box.x + box.w * 0.14,
           y: box.y + box.d * 0.12,

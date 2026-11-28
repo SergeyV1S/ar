@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 export {};
 declare const self: ServiceWorkerGlobalScope;
-const CACHE = "metrika-offline-v2";
+const CACHE = "metrika-offline-v3";
 const SCOPE = self.registration.scope;
 const entry = new URL("./", SCOPE);
 
@@ -58,7 +58,7 @@ self.addEventListener("activate", (event) =>
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  if (request.method !== "GET" || url.origin !== entry.origin || !url.href.startsWith(entry.href))
+  if (request.method !== "GET" || url.pathname.startsWith("/api/") || url.origin !== entry.origin || !url.href.startsWith(entry.href))
     return;
   event.respondWith(
     (async () => {

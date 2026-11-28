@@ -1,7 +1,7 @@
 import { centimeters, safeUrl } from "../../../shared/helpers/index.ts";
 import { arrange, dimensions, rect, round } from "../planning/index.ts";
 import type { Item, Project, Room } from "../types/index.ts";
-import { catalog, materials, procurementFields } from "./catalog.ts";
+import { materials, procurementFields } from "./catalog.ts";
 
 export const initialProject = (): Project => {
   return {
@@ -46,8 +46,7 @@ export const initialProject = (): Project => {
         owned: true,
         source: "manual",
         verified: "review"
-      },
-      ...catalog.map((item) => ({ ...item }))
+      }
     ],
     layouts: {},
     procurement: {}

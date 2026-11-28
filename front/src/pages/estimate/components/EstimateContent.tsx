@@ -101,6 +101,7 @@ export const EstimateContent = (props: EstimateContentProps) => {
                   ) : (
                     item.seller || "—"
                   )}
+                  {item.catalogCity && <small>{item.catalogCity} · {item.availability}</small>}
                   {item.offerReason && <small>{item.offerReason}</small>}
                   {item.details && <small>{item.details}</small>}
                 </td>
